@@ -87,10 +87,11 @@ input[type=range] { width: 260px; accent-color: var(--accent); }
 #hud .combo i { display: block; height: 100%; background: var(--accent); }
 #hud .dist { position: absolute; left: 30px; bottom: 30px; font-size: 13px; letter-spacing: 0.15em; color: var(--dim); text-shadow: 0 2px 8px #000; line-height: 1.7; }
 #hud .dist b { color: var(--text); font-size: 18px; letter-spacing: 0.05em; }
-#hud .pops { position: absolute; left: 50%; top: 32%; transform: translateX(-50%); text-align: center; }
-.pop { font-weight: 900; font-style: italic; font-size: 30px; letter-spacing: 0.04em; animation: pop 1.3s ease-out forwards; text-shadow: 0 3px 14px rgba(0,0,0,0.7); }
-.pop.big { font-size: 46px; }
-.pop small { display: block; font-size: 15px; font-style: normal; letter-spacing: 0.15em; opacity: 0.9; }
+#hud .pops { position: absolute; right: 28px; top: 44px; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; }
+.pop { font-weight: 900; font-style: italic; font-size: 26px; letter-spacing: 0.04em; animation: popRight 1.6s ease-out forwards; text-shadow: 0 3px 14px rgba(0,0,0,0.7); }
+.pop.big { font-size: 36px; }
+@keyframes popRight { 0% { transform: translateX(40px); opacity: 0; } 10% { transform: translateX(0); opacity: 1; } 78% { transform: translateX(0); opacity: 1; } 100% { transform: translateY(-14px); opacity: 0; } }
+.pop small { display: block; font-size: 14px; font-style: normal; letter-spacing: 0.15em; opacity: 0.9; }
 @keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 12% { transform: scale(1.12); opacity: 1; } 25% { transform: scale(1); } 80% { opacity: 1; } 100% { transform: translateY(-40px); opacity: 0; } }
 #hud .count { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font-size: 120px; font-weight: 900; font-style: italic; color: #fff; text-shadow: 0 4px 30px rgba(255,61,110,0.8); }
 #hud .ctrl { position: absolute; left: 30px; top: 22px; font-size: 11px; color: var(--dim); letter-spacing: 0.1em; line-height: 1.6; }

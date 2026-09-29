@@ -59,7 +59,7 @@ export class Player {
     this.model.root.quaternion.setFromEuler(eul);
     const sp = this.spec;
     if (this.bike && this.model.bike) {
-      this.model.bike.lean.rotation.z = -p.lean; // lean into the turn (+ lean = left)
+      this.model.bike.lean.rotation.z = -p.visLean; // lean into the turn (+ lean = left); drawn lean shrinks with speed
       // wheelie / stoppie pivots around the rear or front contact patch
       const piv = p.wheelie >= 0 ? -sp.wheelbase / 2 : sp.wheelbase / 2;
       const c = new THREE.Vector3(0, 0, piv);

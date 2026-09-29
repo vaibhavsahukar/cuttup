@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+const out = process.argv[2] ?? '.';
+const b = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const page = await b.newPage({ viewport: { width: 1280, height: 720 } });
+await page.addInitScript('window.__name = (f) => f');
+await page.goto('http://localhost:5173/');
+await page.waitForFunction(() => (window as any).__app);
+await page.evaluate(() => { const a = (window as any).__app; a.save.data.settings.showFps = true; a.startGame('city', 'zr1'); a.advance(3.3); const u = a.ui; u.popup({ text: 'CUT UP!', sub: '+1,250  x3.0', color: '#ff4fd8', big: true }); u.popup({ text: 'NEAR MISS', sub: '+300  x2.0', color: '#4dff88' }); u.popup({ text: 'WHEELIE', sub: '3s  x2.0', color: '#ffd23f' }); });
+console.log(await page.evaluate(() => { const r = document.querySelector('#hud .pops')!.getBoundingClientRect(); return JSON.stringify({ x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), viewport: [innerWidth, innerHeight], n: document.querySelectorAll('#hud .pop').length }); }));
+await page.screenshot({ path: `${out}/popups.png` });
+await b.close();

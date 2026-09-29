@@ -348,8 +348,8 @@ export class UI {
     d.innerHTML = `${esc(p.text)}${p.sub ? `<small>${esc(p.sub)}</small>` : ''}`;
     const box = $('#hud .pops');
     box.appendChild(d);
-    while (box.children.length > 3) box.firstElementChild!.remove();
-    setTimeout(() => d.remove(), 1300);
+    while (box.children.length > 4) box.firstElementChild!.remove();
+    setTimeout(() => d.remove(), 1600);
   }
   /** bike-only HUD: aid lights and tyre temperature */
   bikeHud(on: boolean, abs = false, tc = false, aw = false, temp = 0, wear = 0) {
