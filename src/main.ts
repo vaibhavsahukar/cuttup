@@ -220,7 +220,7 @@ async function boot() {
       if (!alive) { endGame(); break; }
     }
   };
-  (window as any).__app = { startGame, ui, save, input, advance, get game() { return game; }, get mode() { return mode; } };
+  (window as any).__app = { startGame, ui, save, input, advance, preview, renderer, get game() { return game; }, get mode() { return mode; } };
   void getVehicle;
 }
 boot();
