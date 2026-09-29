@@ -28,7 +28,7 @@ export class Player {
     this.collW = spec.kind === 'bike' ? 0.62 : spec.dims.width * 0.96;
     this.collL = spec.kind === 'bike' ? spec.dims.length * 0.95 : spec.dims.length * 0.97;
     if (night) {
-      const h = new THREE.SpotLight(0xfff2dd, 60, 120, 0.42, 0.5, 1.4);
+      const h = new THREE.SpotLight(0xfff2dd, night ? 500 : 250, 120, 0.42, 0.5, 2);
       h.position.set(0, 0.8, spec.dims.length / 2);
       h.target.position.set(0, 0, spec.dims.length / 2 + 30);
       h.castShadow = false;
@@ -49,7 +49,11 @@ export class Player {
     const p = this.phys;
     this.path.frame(p.s, fr);
     const pos = this.path.toWorld(p.s, p.d, 0, this.model.root.position, fr);
-    this.worldVel.copy(pos).sub(this.lastPos).divideScalar(Math.max(dt, 1e-4));
+    // analytic world velocity from the body-frame state (robust to teleports / resets)
+    const phi = fr.heading + p.psi;
+    const fx = Math.sin(phi), fz = Math.cos(phi); // forward
+    const lx = Math.cos(phi), lz = -Math.sin(phi); // left
+    this.worldVel.set(fx * p.v + lx * p.vl, fr.grade * p.v, fz * p.v + lz * p.vl);
     this.lastPos.copy(pos);
     eul.set(-Math.atan(fr.grade) * Math.cos(p.psi), fr.heading + p.psi, 0);
     this.model.root.quaternion.setFromEuler(eul);

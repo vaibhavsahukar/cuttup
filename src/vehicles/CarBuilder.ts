@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { toCreasedNormals, mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Kit, makeWheel, type VehicleModel } from './ModelKit';
 import { MAT } from './Materials';
 import { smoothstep } from '../core/math';
@@ -108,7 +108,7 @@ export function halfWidth(d: CarDef, x: number, y: number) {
   return (d.W / 2) * s;
 }
 
-export function buildCar(d: CarDef, color: number, shadows = true): VehicleModel {
+export function buildCar(d: CarDef, color: number, shadows = true, staticWheels = false): VehicleModel {
   const root = new THREE.Group();
   const chassis = new THREE.Group();
   root.add(chassis);
@@ -165,12 +165,31 @@ export function buildCar(d: CarDef, color: number, shadows = true): VehicleModel
   wheels.push(makeWheel(root, -tf, d.wr, zc(d.rOver + d.wb), d.wr, d.ww, true, rim, spokes));
   wheels.push(makeWheel(root, tr, wrR, zc(d.rOver), wrR, d.ww * 1.05, false, rim, spokes));
   wheels.push(makeWheel(root, -tr, wrR, zc(d.rOver), wrR, d.ww * 1.05, false, rim, spokes));
+  let wheelMesh: THREE.Mesh | undefined;
+  if (staticWheels) {
+    // traffic: merge the 4 wheels into one draw call (no spin)
+    const geos = wheels.map((w) => {
+      const m = w.spin.children[0] as THREE.Mesh;
+      w.obj.updateMatrixWorld(true);
+      const g2 = m.geometry.clone();
+      g2.applyMatrix4(new THREE.Matrix4().makeRotationY(m.rotation.y));
+      g2.applyMatrix4(new THREE.Matrix4().makeTranslation(w.obj.position.x, w.obj.position.y, w.obj.position.z));
+      root.remove(w.obj);
+      return g2;
+    });
+    wheelMesh = new THREE.Mesh(mergeGeometries(geos, false)!, (wheels[0].spin.children[0] as THREE.Mesh).material);
+    wheelMesh.name = 'wheels';
+    root.add(wheelMesh);
+    wheels.length = 0;
+  }
 
   const g = (b: string) => (meshes.get(b as never) ? [meshes.get(b as never)!] : []);
   return {
     root, chassis, body, wheels,
     brake: g('tail'), sigL: g('sigL'), sigR: g('sigR'), heads: g('head'),
     length: d.L, width: d.W, height: d.H, color,
+    lod: [...g('misc'), ...g('glass'), ...g('sigL'), ...g('sigR'), ...g('chrome')],
+    wheelMesh,
   };
 }
 

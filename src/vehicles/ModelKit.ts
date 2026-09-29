@@ -23,6 +23,9 @@ export interface VehicleModel {
   length: number; width: number; height: number;
   color: number;
   bike?: { lean: THREE.Group; rider: Rider; fork: THREE.Object3D };
+  /** detail meshes hidden at distance (traffic LOD) */
+  lod?: THREE.Object3D[];
+  wheelMesh?: THREE.Mesh;
 }
 
 const miscMat = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.35, roughness: 0.55 });

@@ -387,10 +387,15 @@ export class Traffic {
   }
 
   /** push transforms / lights to the scene */
-  sync(dt: number) {
+  sync(dt: number, playerS = 0) {
     const blink = Math.floor(this.time * 3) % 2 === 0;
     for (const c of this.cars) {
-      if (!c.alive || c.wrecked) continue;
+      if (!c.alive) continue;
+      // LOD: drop detail meshes far away (fog hides them anyway)
+      const far = Math.abs(c.s - playerS) > 160;
+      if (c.model.lod) for (const o of c.model.lod) o.visible = !far;
+      if (c.model.wheelMesh) c.model.wheelMesh.visible = Math.abs(c.s - playerS) < 320;
+      if (c.wrecked) continue;
       this.path.frame(c.s, fr);
       this.path.toWorld(c.s, c.d, 0, v3, fr);
       const m = c.model;

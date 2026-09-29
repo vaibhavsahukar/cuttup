@@ -38,6 +38,7 @@ export class Game {
   private sGuess = 0;
   gameTime = 0;
   private bumpCd = 0;
+  private lampLights: THREE.PointLight[] = [];
 
   constructor(public renderer: THREE.WebGLRenderer, public audio: AudioEngine, public input: Input, public settings: Settings, mapId: string, vehicleId: string, pmrem: THREE.Texture) {
     const q = QUALITY[settings.quality];
@@ -56,6 +57,14 @@ export class Game {
     this.scene.add(this.chunks.root);
     for (let i = 0; i < 40; i++) this.chunks.update(0);
 
+    if (night) {
+      // moving pool of real lights under the next few median street lamps
+      for (let i = 0; i < 6; i++) {
+        const l = new THREE.PointLight(0xffc98a, 160, 32, 1.6);
+        this.scene.add(l);
+        this.lampLights.push(l);
+      }
+    }
     this.player = new Player(this.spec, this.path, night || this.map.id === 'forest', q.shadows);
     this.player.model.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = q.shadows; });
     this.scene.add(this.player.model.root);
@@ -87,7 +96,7 @@ export class Game {
     this.audio.reset();
     this.audio.startEngine(this.spec);
     this.player.sync(1 / 60);
-    this.traffic.sync(0);
+    this.traffic.sync(0, 0);
   }
 
   groundAt(p: THREE.Vector3) {
@@ -143,7 +152,7 @@ export class Game {
     this.traffic.update(dt, this.proxy, this.scoring.distance);
     this.chunks.update(this.state === 'crash' ? this.crash.wrecks[0]?.s ?? ph.s : ph.s);
     if (this.state !== 'crash') p.sync(dt);
-    this.traffic.sync(dt);
+    this.traffic.sync(dt, ph.s);
     this.particles.update(dt);
 
     if (this.state === 'crash') {
@@ -160,6 +169,13 @@ export class Game {
       }
     } else this.rig.update(realDt, p, input.lookback);
     this.env.update(this.camera.position, p.model.root.position);
+    if (this.lampLights.length) {
+      const first = Math.floor((ph.s - 10 - 8) / 32) + 1;
+      for (let i = 0; i < this.lampLights.length; i++) {
+        const k = first + (i >> 1);
+        this.path.toWorld(k * 32 + 8, (i & 1 ? 1 : -1) * 2.9, 10.3, this.lampLights[i].position);
+      }
+    }
     this.audio.update(ph.rpm, this.state === 'driving' ? ph.throttle : 0.2, Math.abs(ph.v), ph.slip + ph.wheelspin * 0.4 + (ph.onGrass ? 0.2 : 0) * 0, this.scrape, this.state !== 'crash' && this.state !== 'done');
     this.scrape = Math.max(0, this.scrape - realDt * 4);
     return this.state !== 'done';

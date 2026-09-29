@@ -19,6 +19,7 @@ export class CameraRig {
 
   update(dt: number, p: Player, lookback: boolean) {
     this.t += dt;
+    if (p.model.bike) p.model.bike.rider.head.visible = this.mode !== 'hood' || lookback;
     const root = p.model.root;
     const q = root.quaternion;
     const phys = p.phys;
@@ -44,11 +45,11 @@ export class CameraRig {
       desiredLook = root.position.clone().addScaledVector(fwd, -30).addScaledVector(up, 1);
       this.pos.copy(desiredPos); this.look.copy(desiredLook);
     } else if (this.mode === 'hood') {
-      const off = bike ? new THREE.Vector3(0, 1.45, -0.1) : new THREE.Vector3(0, h * 0.82, p.spec.dims.length * 0.12);
+      const off = bike ? new THREE.Vector3(0, 1.42, 0.45) : new THREE.Vector3(0, h * 0.82, p.spec.dims.length * 0.12);
       if (bike && p.model.bike) {
-        // cockpit cam leans with the bike
+        // cockpit cam (just in front of the helmet) leans with the bike
         const lean = p.model.bike.lean.rotation.z;
-        off.set(-Math.sin(lean) * 1.3, Math.cos(lean) * 1.3 + 0.15, 0.05);
+        off.set(-Math.sin(lean) * 1.42, Math.cos(lean) * 1.42, 0.45);
       }
       desiredPos = off.applyQuaternion(q).add(root.position);
       desiredLook = desiredPos.clone().addScaledVector(fwd, 20).addScaledVector(up, -0.4);

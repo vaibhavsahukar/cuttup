@@ -25,9 +25,9 @@ export class PreviewStage {
     key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
     s.add(key);
-    const rim = new THREE.DirectionalLight(0xff3d6e, 1.6); rim.position.set(-6, 3, -6); s.add(rim);
-    const rim2 = new THREE.DirectionalLight(0x2de2e6, 1.2); rim2.position.set(6, 2, -5); s.add(rim2);
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(40, 48), new THREE.MeshStandardMaterial({ color: 0x0d0e13, roughness: 0.35, metalness: 0.5 }));
+    const rim = new THREE.DirectionalLight(0xff3d6e, 0.9); rim.position.set(-6, 3, -6); s.add(rim);
+    const rim2 = new THREE.DirectionalLight(0x2de2e6, 0.8); rim2.position.set(6, 2, -5); s.add(rim2);
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(40, 48), new THREE.MeshStandardMaterial({ color: 0x0d0e13, roughness: 0.75, metalness: 0.2 }));
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; s.add(floor);
     this.table = new THREE.Group();
     const disc = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.7, 0.12, 64), new THREE.MeshStandardMaterial({ color: 0x1a1c24, metalness: 0.7, roughness: 0.3 }));

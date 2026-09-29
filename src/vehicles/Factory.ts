@@ -14,7 +14,7 @@ export const TRAFFIC_COLORS = [0xe6e6e6, 0x1a1a1a, 0x8c9096, 0x5a5f66, 0x9a1b1b,
 
 export function buildTrafficModel(type: TrafficType, color: number, shadows = false): VehicleModel {
   const d = TRAFFIC_DEFS[type];
-  return buildCar(d, type === 'boxtruck' ? 0xe0e0e0 : color, shadows);
+  return buildCar(d, type === 'boxtruck' ? 0xe0e0e0 : color, shadows, true);
 }
 export function trafficDims(type: TrafficType) {
   const d = TRAFFIC_DEFS[type];

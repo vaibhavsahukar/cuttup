@@ -105,7 +105,7 @@ export class UI {
     if (id === 'maps') this.buildMaps();
     if (id === 'settings') this.buildSettings();
     if (id === 'menu') $('#menuHint').textContent = `${getVehicle(this.save.data.settings.vehicle).name}  ·  ${getMap(this.save.data.settings.map).name}   —   Arrow keys / D-pad + Enter / (A) to navigate`;
-    this.focusIdx = 0;
+    this.focusIdx = -1; // no highlight until keyboard / pad navigation starts
     this.applyFocus();
   }
   get settingsBack() { return this.settingsReturn; }
@@ -318,7 +318,7 @@ export class UI {
   nav(dir: number) {
     const bs = this.buttons();
     if (!bs.length) return;
-    this.focusIdx = (this.focusIdx + dir + bs.length) % bs.length;
+    this.focusIdx = this.focusIdx < 0 ? 0 : (this.focusIdx + dir + bs.length) % bs.length;
     this.applyFocus();
     bs[this.focusIdx].scrollIntoView({ block: 'nearest' });
   }
