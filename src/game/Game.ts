@@ -399,7 +399,7 @@ export class Game {
     this.audio.stopEngine();
     this.audio.crash(clamp(impact / 30, 0.4, 1.5));
     // hitting traffic gets a line about the other people; a solo crash gets one about you
-    const message = randomCrashMessage({ map: this.map.id, kind, victim: hit?.type, cop: !!hit?.cop, bike: this.player.bike });
+    const message = randomCrashMessage({ map: this.map.id, kind, victim: hit?.type, cop: !!hit?.cop, wanted: this.police.wanted > 0, bike: this.player.bike });
     const caught = !!hit?.cop && (kind === 'car' || kind === 'headon');
     this.onCrash?.(message, caught);
     this.result = {

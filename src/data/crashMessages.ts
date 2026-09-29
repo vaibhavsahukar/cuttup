@@ -9,6 +9,7 @@
  *   truck                 what was hit is a truck, van or pickup
  *   cop                   what was hit is a police car
  *   caught                a police car got you (the only tag such lines need: they replace the hit / solo lines)
+ *   wanted                you crashed with a wanted level active (police stars); shown only some of the time
  *   barrier / tree / rock ran into the roadside barrier / a tree / a rock
  *   fall                  a rider fall (lowside, highside, looped, endo, tipover), also by its own name
  *   bike / car            what you were driving
@@ -20,6 +21,7 @@ export interface CrashContext {
   kind: string; // CrashKind
   victim?: string; // traffic type that was hit
   cop?: boolean; // the car hit was a police car
+  wanted?: boolean; // a wanted level was active when you crashed
   bike: boolean;
 }
 
@@ -111,6 +113,9 @@ caught,country|Beautiful day, open road, and a patrol car that would not quit
 caught,forest|A winding backroad, no witnesses, and yet here comes the paperwork
 caught,bike|Two wheels, no siren, and a cop who did not even need to hurry
 caught,bike|Helmets are mandatory. So is stopping when the lights come on
+wanted|Well, I guess you got away. Just not in the way you planned
+wanted|The cops can stop chasing you now. You saved them the paperwork
+wanted|You lost the police. Unfortunately you lost everything else along with them
 barrier,city|The wall had the right of way. It always does
 barrier,country|The rail had the right of way. It always does
 barrier|You found out what the barrier is made of. Spoiler: it is harder than you
@@ -161,14 +166,20 @@ export function crashFacts(c: CrashContext) {
   if (c.kind === 'barrier' || c.kind === 'tree' || c.kind === 'rock') f.add(c.kind);
   if (c.victim && TRUCKS.has(c.victim)) f.add('truck');
   if (c.cop) f.add('cop');
+  if (c.wanted) f.add('wanted');
   return f;
 }
+
+/** how often a crash under a wanted level gets one of the wanted lines instead of the usual ones */
+const WANTED_CHANCE = 0.35;
 
 const recent: string[] = [];
 /** a random message that fits the crash; specific lines are favoured; no repeats until most have been seen */
 export function randomCrashMessage(c: CrashContext) {
   const facts = crashFacts(c);
-  let pool = MESSAGES.filter((x) => x.need.every((n) => facts.has(n)));
+  // wanted lines only sometimes come up when a wanted level is active, and never otherwise
+  const wanted = facts.has('wanted') && Math.random() < WANTED_CHANCE;
+  let pool = MESSAGES.filter((x) => x.need.every((n) => facts.has(n)) && x.need.includes('wanted') === wanted);
   const fresh = pool.filter((x) => !recent.includes(x.t));
   if (fresh.length) pool = fresh;
   const weights = pool.map((x) => 1 + x.need.length * 1.5);
