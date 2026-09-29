@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { MAT, paint } from './Materials';
+import { MAT, paint, paintLite } from './Materials';
 
 export type Bucket = 'paint' | 'glass' | 'clearGlass' | 'misc' | 'head' | 'tail' | 'sigL' | 'sigR' | 'chrome' | 'suit' | 'skin' | 'seat' | 'engine' | 'plate';
 
@@ -34,6 +34,7 @@ const wheelMat = new THREE.MeshStandardMaterial({ vertexColors: true, metalness:
 /** Collects primitive parts into material buckets and merges them into few draw calls. */
 export class Kit {
   parts = new Map<Bucket, THREE.BufferGeometry[]>();
+  lite = false;
   constructor(public color: number) {}
 
   add(bucket: Bucket, geo: THREE.BufferGeometry, pos: [number, number, number] = [0, 0, 0], rot: [number, number, number] = [0, 0, 0], scl: [number, number, number] = [1, 1, 1], vcolor = 0x222222) {
@@ -64,8 +65,8 @@ export class Kit {
 
   material(b: Bucket): THREE.Material {
     switch (b) {
-      case 'paint': return paint(this.color);
-      case 'glass': return MAT.glass;
+      case 'paint': return this.lite ? paintLite(this.color) : paint(this.color);
+      case 'glass': return this.lite ? MAT.glassLite : MAT.glass;
       case 'clearGlass': return MAT.clearGlass;
       case 'head': return MAT.head;
       case 'tail': return MAT.tailOff;
@@ -112,8 +113,8 @@ function tyreGeo(r: number, w: number, bead: number) {
   g.rotateZ(Math.PI / 2); // axle along x
   return g;
 }
-export function wheelGeo(r: number, w: number, rimColor = 0x9aa0a6, spokes = 5, bike = false) {
-  const key = `${r.toFixed(3)}_${w.toFixed(3)}_${rimColor}_${spokes}_${bike}`;
+export function wheelGeo(r: number, w: number, rimColor = 0x9aa0a6, spokes = 5, bike = false, low = false) {
+  const key = `${r.toFixed(3)}_${w.toFixed(3)}_${rimColor}_${spokes}_${bike}_${low}`;
   const hit = wheelCache.get(key);
   if (hit) return hit;
   const rub = new Kit(0), met = new Kit(0);
@@ -124,7 +125,7 @@ export function wheelGeo(r: number, w: number, rimColor = 0x9aa0a6, spokes = 5, 
     met.cyl('misc', 0, 0, 0, rr, 0.05, rot, rimColor, 24);
     met.cyl('misc', 0, 0, 0, rr * 0.55, 0.012, rot, 0x6a6d70, 24); // brake disc
   } else {
-    rub.add('misc', tyreGeo(r, w, rr * 0.98), [0, 0, 0], [0, 0, 0], [1, 1, 1], 0x151515);
+    rub.add('misc', low ? new THREE.CylinderGeometry(r, r, w, 14).rotateZ(Math.PI / 2) : tyreGeo(r, w, rr * 0.98), [0, 0, 0], [0, 0, 0], [1, 1, 1], 0x151515);
     // rim barrel, recessed face, brake disc + caliper behind the spokes
     met.add('misc', new THREE.CylinderGeometry(rr, rr, w * 0.92, 28, 1, true), [0, 0, 0], rot, [1, 1, 1], 0x3a3c3f);
     met.cyl('misc', -w * 0.3, 0, 0, rr * 0.9, 0.02, rot, 0x1a1b1d, 28); // dark inner back plate
@@ -150,10 +151,10 @@ export function wheelGeo(r: number, w: number, rimColor = 0x9aa0a6, spokes = 5, 
   return g;
 }
 
-export function makeWheel(parent: THREE.Object3D, x: number, y: number, z: number, r: number, w: number, front: boolean, rimColor: number, spokes: number, bike = false): WheelRef {
+export function makeWheel(parent: THREE.Object3D, x: number, y: number, z: number, r: number, w: number, front: boolean, rimColor: number, spokes: number, bike = false, low = false): WheelRef {
   const pivot = new THREE.Group();
   pivot.position.set(x, y, z);
-  const spin = new THREE.Mesh(wheelGeo(r, w, rimColor, spokes, bike), [rubberMat, wheelMat]);
+  const spin = new THREE.Mesh(wheelGeo(r, w, rimColor, low ? Math.min(spokes, 5) : spokes, bike, low), [rubberMat, wheelMat]);
   spin.castShadow = true;
   if (!bike && x < 0) spin.rotation.y = Math.PI; // rim face outward on the right side
   const spinHolder = new THREE.Group();

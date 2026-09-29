@@ -31,15 +31,12 @@ export class CrashScene {
   impactSpeed = 0;
   kind: CrashKind = 'car';
   flash = 0;
-  private flashLight: THREE.PointLight;
   private pileups = 0;
 
   /** lateral limits (barriers) that wrecks bounce off; null = open road edges */
   bounds: { min: number; max: number } | null = null;
 
   constructor(public scene: THREE.Scene, public path: RoadPath, public particles: Particles, public ground: (p: THREE.Vector3) => number) {
-    this.flashLight = new THREE.PointLight(0xfff0d0, 0, 40, 1.5);
-    scene.add(this.flashLight);
   }
 
   start(player: Player, kind: CrashKind, impactSpeed: number, hit: TrafficCar | null, traffic: Traffic, contact: THREE.Vector3) {
@@ -50,8 +47,6 @@ export class CrashScene {
     this.camAngle = Math.random() * Math.PI * 2;
     this.camSide = Math.random() < 0.5 ? -1 : 1;
     this.flash = 1;
-    this.flashLight.position.copy(contact).y += 1;
-    this.flashLight.intensity = 80;
     const sev = clamp(impactSpeed / 30, 0.2, 1.6);
     const m = player.model;
     const spec = player.spec;
@@ -262,7 +257,6 @@ export class CrashScene {
     const target = this.riderBody && this.t > 0.4 ? this.riderBody.pos.clone().lerp(this.wrecks[0].body.pos, 0.5) : this.wrecks[0].body.pos;
     this.focus.lerp(target, 1 - Math.exp(-dt * 6));
     this.flash = Math.max(0, this.flash - dt * 3);
-    this.flashLight.intensity = 80 * this.flash;
   }
   onPileup: ((v: number) => void) | null = null;
 
@@ -300,6 +294,5 @@ export class CrashScene {
     this.rider = undefined;
     this.active = false;
     this.pileups = 0;
-    this.flashLight.intensity = 0;
   }
 }

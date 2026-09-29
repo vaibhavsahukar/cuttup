@@ -76,8 +76,10 @@ function cabinShape(d: CarDef) {
   return s;
 }
 
+/** traffic cars use a low detail build (far fewer triangles, cheap materials) */
+let LOW = false;
 function extrude(shape: THREE.Shape, width: number, bevel: number) {
-  const g = new THREE.ExtrudeGeometry(shape, { depth: width - bevel * 2, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.85, bevelSegments: 5, curveSegments: 28 });
+  const g = new THREE.ExtrudeGeometry(shape, { depth: width - bevel * 2, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.85, bevelSegments: LOW ? 1 : 4, curveSegments: LOW ? 6 : 20 });
   g.translate(0, 0, -(width - bevel * 2) / 2);
   g.rotateY(-Math.PI / 2); // shape x (length) -> +z, extrusion -> x
   return g;
@@ -112,6 +114,7 @@ export function halfWidth(d: CarDef, x: number, y: number) {
 }
 
 export function buildCar(d: CarDef, color: number, shadows = true, staticWheels = false): VehicleModel {
+  LOW = staticWheels;
   const root = new THREE.Group();
   const chassis = new THREE.Group();
   root.add(chassis);
@@ -119,7 +122,8 @@ export function buildCar(d: CarDef, color: number, shadows = true, staticWheels 
   const zc = (x: number) => x + zOff; // profile x -> centred z
 
   const bodyGeo = taper(extrude(bodyShape(d), d.W, 0.11), d, zOff);
-  const body = new THREE.Mesh(bodyGeo, new Kit(color).material('paint'));
+  const k0 = new Kit(color); k0.lite = LOW;
+  const body = new THREE.Mesh(bodyGeo, k0.material('paint'));
   body.castShadow = shadows;
   body.name = 'paint';
   chassis.add(body);
@@ -127,6 +131,7 @@ export function buildCar(d: CarDef, color: number, shadows = true, staticWheels 
   const cab = taper(extrude(cabinShape(d), d.W * d.cabinW, 0.12), d, zOff);
 
   const k = new Kit(color);
+  k.lite = LOW;
   k.add('glass', cab);
   // roof skin (paint) so the greenhouse reads as pillars + glass
   const roofLen = (d.roofF - d.roofR) * 0.92;
@@ -180,10 +185,10 @@ export function buildCar(d: CarDef, color: number, shadows = true, staticWheels 
   const tf = (d.trackF ?? d.W - d.ww - 0.06) / 2, tr = (d.trackR ?? d.W - d.ww - 0.06) / 2;
   const rim = d.rimColor ?? 0x9aa0a6, spokes = d.spokes ?? 5;
   const wrR = d.wrR ?? d.wr;
-  wheels.push(makeWheel(root, tf, d.wr, zc(d.rOver + d.wb), d.wr, d.ww, true, rim, spokes));
-  wheels.push(makeWheel(root, -tf, d.wr, zc(d.rOver + d.wb), d.wr, d.ww, true, rim, spokes));
-  wheels.push(makeWheel(root, tr, wrR, zc(d.rOver), wrR, d.ww * 1.05, false, rim, spokes));
-  wheels.push(makeWheel(root, -tr, wrR, zc(d.rOver), wrR, d.ww * 1.05, false, rim, spokes));
+  wheels.push(makeWheel(root, tf, d.wr, zc(d.rOver + d.wb), d.wr, d.ww, true, rim, spokes, false, LOW));
+  wheels.push(makeWheel(root, -tf, d.wr, zc(d.rOver + d.wb), d.wr, d.ww, true, rim, spokes, false, LOW));
+  wheels.push(makeWheel(root, tr, wrR, zc(d.rOver), wrR, d.ww * 1.05, false, rim, spokes, false, LOW));
+  wheels.push(makeWheel(root, -tr, wrR, zc(d.rOver), wrR, d.ww * 1.05, false, rim, spokes, false, LOW));
   let wheelMesh: THREE.Mesh | undefined;
   if (staticWheels) {
     // traffic: merge the 4 wheels into one draw call (no spin)

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Traffic, TrafficCar, PlayerProxy } from './Traffic';
 import { DRIVERS } from './Traffic';
 import { buildTrafficModel, trafficDims } from '../vehicles/Factory';
-import { paint } from '../vehicles/Materials';
+import { paintLite } from '../vehicles/Materials';
 import type { Layout, MapSpec } from '../data/maps';
 import { RigidBody } from '../physics/RigidBody';
 import { projectToRoad, type RoadPath } from '../world/RoadPath';
@@ -49,7 +49,7 @@ export class Police {
     const dims = trafficDims('sedan');
     const model = buildTrafficModel('sedan', 0x101114, false);
     // livery: white doors, roof light bar
-    const white = paint(0xf2f2f2);
+    const white = paintLite(0xf2f2f2);
     const side = new THREE.BoxGeometry(0.03, 0.42, 1.9);
     for (const sx of [1, -1]) {
       const m = new THREE.Mesh(side, white);

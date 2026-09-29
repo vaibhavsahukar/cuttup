@@ -75,14 +75,6 @@ export class Game {
     this.scene.add(this.chunks.root);
     for (let i = 0; i < 40; i++) this.chunks.update(0);
 
-    if (this.map.id === 'city') {
-      // moving pool of real lights under the next few median street lamps
-      for (let i = 0; i < 6; i++) {
-        const l = new THREE.PointLight(0xffc98a, 160, 32, 1.6);
-        this.scene.add(l);
-        this.lampLights.push(l);
-      }
-    }
     this.player = new Player(this.spec, this.path, true, q.shadows);
     this.player.model.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = q.shadows; });
     this.scene.add(this.player.model.root);
@@ -94,7 +86,7 @@ export class Game {
     this.scene.add(this.traffic.root);
     this.proxy = { s: 0, d: this.player.phys.d, v: 22, L: this.player.collL, W: this.player.collW, alive: true };
     this.traffic.populate(0);
-    this.traffic.prewarm(4);
+    this.traffic.prewarm(this.map.road === 'highway' ? 12 : 4);
     this.traffic.onHonk = (c, intensity) => {
       const rel = c.s - this.player.phys.s;
       const dist = Math.hypot(rel, c.d - this.player.phys.d);

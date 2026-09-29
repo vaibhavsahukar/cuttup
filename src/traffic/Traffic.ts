@@ -3,7 +3,7 @@ import type { RoadPath, Frame } from '../world/RoadPath';
 import type { Layout, MapSpec } from '../data/maps';
 import { buildTrafficModel, TRAFFIC_COLORS, TRAFFIC_TYPES, trafficDims, type TrafficType } from '../vehicles/Factory';
 import type { VehicleModel } from '../vehicles/ModelKit';
-import { MAT, paint } from '../vehicles/Materials';
+import { MAT, paintLite } from '../vehicles/Materials';
 import { clamp, lerp, mulberry32, pick, range, smoothstep } from '../core/math';
 
 export type DriverType = 'fast' | 'slow' | 'scared';
@@ -84,8 +84,8 @@ export class Traffic {
     let m = list?.pop();
     if (!m) { m = buildTrafficModel(type, color, false); this.root.add(m.root); }
     if (type !== 'boxtruck') {
-      m.body.material = paint(color);
-      m.chassis.traverse((o) => { const mm = o as THREE.Mesh; if (mm.name === 'paint') mm.material = paint(color); });
+      m.body.material = paintLite(color);
+      m.chassis.traverse((o) => { const mm = o as THREE.Mesh; if (mm.name === 'paint') mm.material = paintLite(color); });
     }
     m.root.visible = true;
     return m;
