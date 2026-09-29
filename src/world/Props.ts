@@ -50,23 +50,98 @@ export function overpassGeo(span: number) {
   }
   return merge(parts);
 }
+/** prism (gable roof): ridge along local Z, width w across X, rise h, length l */
+const prism = (w: number, h: number, l: number) => {
+  const sh = new THREE.Shape([new THREE.Vector2(-w / 2, 0), new THREE.Vector2(w / 2, 0), new THREE.Vector2(0, h)]);
+  return new THREE.ExtrudeGeometry(sh, { depth: l, bevelEnabled: false }).translate(0, 0, -l / 2);
+};
 export function barnGeo() {
-  const roof = new THREE.CylinderGeometry(1, 1, 1, 3, 1);
-  return merge([
-    part(box(12, 7, 20), 0x9b2a20, 0, 3.5, 0),
-    part(roof, 0x3d3a38, 0, 8.4, 0, Math.PI / 2, 0, Math.PI, 7.3, 21, 3.6),
-    part(box(4, 5, 0.3), 0xe8e2d6, 0, 2.5, 10.05),
-    part(box(3.4, 4.4, 0.35), 0x7a2019, 0, 2.4, 10.1),
-    part(cyl(2.6, 2.6, 16, 12), 0xb8b6ae, 9.5, 8, -4),
-    part(new THREE.SphereGeometry(2.6, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0x8e8c86, 9.5, 16, -4),
-  ]);
+  // red barn: gambrel roof, white trim and door braces, hay loft door, cupola, two silos
+  const red = 0x9b2a20, trim = 0xf0ebe0, roof = 0x4a4a4c;
+  const parts = [
+    part(box(12, 6, 20), red, 0, 3, 0),
+    // gambrel roof: steep lower slopes, shallow upper slopes
+    part(box(0.5, 4.2, 20.6), roof, 5.2, 8, 0, 0, 0, -0.42),
+    part(box(0.5, 4.2, 20.6), roof, -5.2, 8, 0, 0, 0, 0.42),
+    part(box(0.5, 3.4, 20.6), roof, 2.2, 10.3, 0, 0, 0, -1.0),
+    part(box(0.5, 3.4, 20.6), roof, -2.2, 10.3, 0, 0, 0, 1.0),
+    part(prism(11.6, 4.4, 0.4), red, 0, 6, 10.05),
+    part(prism(11.6, 4.4, 0.4), red, 0, 6, -10.05),
+    // front: big double door with white X braces, loft door, trim
+    part(box(4.6, 4.6, 0.3), trim, 0, 2.3, 10.2),
+    part(box(4.2, 4.2, 0.35), 0x7a2019, 0, 2.2, 10.22),
+    part(box(0.25, 5.6, 0.2), trim, 0, 2.2, 10.42, 0, 0, 0.72),
+    part(box(0.25, 5.6, 0.2), trim, 0, 2.2, 10.42, 0, 0, -0.72),
+    part(box(2.2, 2, 0.3), trim, 0, 7.4, 10.2),
+    part(box(1.9, 1.7, 0.35), 0x2a1a16, 0, 7.4, 10.22),
+    // corner trim and side windows
+    part(box(0.3, 6.1, 0.3), trim, 6, 3, 10), part(box(0.3, 6.1, 0.3), trim, -6, 3, 10),
+    part(box(0.3, 6.1, 0.3), trim, 6, 3, -10), part(box(0.3, 6.1, 0.3), trim, -6, 3, -10),
+    part(box(20.4, 0.3, 0.3), trim, 6.02, 0.15, 0, 0, Math.PI / 2, 0),
+    // cupola on the ridge
+    part(box(1.6, 1.4, 1.6), trim, 0, 12.6, 0),
+    part(prism(2.2, 0.9, 2.2), 0x3a3a3c, 0, 13.3, 0),
+  ];
+  for (const z of [-6, -1.5, 3]) parts.push(part(box(0.2, 1.4, 1.1), 0x2a2f36, 6.02, 3.4, z), part(box(0.2, 1.4, 1.1), 0x2a2f36, -6.02, 3.4, z));
+  // silos
+  for (const [x, z] of [[9.2, -5], [9.2, -0.4]] as const) {
+    parts.push(part(cyl(2.2, 2.2, 15, 12), 0xc9c8c0, x, 7.5, z), part(new THREE.SphereGeometry(2.2, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0x8e8c86, x, 15, z));
+    for (const y of [3, 6, 9, 12]) parts.push(part(cyl(2.25, 2.25, 0.18, 12), 0x8e8c86, x, y, z));
+  }
+  return merge(parts);
 }
 export function houseGeo() {
-  const roof = new THREE.CylinderGeometry(1, 1, 1, 3, 1);
+  // farmhouse: two-storey body, gable roof, chimney, porch with posts, shuttered windows
+  const wall = 0xeee6d4, roof = 0x5b3f34, trim = 0xfaf6ee, shutter = 0x3e6a4a, glass = 0x2a3440;
+  const parts = [
+    part(box(9, 5.6, 8), wall, 0, 2.8, 0),
+    part(box(4.5, 3.6, 10), wall, -6, 1.8, 0.4),
+    part(prism(10.2, 3.6, 8.6), roof, 0, 5.6, 0, 0, 0, 0),
+    part(prism(5.6, 2.2, 10.6), roof, -6, 3.6, 0.4),
+    part(box(0.9, 2.8, 0.9), 0x8a4a3a, 2.6, 8.4, -1),
+    part(box(1.1, 0.2, 1.1), 0x6a3a2c, 2.6, 9.9, -1),
+    // porch
+    part(box(9, 0.3, 2.4), 0x8a8578, 0, 0.2, 5.2),
+    part(box(9.4, 0.25, 2.8), roof, 0, 3.2, 5.2),
+    part(box(1.3, 2.2, 0.25), 0x5a3a28, 0, 1.3, 4.05),
+  ];
+  for (const x of [-4.2, -1.4, 1.4, 4.2]) parts.push(part(box(0.22, 3, 0.22), trim, x, 1.7, 6.4));
+  for (const x of [-3, 3]) for (const y of [1.9, 4.4]) {
+    parts.push(part(box(1.3, 1.3, 0.12), trim, x, y, 4.02), part(box(1.0, 1.0, 0.16), glass, x, y, 4.04));
+    parts.push(part(box(0.35, 1.3, 0.14), shutter, x - 0.95, y, 4.06), part(box(0.35, 1.3, 0.14), shutter, x + 0.95, y, 4.06));
+  }
+  return merge(parts);
+}
+export function windmillGeo() {
+  // farm wind pump: lattice tower, multi-blade wheel, tail vane, water tank
+  const steel = 0x8d9295, parts: THREE.BufferGeometry[] = [];
+  for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]] as const) parts.push(part(box(0.1, 13.4, 0.1), steel, sx * 0.9, 6.5, sz * 0.9, sz * -0.06, 0, sx * 0.06));
+  for (const y of [2, 5, 8, 11]) {
+    const k = 1 - y / 26;
+    parts.push(part(box(2 * k * 1.9, 0.07, 0.07), steel, 0, y, 0.9 * k * 1.9 / 1.9 * 1), part(box(2 * k * 1.9, 0.07, 0.07), steel, 0, y, -0.9 * k));
+  }
+  parts.push(part(box(0.5, 0.5, 1.4), 0x55595c, 0, 13.6, 0));
+  parts.push(part(cyl(2.6, 2.6, 0.1, 16), 0xb8bcc0, 0, 13.6, 1.2, Math.PI / 2, 0, 0));
+  for (let i = 0; i < 12; i++) parts.push(part(box(0.5, 2.5, 0.05), 0xc9cdd0, 0, 13.6, 1.3, 0, 0, (i / 12) * Math.PI * 2));
+  parts.push(part(box(0.1, 1.2, 3), 0x9b2a20, 0, 13.9, -2.2));
+  parts.push(part(cyl(1.7, 1.7, 2.2, 14), 0x7a7d80, 4, 1.1, 0), part(cyl(1.75, 1.75, 0.2, 14), 0x55595c, 4, 2.3, 0));
+  return merge(parts);
+}
+export function fenceGeo() {
+  // 16 m of post-and-rail fence along local Z (origin at the start)
+  const wood = 0x8a7256, rail = 0xa38c69, parts: THREE.BufferGeometry[] = [];
+  for (let z = 0; z <= 16.01; z += 2.667) parts.push(part(box(0.16, 1.25, 0.16), wood, 0, 0.62, z));
+  for (const y of [0.45, 0.85, 1.15]) parts.push(part(box(0.06, 0.12, 16), rail, 0.1, y, 8));
+  return merge(parts);
+}
+export function delineatorGeo() {
+  return merge([part(box(0.12, 1.1, 0.12), 0xf0f0ec, 0, 0.55, 0), part(box(0.13, 0.22, 0.13), 0xd12b25, 0, 0.9, 0.01)]);
+}
+export function bushGeo() {
   return merge([
-    part(box(9, 5, 8), 0xe6dccb, 0, 2.5, 0),
-    part(roof, 0x4b3b33, 0, 6.2, 0, Math.PI / 2, 0, Math.PI, 5.6, 9.4, 2.6),
-    part(box(1.2, 2.2, 0.2), 0x5a3a28, 0, 1.1, 4.05),
+    part(new THREE.IcosahedronGeometry(0.8, 0), 0x3d6a2c, 0, 0.55, 0, 0, 0.3, 0, 1.2, 0.85, 1),
+    part(new THREE.IcosahedronGeometry(0.6, 0), 0x487a32, 0.7, 0.4, 0.2),
+    part(new THREE.IcosahedronGeometry(0.55, 0), 0x35602a, -0.65, 0.4, -0.15),
   ]);
 }
 export function powerPoleGeo() {
@@ -87,11 +162,16 @@ export function coniferGeo() {
   ]);
 }
 export function broadleafGeo() {
+  // fuller canopy: forked trunk and layered faceted crowns, darker underneath, lighter on top
   return merge([
-    part(cyl(0.2, 0.32, 3.6, 5), 0x4f3a28, 0, 1.8, 0),
-    part(new THREE.IcosahedronGeometry(2.6, 0), 0x3f6b2a, 0, 5.2, 0),
-    part(new THREE.IcosahedronGeometry(1.9, 0), 0x4a7a30, 1.2, 6.3, 0.6),
-    part(new THREE.IcosahedronGeometry(1.8, 0), 0x3b6327, -1.1, 6, -0.7),
+    part(cyl(0.2, 0.36, 3.4, 6), 0x4f3a28, 0, 1.7, 0),
+    part(cyl(0.12, 0.2, 2.2, 5), 0x4f3a28, 0.6, 3.9, 0.1, 0, 0, -0.5),
+    part(cyl(0.12, 0.2, 2.0, 5), 0x4f3a28, -0.6, 3.8, -0.1, 0, 0, 0.55),
+    part(new THREE.IcosahedronGeometry(2.7, 1), 0x2f5a25, 0, 5.4, 0, 0, 0, 0, 1, 0.8, 1),
+    part(new THREE.IcosahedronGeometry(2.0, 1), 0x3f6b2a, 1.9, 6.2, 0.7),
+    part(new THREE.IcosahedronGeometry(1.9, 1), 0x396429, -1.9, 6.0, -0.8),
+    part(new THREE.IcosahedronGeometry(1.8, 1), 0x4c7c33, 0.2, 7.5, 0.1),
+    part(new THREE.IcosahedronGeometry(1.3, 0), 0x558a3a, -0.4, 8.5, 0.5),
   ]);
 }
 export function rockGeo() {

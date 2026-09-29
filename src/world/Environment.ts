@@ -125,6 +125,33 @@ export class Environment {
       // distant mountains, drawn without fog but pre-tinted towards haze
       const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x6f86a0).lerp(fogC, 0.35), fog: false });
       const snow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xe8eef4).lerp(fogC, 0.3), fog: false });
+      // low foothills in front of the peaks give the skyline depth
+      const hills = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x5f7a55).lerp(fogC, 0.5), fog: false });
+      for (let i = 0; i < 46; i++) {
+        const a = (i / 46) * Math.PI * 2 + r() * 0.1;
+        const w = 260 + r() * 340, h = 60 + r() * 90;
+        const m = new THREE.Mesh(new THREE.SphereGeometry(w, 9, 5, 0, Math.PI * 2, 0, Math.PI / 2), hills);
+        const dist = 1500 + r() * 350;
+        m.position.set(Math.sin(a) * dist, -30, Math.cos(a) * dist);
+        m.scale.y = h / w;
+        this.backdrop.add(m);
+      }
+      // cumulus clouds: flattened clusters, slowly drifting
+      const cloudMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffffff).lerp(fogC, 0.15), fog: false });
+      for (let i = 0; i < 18; i++) {
+        const a = r() * Math.PI * 2, dist = 1300 + r() * 900, y = 420 + r() * 380;
+        const cloud = new THREE.Group();
+        const n = 4 + Math.floor(r() * 4);
+        for (let k = 0; k < n; k++) {
+          const b = new THREE.Mesh(new THREE.IcosahedronGeometry(60 + r() * 60, 1), cloudMat);
+          b.position.set((k - n / 2) * 85 + r() * 30, r() * 25, r() * 50);
+          b.scale.set(1.5, 0.55, 1);
+          cloud.add(b);
+        }
+        cloud.position.set(Math.sin(a) * dist, y, Math.cos(a) * dist);
+        cloud.rotation.y = r() * 3;
+        this.backdrop.add(cloud);
+      }
       for (let i = 0; i < 38; i++) {
         const a = (i / 38) * Math.PI * 2 + r() * 0.1;
         const h = 180 + r() * 380, w = 350 + r() * 500;

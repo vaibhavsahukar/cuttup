@@ -97,8 +97,12 @@ export class ChunkManager {
     } else if (map.id === 'country') {
       pool('barn', P.barnGeo(), 2);
       pool('house', P.houseGeo(), 2);
+      pool('windmill', P.windmillGeo(), 1);
       pool('pole', P.powerPoleGeo(), 1);
       pool('tree', P.broadleafGeo(), Math.ceil(16 * dens), vcMat, true);
+      pool('pine', P.coniferGeo(), Math.ceil(6 * dens), vcMat, true);
+      pool('bush', P.bushGeo(), Math.ceil(12 * dens), vcMat, true);
+      pool('fence', P.fenceGeo(), 8);
       pool('bale', P.hayBaleGeo(), 6);
       pool('sign', P.signGeo(), 1);
     } else {
@@ -271,6 +275,21 @@ export class ChunkManager {
         this.place(tp, s0 + rng() * CHUNK, side() * (E + range(rng, 12, 330)), rng() * 6, sc2, sc2, sc2, col);
       }
       if (rng() < 0.4) for (let i = 0; i < 5; i++) this.place(this.pools.bale, s0 + rng() * CHUNK, E + 60 + rng() * 60, rng() * 3, 1, 1, 1);
+      // post-and-rail fences along both sides, with gaps for gates and driveways
+      for (const sd of [-1, 1]) for (let k = 0; k < 4; k++) if (hash2(index * 8 + k + (sd > 0 ? 4 : 0), 21) > 0.14) this.place(this.pools.fence, s0 + k * 16, sd * (E + 7.5), 0, 1, 1, 1);
+      // hedge bushes and a few pines
+      const bp2 = this.pools.bush;
+      for (let i = 0; i < Math.round(6 * dens); i++) {
+        const t = 0.75 + rng() * 0.5, sc2 = range(rng, 0.8, 1.7);
+        col.setRGB(t, t * range(rng, 0.9, 1.1), t);
+        this.place(bp2, s0 + rng() * CHUNK, side() * (E + range(rng, 6, 10)), rng() * 6, sc2, sc2, sc2, col);
+      }
+      for (let i = 0; i < Math.round(4 * dens); i++) {
+        const t = 0.8 + rng() * 0.3, sc2 = range(rng, 0.7, 1.15);
+        col.setRGB(t, t, t);
+        this.place(this.pools.pine, s0 + rng() * CHUNK, side() * (E + range(rng, 14, 200)), rng() * 6, sc2, sc2, sc2, col);
+      }
+      if (hash2(index, 31) < 0.1) this.place(this.pools.windmill, s0 + rng() * CHUNK, side() * (E + range(rng, 35, 130)), rng() * 6, 1, 1, 1);
       // power line: one pole per chunk, wires to the next chunk's pole
       const poleD = E + 14;
       this.place(this.pools.pole, s0 + 10, poleD, 0, 1, 1, 1);
