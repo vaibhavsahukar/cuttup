@@ -58,44 +58,49 @@ h2 { margin: 0 0 14px; font-size: 13px; letter-spacing: 0.35em; color: var(--dim
 .row .opts button { padding: 6px 12px; font-size: 12px; }
 .row .opts button.sel { border-color: var(--accent2); background: rgba(45,226,230,0.18); }
 input[type=range] { width: 260px; accent-color: var(--accent); }
-.fps { position: absolute; right: 16px; top: 12px; font-size: 11px; letter-spacing: 0.1em; color: var(--dim); }
+.fps { position: absolute; left: 50%; transform: translateX(-50%); top: 10px; font-size: 11px; letter-spacing: 0.1em; color: var(--dim); }
 .fps[hidden] { display: none; }
-.bikehud[hidden] { display: none; }
-.bikehud { position: absolute; right: 40px; bottom: 150px; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; font-size: 12px; letter-spacing: 0.15em; }
-.bikehud .lights { display: flex; gap: 8px; }
-.bikehud .lights span { padding: 3px 8px; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: rgba(255,255,255,0.3); }
-.bikehud .lights span.on { color: #111; background: #ffc233; border-color: #ffc233; }
-.bikehud .tyre { display: flex; gap: 8px; align-items: center; color: var(--dim); }
-.bikehud .bar { width: 110px; height: 6px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; }
-.bikehud .bar i { display: block; height: 100%; }
 .binds { display: grid; grid-template-columns: 230px 1fr 1fr 1.3fr; gap: 6px 10px; align-items: center; font-size: 13px; }
 .binds .bh { font-size: 11px; letter-spacing: 0.12em; opacity: 0.6; text-transform: uppercase; }
 .binds button { text-transform: none; font-size: 12px; padding: 6px 10px; }
 .binds button.wait { border-color: var(--accent); animation: pulse 0.8s infinite; }
 @keyframes pulse { 50% { opacity: 0.5; } }
 /* HUD */
-#hud .speedo { position: absolute; right: 36px; bottom: 30px; text-align: right; text-shadow: 0 2px 10px rgba(0,0,0,0.6); }
-#hud .spd { font-size: 76px; font-weight: 900; font-style: italic; line-height: 0.9; font-variant-numeric: tabular-nums; }
-#hud .unit { font-size: 14px; letter-spacing: 0.3em; color: var(--dim); }
-#hud .gear { display: inline-block; margin-left: 10px; font-size: 22px; font-weight: 800; color: var(--accent2); }
-#hud .tach { width: 240px; height: 6px; background: rgba(255,255,255,0.12); border-radius: 3px; margin: 8px 0 0 auto; overflow: hidden; }
-#hud .tach i { display: block; height: 100%; background: linear-gradient(90deg, #2de2e6, #ffe25a 70%, #ff3d6e); }
-#hud .score { position: absolute; left: 50%; top: 20px; transform: translateX(-50%); text-align: center; text-shadow: 0 2px 10px rgba(0,0,0,0.6); }
+/* speed gauge: a quarter ellipse in the lower right corner (speed arc outside, rev arc inside), readout and aid lights inside */
+#hud .speedo { position: absolute; right: 0; bottom: 0; width: 21em; height: 14em; font-size: clamp(9px, 0.98vw, 14px); pointer-events: none; text-shadow: 0 2px 10px rgba(0,0,0,0.6); }
+#hud .gauge { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.gauge .bg { fill: rgba(6,8,14,0.42); }
+.gauge .trk { fill: none; stroke: rgba(255,255,255,0.14); stroke-width: 9; }
+.gauge .fil { fill: none; stroke: url(#ggSpeed); stroke-width: 9; }
+.gauge .trk.rev { stroke-width: 4; }
+.gauge .fil.rev { stroke: url(#ggRev); stroke-width: 4; }
+.gauge .tk { stroke: rgba(255,255,255,0.5); stroke-width: 1.5; }
+.gauge .tk.maj { stroke: #fff; stroke-width: 2.4; }
+.gauge text { fill: rgba(255,255,255,0.78); font-size: 12px; font-weight: 700; font-style: italic; }
+#hud .read { position: absolute; right: 1.6em; bottom: 0.8em; display: flex; flex-direction: column; align-items: flex-end; }
+#hud .spd { font-size: 4.4em; font-weight: 900; font-style: italic; line-height: 0.9; font-variant-numeric: tabular-nums; }
+#hud .gear { display: inline-block; margin-left: 0.5em; font-size: 1.7em; font-weight: 800; color: var(--accent2); }
+#hud .unit { font-size: 1.05em; letter-spacing: 0.3em; color: var(--dim); margin-top: 0.15em; }
+#hud .lights { display: flex; gap: 0.5em; margin-top: 0.7em; font-size: 0.95em; letter-spacing: 0.12em; }
+#hud .lights[hidden], #hud .tyre[hidden] { display: none; }
+#hud .lights span { padding: 0.2em 0.6em; border: 1px solid rgba(255,255,255,0.25); border-radius: 4px; color: rgba(255,255,255,0.35); background: rgba(0,0,0,0.25); }
+#hud .lights span.on { color: #111; background: #ffc233; border-color: #ffc233; }
+#hud .tyre { position: absolute; right: 1.6em; top: -2.4em; display: flex; gap: 0.7em; align-items: center; font-size: 1em; letter-spacing: 0.15em; color: var(--dim); }
+#hud .tyre .bar { width: 9em; height: 0.55em; background: rgba(255,255,255,0.14); border-radius: 3px; overflow: hidden; }
+#hud .tyre .bar i { display: block; height: 100%; }
+#hud .score { position: absolute; right: 36px; top: 20px; text-align: right; text-shadow: 0 2px 10px rgba(0,0,0,0.6); }
 #hud .score .v { font-size: 40px; font-weight: 900; font-variant-numeric: tabular-nums; }
 #hud .score .m { font-size: 20px; font-weight: 800; color: var(--accent); }
-#hud .combo { width: 180px; height: 4px; margin: 4px auto 0; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+#hud .combo { width: 180px; height: 4px; margin: 4px 0 0 auto; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
 #hud .combo i { display: block; height: 100%; background: var(--accent); }
-#hud .dist { position: absolute; left: 30px; bottom: 30px; font-size: 13px; letter-spacing: 0.15em; color: var(--dim); text-shadow: 0 2px 8px #000; line-height: 1.7; }
-#hud .dist b { color: var(--text); font-size: 18px; letter-spacing: 0.05em; }
-#hud .pops { position: absolute; right: 28px; top: 44px; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; }
-.pop { font-weight: 900; font-style: italic; font-size: 26px; letter-spacing: 0.04em; animation: popRight 1.6s ease-out forwards; text-shadow: 0 3px 14px rgba(0,0,0,0.7); }
+#hud .pops { position: absolute; left: 30px; top: 24px; text-align: left; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none; }
+.pop { font-weight: 900; font-style: italic; font-size: 26px; letter-spacing: 0.04em; animation: popIn 1.6s ease-out forwards; text-shadow: 0 3px 14px rgba(0,0,0,0.7); }
 .pop.big { font-size: 36px; }
-@keyframes popRight { 0% { transform: translateX(40px); opacity: 0; } 10% { transform: translateX(0); opacity: 1; } 78% { transform: translateX(0); opacity: 1; } 100% { transform: translateY(-14px); opacity: 0; } }
+@keyframes popIn { 0% { transform: translateX(-40px); opacity: 0; } 10% { transform: translateX(0); opacity: 1; } 78% { transform: translateX(0); opacity: 1; } 100% { transform: translateY(-14px); opacity: 0; } }
 .pop small { display: block; font-size: 14px; font-style: normal; letter-spacing: 0.15em; opacity: 0.9; }
 @keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 12% { transform: scale(1.12); opacity: 1; } 25% { transform: scale(1); } 80% { opacity: 1; } 100% { transform: translateY(-40px); opacity: 0; } }
 #hud .count { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font-size: 120px; font-weight: 900; font-style: italic; color: #fff; text-shadow: 0 4px 30px rgba(255,61,110,0.8); }
-#hud .stars { position: absolute; left: 30px; top: 56px; display: flex; align-items: center; gap: 4px; text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
-#hud .stars b { font-size: 11px; letter-spacing: 0.2em; color: var(--dim); margin-right: 8px; }
+#hud .stars { position: absolute; left: 30px; bottom: 28px; display: flex; align-items: center; gap: 4px; text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
 #hud .stars span { font-size: 28px; line-height: 1; color: rgba(255,255,255,0.16); transition: color 0.2s; }
 #hud .stars span.on { color: #ffd23f; text-shadow: 0 0 10px rgba(255,210,63,0.7), 0 2px 6px rgba(0,0,0,0.6); }
 #hud .stars.chase span.on { animation: starflash 0.55s steps(1) infinite; }
@@ -103,7 +108,6 @@ input[type=range] { width: 260px; accent-color: var(--accent); }
 #hud .stars.pop.chase span.on { animation: starpop 0.5s ease-out, starflash 0.55s steps(1) infinite; }
 @keyframes starflash { 0% { color: #ff4a4a; text-shadow: 0 0 12px #ff2020; } 50% { color: #4d7dff; text-shadow: 0 0 12px #2050ff; } }
 @keyframes starpop { 0% { transform: scale(2); } 100% { transform: scale(1); } }
-#hud .ctrl { position: absolute; left: 30px; top: 22px; font-size: 11px; color: var(--dim); letter-spacing: 0.1em; line-height: 1.6; }
 #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
 #crashui { }
 #crashui .shame[hidden] { display: none; }

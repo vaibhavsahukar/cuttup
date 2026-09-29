@@ -77,7 +77,6 @@ async function boot() {
     game.onCrash = (msg, caught) => { ui.crashMessage(msg, caught); ui.show('crashui'); flashT = 0.6; };
     game.resize(innerWidth, innerHeight);
     input.clearPressed();
-    ui.controlsHint();
     ui.show('hud');
     mode = 'game';
     (window as any).__game = game;
@@ -198,7 +197,7 @@ async function boot() {
         const alive = game.update(dt);
         const ph = game.player.phys;
         ui.bikeHud(game.player.bike, ph.absOn, ph.tcOn, ph.awOn, ph.tyreTemp, ph.tyreWear);
-        ui.hud(ph.v, ph.gear, ph.rpm / game.spec.redline, game.scoring.score, game.scoring.multiplier, Math.max(0, game.scoring.comboTimer / game.scoring.COMBO_TIME), game.scoring.distance, game.state === 'countdown' ? game.countdown : 0, st.units, game.player.topSpeed);
+        ui.hud(ph.v, ph.gear, ph.rpm / game.spec.redline, game.scoring.score, game.scoring.multiplier, Math.max(0, game.scoring.comboTimer / game.scoring.COMBO_TIME), game.state === 'countdown' ? game.countdown : 0, st.units, game.spec.topSpeedMph * (game.spec.limited ? 1.12 : 1));
         ui.stars(game.police.wanted, game.police.cops.length > 0);
         if (!alive) endGame();
       }

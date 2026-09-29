@@ -63,18 +63,31 @@ export class UI {
         <div class="actions"><button data-a="back">Back</button><button data-a="go" class="primary">Start run</button></div></div>
       <div id="settings" class="screen"><div class="panel"></div></div>
       <div id="hud" class="screen">
-        <div class="ctrl" id="ctrlHint"></div>
-        <div class="stars" title="Wanted level"><b>WANTED</b><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+        <div class="stars" title="Wanted level"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
         <div class="score"><div class="v">0</div><div class="m">x1.0</div><div class="combo"><i></i></div></div>
         <div class="fps" hidden></div>
         <div class="pops"></div>
         <div class="count"></div>
-        <div class="dist"></div>
-        <div class="bikehud" hidden>
-          <div class="lights"><span data-l="abs">ABS</span><span data-l="tc">TC</span><span data-l="aw">AW</span></div>
-          <div class="tyre"><label>TYRE</label><div class="bar"><i></i></div></div>
+        <div class="speedo">
+          <div class="tyre" hidden><label>TIRE</label><div class="bar"><i></i></div></div>
+          <svg class="gauge" viewBox="0 0 300 200">
+            <defs>
+              <linearGradient id="ggSpeed" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#2de2e6"/><stop offset="0.65" stop-color="#ffe25a"/><stop offset="1" stop-color="#ff3d6e"/></linearGradient>
+              <linearGradient id="ggRev" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#7ab8ff"/><stop offset="0.75" stop-color="#ffb84d"/><stop offset="1" stop-color="#ff3030"/></linearGradient>
+            </defs>
+            <path class="bg" d="M 10 200 A 290 200 0 0 1 300 0 L 300 200 Z"/>
+            <g class="ticks"></g>
+            <path class="trk" pathLength="100" d="M 38 200 A 262 180 0 0 1 300 20"/>
+            <path class="fil" pathLength="100" stroke-dasharray="0 100" d="M 38 200 A 262 180 0 0 1 300 20"/>
+            <path class="trk rev" pathLength="100" d="M 90 200 A 210 144 0 0 1 300 56"/>
+            <path class="fil rev" pathLength="100" stroke-dasharray="0 100" d="M 90 200 A 210 144 0 0 1 300 56"/>
+          </svg>
+          <div class="read">
+            <div class="line"><span class="spd">0</span><span class="gear">1</span></div>
+            <div class="unit">MPH</div>
+            <div class="lights" hidden><span data-l="abs">ABS</span><span data-l="tc">TC</span><span data-l="aw">AW</span></div>
+          </div>
         </div>
-        <div class="speedo"><span class="spd">0</span><span class="gear">1</span><div class="unit">MPH</div><div class="tach"><i></i></div></div>
       </div>
       <div id="crashui" class="screen letterbox"><div class="wreck">WRECKED</div><div class="shame"></div><div class="skip">PRESS SPACE / ESC TO SKIP</div></div>
       <div id="pause" class="screen"><div class="panel center">
@@ -318,29 +331,42 @@ export class UI {
 
   // ---------------- HUD ----------------
   private lastHud = '';
-  hud(speed: number, gear: number, rpmN: number, score: number, mult: number, combo: number, dist: number, countdown: number, units: 'mph' | 'kph', top: number) {
+  private lastGauge = '';
+  /** builds the speed ticks and numbers for the current units and the vehicle's top speed */
+  private buildGauge(units: 'mph' | 'kph', topMph: number) {
+    const k = units === 'mph' ? 1 : KPH / MPH; // display units per mph
+    const step = topMph * k * 1.03 <= 165 ? 20 : 40;
+    const max = Math.ceil((topMph * k * 1.03) / step) * step;
+    const cx = 300, cy = 200, rx = 290, ry = 200;
+    const pt = (t: number, kk: number) => { const a = Math.PI * (1 + t / 2); return [cx + rx * kk * Math.cos(a), cy + ry * kk * Math.sin(a)]; };
+    let out = '';
+    for (let v = 0; v <= max; v += step / 2) {
+      const major = v % step === 0, t = v / max;
+      const [x1, y1] = pt(t, 1), [x2, y2] = pt(t, major ? 0.94 : 0.97);
+      out += `<line class="tk${major ? ' maj' : ''}" x1="${x1.toFixed(1)}" y1="${(Math.min(y1, 199)).toFixed(1)}" x2="${x2.toFixed(1)}" y2="${Math.min(y2, 199).toFixed(1)}"/>`;
+      if (major) { const [lx, ly] = pt(t, 0.8); out += `<text x="${Math.min(lx, 292).toFixed(1)}" y="${Math.min(ly, 190).toFixed(1)}" text-anchor="${lx > 262 ? 'end' : 'middle'}" dominant-baseline="middle">${v}</text>`; }
+    }
+    $('#hud .gauge .ticks').innerHTML = out;
+    return max;
+  }
+  private gaugeMax = 1;
+  hud(speed: number, gear: number, rpmN: number, score: number, mult: number, combo: number, countdown: number, units: 'mph' | 'kph', topMph: number) {
     const k = units === 'mph' ? MPH : KPH;
     const spd = Math.round(Math.abs(speed) * k);
-    const key = `${spd}|${gear}|${Math.round(rpmN * 50)}|${Math.round(score)}|${mult}|${Math.round(combo * 40)}|${Math.round(dist)}|${Math.ceil(countdown)}`;
+    const key = `${spd}|${gear}|${Math.round(rpmN * 50)}|${Math.round(score)}|${mult}|${Math.round(combo * 40)}|${Math.ceil(countdown)}`;
+    const gk = `${units}|${topMph}`;
+    if (gk !== this.lastGauge) { this.lastGauge = gk; this.gaugeMax = this.buildGauge(units, topMph); this.lastHud = ''; }
     if (key === this.lastHud) return;
     this.lastHud = key;
     $('#hud .spd').textContent = String(spd);
     $('#hud .gear').textContent = speed < -0.5 ? 'R' : String(gear);
     $('#hud .unit').textContent = units === 'mph' ? 'MPH' : 'KM/H';
-    ($('#hud .tach i') as HTMLElement).style.width = `${Math.min(100, rpmN * 100)}%`;
+    ($('#hud .fil:not(.rev)') as unknown as SVGElement).setAttribute('stroke-dasharray', `${Math.min(100, (spd / this.gaugeMax) * 100).toFixed(1)} 100`);
+    ($('#hud .fil.rev') as unknown as SVGElement).setAttribute('stroke-dasharray', `${Math.min(100, rpmN * 100).toFixed(1)} 100`);
     $('#hud .score .v').textContent = Math.round(score).toLocaleString();
     $('#hud .score .m').textContent = `x${mult.toFixed(1)}`;
     ($('#hud .combo i') as HTMLElement).style.width = `${combo * 100}%`;
-    const distStr = units === 'mph' ? `${(dist / 1609.34).toFixed(2)} mi` : `${(dist / 1000).toFixed(2)} km`;
-    $('#hud .dist').innerHTML = `DISTANCE <b>${distStr}</b><br>TOP <b>${Math.round(top * k)}</b>`;
     $('#hud .count').textContent = countdown > 0 ? String(Math.ceil(countdown)) : '';
-  }
-  controlsHint() {
-    const b = this.save.data.settings.bindings;
-    const f = (a: Action) => fmtKey(b[a][0]);
-    const bike = getVehicle(this.save.data.settings.vehicle).kind === 'bike';
-    if (bike) { $('#ctrlHint').innerHTML = `${f('throttle')} GAS · ${f('brake')} REAR BRAKE · ${f('frontBrake')} FRONT BRAKE · ${f('left')}/${f('right')} LEAN · ${f('throttle')}+${f('brake')} WHEELIE · ${f('camera')} CAMERA · ${f('pause')} PAUSE`; return; }
-    $('#ctrlHint').innerHTML = `${f('throttle')}/${f('brake')} GAS/BRAKE · ${f('left')}/${f('right')} STEER · ${f('handbrake')} HANDBRAKE · ${f('camera')} CAMERA · ${f('pause')} PAUSE`;
   }
   popup(p: Popup) {
     const d = document.createElement('div');
@@ -352,21 +378,21 @@ export class UI {
     while (box.children.length > 4) box.firstElementChild!.remove();
     setTimeout(() => d.remove(), 1600);
   }
-  /** bike-only HUD: aid lights and tyre temperature */
+  /** bike-only HUD: aid lights (inside the gauge) and the tire temperature bar (above it) */
   bikeHud(on: boolean, abs = false, tc = false, aw = false, temp = 0, wear = 0) {
-    const el = $('#hud .bikehud');
-    el.hidden = !on;
+    const lights = $('#hud .speedo .lights'), tyre = $('#hud .speedo .tyre');
+    lights.hidden = !on; tyre.hidden = !on;
     if (!on) return;
-    el.querySelector('[data-l=abs]')!.classList.toggle('on', abs);
-    el.querySelector('[data-l=tc]')!.classList.toggle('on', tc);
-    el.querySelector('[data-l=aw]')!.classList.toggle('on', aw);
-    const i = el.querySelector('.tyre i') as HTMLElement;
+    lights.querySelector('[data-l=abs]')!.classList.toggle('on', abs);
+    lights.querySelector('[data-l=tc]')!.classList.toggle('on', tc);
+    lights.querySelector('[data-l=aw]')!.classList.toggle('on', aw);
+    const i = tyre.querySelector('i') as HTMLElement;
     i.style.width = `${Math.round(Math.min(1.3, temp) / 1.3 * 100)}%`;
     i.style.background = temp < 0.75 ? '#5ab0ff' : temp < 1.1 ? '#4dff88' : '#ff5a4d';
     i.style.opacity = String(1 - wear * 0.5);
   }
   private lastStars = -1;
-  /** wanted level as filled stars (upper left); they flash red / blue while cops are on the road */
+  /** wanted level as filled stars (lower left); they flash red / blue while cops are on the road */
   stars(level: number, chased: boolean) {
     const el = $('#hud .stars');
     el.classList.toggle('chase', chased && level > 0);
