@@ -94,6 +94,7 @@ input[type=range] { width: 260px; accent-color: var(--accent); }
 #hud .ctrl { position: absolute; left: 30px; top: 22px; font-size: 11px; color: var(--dim); letter-spacing: 0.1em; line-height: 1.6; }
 #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
 #crashui { }
+#crashui .shame[hidden] { display: none; }
 #crashui .shame { position: absolute; top: calc(12% + 84px); left: 0; right: 0; margin: 0 auto; width: min(880px, 88vw); text-align: center; font-size: 26px; font-weight: 700; line-height: 1.3; color: #f4f4f4; text-shadow: 0 2px 18px #000, 0 0 3px #000; animation: shame 5.5s ease-out forwards; }
 @keyframes shame { 0% { opacity: 0; } 12% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; } }
 .shame.small { position: static; transform: none; width: auto; text-align: left; font-size: 15px; color: #ff9aa2; margin: 6px 0 14px; text-shadow: none; animation: none; font-style: italic; }

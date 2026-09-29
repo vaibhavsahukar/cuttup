@@ -51,6 +51,17 @@ export class CrashScene {
     const m = player.model;
     const spec = player.spec;
 
+    // a bike's lean and wheelie / stoppie pitch live on child groups: bake them into the root so the
+    // wreck starts from the pose it was in and can carry on tumbling (a loop-out flips all the way over)
+    if (spec.kind === 'bike' && m.bike) {
+      m.root.updateMatrixWorld(true);
+      const bp = new THREE.Vector3(), bq = new THREE.Quaternion(), bs = new THREE.Vector3();
+      m.chassis.matrixWorld.decompose(bp, bq, bs);
+      m.bike.lean.rotation.set(0, 0, 0); m.chassis.position.set(0, 0, 0); m.chassis.rotation.set(0, 0, 0);
+      m.root.position.copy(bp); m.root.quaternion.copy(bq);
+      m.root.updateMatrixWorld(true);
+    }
+
     // ---------- player body ----------
     const half = new THREE.Vector3(spec.dims.width / 2, spec.dims.height / 2 * 0.8, spec.dims.length / 2);
     const pb = new RigidBody(m.root, half, spec.massKg, new THREE.Vector3(0, half.y + 0.05, 0));
@@ -84,8 +95,8 @@ export class CrashScene {
       pb.angVel.set(0, 0, 0);
       if (kind === 'lowside') { pb.angVel.addScaledVector(fwd, lean * 3.2); pb.angVel.y = lean * 1.2; pb.vel.y += 0.6; }
       else if (kind === 'highside') { pb.angVel.addScaledVector(fwd, -lean * 5); pb.vel.y += 3.5 + sev * 2; pb.vel.addScaledVector(side, -lean * 2.5); }
-      else if (kind === 'looped') { pb.angVel.addScaledVector(side, -3.5); pb.vel.y += 1.5; pb.vel.multiplyScalar(0.6); }
-      else if (kind === 'endo') { pb.angVel.addScaledVector(side, 4.5); pb.vel.y += 2.5; }
+      else if (kind === 'looped') { pb.angVel.addScaledVector(side, -Math.max(6, player.phys.pitchRate * 1.8)); pb.vel.y += 3.2; pb.vel.multiplyScalar(0.75); }
+      else if (kind === 'endo') { pb.angVel.addScaledVector(side, Math.max(3.5, -player.phys.pitchRate * 1.3)); pb.vel.y += 2.5; }
       else { pb.angVel.addScaledVector(fwd, lean * 1.5); }
       pb.restitution = 0.25;
       this.wrecks.push({ body: pb, s: player.phys.s, d: player.phys.d, L: spec.dims.length, W: spec.dims.width });

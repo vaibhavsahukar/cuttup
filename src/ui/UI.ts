@@ -361,7 +361,7 @@ export class UI {
     i.style.background = temp < 0.75 ? '#5ab0ff' : temp < 1.1 ? '#4dff88' : '#ff5a4d';
     i.style.opacity = String(1 - wear * 0.5);
   }
-  crashMessage(text: string) { $('#crashui .shame').textContent = text; }
+  crashMessage(text: string) { const e = $('#crashui .shame'); e.textContent = text; e.hidden = !text; }
   flash(v: number) { ($('#flash') as HTMLElement).style.opacity = String(v); }
 
   // ---------------- results ----------------
@@ -373,7 +373,7 @@ export class UI {
     $('#results .panel').innerHTML = `
       <div>
         <h2>Run over · ${esc(getMap(mapId).name)}</h2>
-        <div class="shame small">${esc(r.message)}</div>
+        ${r.message ? `<div class="shame small">${esc(r.message)}</div>` : ''}
         <div class="big">${r.score.toLocaleString()}</div>
         ${rank === 0 ? '<div class="newbest">NEW MAP RECORD</div>' : rank > 0 ? `<div class="newbest">#${rank + 1} ON THE LEADERBOARD</div>` : ''}
         <div class="kv">

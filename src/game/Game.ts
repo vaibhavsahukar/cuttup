@@ -348,7 +348,8 @@ export class Game {
     this.rig.addShake(1.5);
     this.audio.stopEngine();
     this.audio.crash(clamp(impact / 30, 0.4, 1.5));
-    const message = randomCrashMessage();
+    // falling off on your own (looping it out backwards) hurt nobody else, so no message
+    const message = kind === 'looped' ? '' : randomCrashMessage();
     this.onCrash?.(message);
     this.result = {
       score: Math.round(this.scoring.score), distance: this.scoring.distance, topSpeed: this.player.topSpeed,
