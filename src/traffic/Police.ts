@@ -63,7 +63,7 @@ export class Police {
       id: -Math.floor(Math.random() * 1e9), type: 'sedan', model, L: dims.length, W: dims.width, dir: 1,
       s: player.s - 100 - Math.random() * 40, d: this.layout.laneCenter(lane), v: Math.max(20, player.v + 12), v0: 90, acc: 0,
       lane, targetLane: lane, lcT: 1, lcDur: 1, dFrom: 0, signal: 0, signalT: 0, pendingLane: -1,
-      driver: 'fast', p: DRIVERS.fast, decideT: 0, wander: 0, wanderPhase: 0, swerve: 0, swerveTarget: 0,
+      driver: 'fast', p: DRIVERS.fast, decideT: 0, lcCool: 0, laneT: 99, prevLane: -1, wander: 0, wanderPhase: 0, swerve: 0, swerveTarget: 0,
       panicT: 0, freezeT: 0, honkCd: 0, braking: false, wrecked: false, yaw: 0, passedSign: 0, nearMissed: true, alive: true, cop: true,
     };
     this.traffic.cars.push(car);

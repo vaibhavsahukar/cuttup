@@ -166,10 +166,14 @@ export class AudioEngine {
     this.muffle.frequency.exponentialRampToValueAtTime(500, t + 0.35);
     this.muffle.frequency.setValueAtTime(500, t + 3.2);
     this.muffle.frequency.exponentialRampToValueAtTime(20000, t + 5.5);
+    // The ring goes straight to the output (past the muffle, so it stays sharp), which also skips the volume buses,
+    // so scale it by the master and effects volumes here and drop it completely when either is off.
+    const level = 0.08 * (this.volumes.master / 0.8) * (this.volumes.sfx / 0.8);
+    if (level < 0.002) return;
     const c = this.ctx;
     const o = c.createOscillator(); o.frequency.value = 3150;
-    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.08, t + 0.2); g.gain.exponentialRampToValueAtTime(0.0001, t + 4.5);
-    o.connect(g).connect(this.ctx.destination); // bypasses the muffle so the ring stays sharp
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(level, t + 0.2); g.gain.exponentialRampToValueAtTime(0.0001, t + 4.5);
+    o.connect(g).connect(this.ctx.destination);
     o.start(t); o.stop(t + 4.6);
   }
   thud(intensity: number) { this.tone(90, 0.3, 0.4 * clamp(intensity, 0.1, 1), 'sine', 0, 45); this.burst(0.25, 700, 'lowpass', 0.3 * intensity); }

@@ -13,14 +13,16 @@ interface DriverParams {
   T: number; s0: number; a: number; b: number; bSafe: number;
   threshold: number; keepRight: number; signalLead: [number, number]; noSignalChance: number;
   lcDur: [number, number]; decide: [number, number];
+  /** seconds after any lane change before the driver may choose another one */
+  cool: [number, number];
 }
 export const DRIVERS: Record<DriverType, DriverParams> = {
   // tailgates, weaves, tight late lane changes, often no signal
-  fast: { T: 0.55, s0: 1.4, a: 3.0, b: 3.5, bSafe: 5.0, threshold: 0.05, keepRight: 0.05, signalLead: [0, 0.35], noSignalChance: 0.55, lcDur: [1.3, 1.9], decide: [0.25, 0.8] },
+  fast: { T: 0.55, s0: 1.4, a: 3.0, b: 3.5, bSafe: 5.0, threshold: 0.05, keepRight: 0.05, signalLead: [0, 0.35], noSignalChance: 0.3, lcDur: [1.3, 1.9], decide: [0.6, 1.4], cool: [9, 18] },
   // holds lane, signals early, smooth
-  slow: { T: 1.9, s0: 3.5, a: 1.0, b: 1.6, bSafe: 1.8, threshold: 0.7, keepRight: 0.45, signalLead: [2.5, 3.5], noSignalChance: 0, lcDur: [4.0, 5.5], decide: [3, 6] },
+  slow: { T: 1.9, s0: 3.5, a: 1.0, b: 1.6, bSafe: 1.8, threshold: 0.7, keepRight: 0.45, signalLead: [2.5, 3.5], noSignalChance: 0, lcDur: [4.0, 5.5], decide: [3, 6], cool: [25, 45] },
   // erratic: reacts to player, brakes hard, swerves
-  scared: { T: 1.6, s0: 3.0, a: 1.4, b: 2.2, bSafe: 2.5, threshold: 0.4, keepRight: 0.3, signalLead: [0.8, 2.2], noSignalChance: 0.2, lcDur: [2.5, 3.8], decide: [2, 5] },
+  scared: { T: 1.6, s0: 3.0, a: 1.4, b: 2.2, bSafe: 2.5, threshold: 0.4, keepRight: 0.3, signalLead: [0.8, 2.2], noSignalChance: 0.2, lcDur: [2.5, 3.8], decide: [2, 5], cool: [18, 35] },
 };
 
 export interface TrafficCar {
@@ -35,6 +37,8 @@ export interface TrafficCar {
   signal: -1 | 0 | 1; signalT: number; pendingLane: number;
   driver: DriverType; p: DriverParams;
   decideT: number;
+  /** seconds until a voluntary lane change is allowed again, time since the last one, and the lane it left */
+  lcCool: number; laneT: number; prevLane: number;
   wander: number; wanderPhase: number; swerve: number; swerveTarget: number;
   panicT: number; freezeT: number; honkCd: number;
   braking: boolean;
@@ -122,7 +126,7 @@ export class Traffic {
   private spawn(dir: 1 | -1, s: number, lane: number, v?: number) {
     const r = this.rng;
     const roll = r();
-    const driver: DriverType = roll < 0.27 ? 'fast' : roll < 0.7 ? 'slow' : 'scared';
+    const driver: DriverType = roll < 0.22 ? 'fast' : roll < 0.74 ? 'slow' : 'scared';
     const hw = this.map.road === 'highway';
     // trucks keep right, fast drivers are cars
     let type: TrafficType = pick(r, TRAFFIC_TYPES);
@@ -133,14 +137,17 @@ export class Traffic {
     const dims = trafficDims(type);
     const p = DRIVERS[driver];
     const f = this.flow * (type === 'boxtruck' ? 0.85 : 1);
-    const v0 = driver === 'fast' ? f * range(r, 1.1, 1.25) : driver === 'slow' ? f * range(r, 0.78, 0.9) : f * range(r, 0.85, 1.0);
+    // lane discipline: the left lanes run faster than the right ones, like real multi-lane traffic
+    const nLanes = this.lanesFor(dir);
+    const laneK = hw && nLanes > 1 ? 1 + (0.5 - lane / (nLanes - 1)) * 0.16 : 1;
+    const v0 = laneK * (driver === 'fast' ? f * range(r, 1.08, 1.22) : driver === 'slow' ? f * range(r, 0.8, 0.92) : f * range(r, 0.86, 1.0));
     const color = pick(r, TRAFFIC_COLORS);
     const car: TrafficCar = {
       id: this.nextId++, type, color, model: this.getModel(type, color), L: dims.length, W: dims.width,
       dir, s, d: this.laneD(dir, lane), v: v ?? v0 * 0.95, v0, acc: 0,
       lane, targetLane: lane, lcT: 1, lcDur: 3, dFrom: 0,
       signal: 0, signalT: 0, pendingLane: -1,
-      driver, p, decideT: range(r, p.decide[0], p.decide[1]),
+      driver, p, decideT: range(r, p.decide[0], p.decide[1]), lcCool: 0, laneT: 99, prevLane: -1,
       wander: driver === 'scared' ? range(r, 0.15, 0.45) : driver === 'fast' ? 0.08 : 0.05, wanderPhase: r() * 10,
       swerve: 0, swerveTarget: 0, panicT: 0, freezeT: 0, honkCd: 0,
       braking: false, wrecked: false, yaw: 0, passedSign: 0, nearMissed: false, alive: true,
@@ -256,7 +263,8 @@ export class Traffic {
       // curve speed: look ahead for the tightest curvature
       let kMax = 0;
       for (const la of [20, 50, 90]) kMax = Math.max(kMax, Math.abs(this.path.frame(c.s + c.dir * la, fr).k));
-      let v0 = Math.min(c.v0, Math.sqrt(2.6 / Math.max(1e-5, kMax)));
+      // nobody holds an exact speed: cruise drifts a few percent over tens of seconds
+      let v0 = Math.min(c.v0 * (1 + 0.03 * Math.sin(this.time * 0.17 + c.wanderPhase * 3)), Math.sqrt(2.6 / Math.max(1e-5, kMax)));
       if (c.freezeT > 0) { c.freezeT -= dt; v0 *= 0.45; }
 
       // ------------- scared driver reactions -------------
@@ -270,8 +278,8 @@ export class Traffic {
           c.panicT = range(r, 0.8, 1.8);
           this.stats.panics++;
           const away = Math.sign(c.d - player.d) || (r() < 0.5 ? -1 : 1);
-          c.swerveTarget = away * range(r, 0.5, 1.1);
-          if (r() < 0.35) c.freezeT = range(r, 1, 2.5);
+          c.swerveTarget = away * range(r, 0.3, 0.7);
+          if (r() < 0.1) c.freezeT = range(r, 0.8, 1.6);
           if (c.honkCd <= 0 && r() < 0.8) { this.onHonk?.(c, 1); c.honkCd = 3; }
         } else if (c.driver !== 'scared' && besideClose && closing > 15 && c.honkCd <= 0 && r() < 0.01) {
           this.onHonk?.(c, 0.6); c.honkCd = 5;
@@ -321,9 +329,11 @@ export class Traffic {
         const l2 = this.leader(c, this.laneD(c.dir, c.targetLane), c.W / 2, player);
         acc = Math.min(acc, this.idm(c, v0, l2.gap, l2.v));
       }
-      if (c.panicT > 0 && c.driver === 'scared' && c.dir > 0) acc = Math.min(acc, -range(r, 3, 6.5));
+      if (c.panicT > 0 && c.driver === 'scared' && c.dir > 0) acc = Math.min(acc, -range(r, 0.8, 2)); // a gentle lift, not a slam
       if (c.dir < 0 && c.panicT > 0) acc = Math.min(acc, -6);
       acc = clamp(acc, -9, c.p.a);
+      // drivers react with a lag and ease on and off the pedals; only a real emergency bypasses that
+      if (acc > -5) acc = c.acc + (acc - c.acc) * (1 - Math.exp(-dt / (acc > c.acc ? 0.5 : 0.22)));
       c.acc = acc;
       c.v = Math.max(0, c.v + acc * dt);
       // hard non-overlap guarantee
@@ -333,7 +343,7 @@ export class Traffic {
 
       // ------------- lane changes (MOBIL-style) -------------
       if (hw && lanes > 1) {
-        c.decideT -= dt;
+        c.decideT -= dt; c.lcCool -= dt; c.laneT += dt;
         if (c.pendingLane >= 0 && c.lcT >= 1) {
           // signalling, waiting for the lead time (and a safe gap) before moving over
           c.signalT -= dt;
@@ -343,24 +353,40 @@ export class Traffic {
           }
         } else if (c.decideT <= 0 && c.lcT >= 1) {
           c.decideT = range(r, c.p.decide[0], c.p.decide[1]);
-          let best = -1, bestGain = c.p.threshold;
-          const aCur = acc;
-          for (const nl of [c.lane - 1, c.lane + 1]) {
-            if (nl < 0 || nl >= lanes) continue;
-            if (!this.safeToChange(c, nl, player)) continue;
+          // Change lanes only for a reason: stuck behind something slower, and not straight after the last change,
+          // and not while the player is closing in from behind (cars must hold their line for someone to overtake).
+          const held = lead.gap < 18 + c.v * 1.6 && lead.v < c.v0 * 0.92 && c.v < v0 * 0.97;
+          const playerClosing = player.alive && relS < 0 && relS > -260 && player.v > c.v + 3;
+          const keepRight = !held && c.driver !== 'fast' && c.lane < lanes - 1 && c.laneT > 15 && r() < 0.5;
+          if (c.lcCool <= 0 && !playerClosing && !held && keepRight) {
+            // nobody in the way: drift back into the slower lane on the right when there is plenty of room
+            const nl = c.lane + 1;
             const ln = this.leader(c, this.laneD(c.dir, nl), c.W / 2, player);
-            const aNew = this.idm(c, v0, ln.gap, ln.v);
-            let gain = aNew - aCur + (nl > c.lane ? c.p.keepRight : -c.p.keepRight * 0.3);
-            if (c.driver === 'fast') gain += r() * 0.4; // weaving
-            if (c.driver === 'scared' && r() < 0.1) gain += 0.8; // unpredictable
-            if (gain > bestGain) { bestGain = gain; best = nl; }
-          }
-          if (best >= 0) {
-            const noSig = r() < c.p.noSignalChance;
-            c.pendingLane = best;
-            c.signal = noSig ? 0 : best < c.lane ? -1 : 1;
-            c.signalT = noSig ? 0.01 : range(r, c.p.signalLead[0], c.p.signalLead[1]);
-            if (noSig) { if (this.safeToChange(c, best, player)) this.beginChange(c, best); c.pendingLane = -1; }
+            if (nl !== c.prevLane && ln.gap > 60 && this.safeToChange(c, nl, player)) {
+              c.pendingLane = nl; c.signal = 1; c.signalT = range(r, c.p.signalLead[0], c.p.signalLead[1]) + 0.8;
+            }
+          } else if (c.lcCool <= 0 && held && !playerClosing) {
+            let best = -1, bestGain = c.p.threshold;
+            const aCur = acc;
+            for (const nl of [c.lane - 1, c.lane + 1]) {
+              if (nl < 0 || nl >= lanes) continue;
+              if (nl === c.prevLane && c.laneT < 40) continue; // no changing straight back
+              if (!this.safeToChange(c, nl, player)) continue;
+              const ln = this.leader(c, this.laneD(c.dir, nl), c.W / 2, player);
+              if (ln.gap < lead.gap + 15 && ln.v < lead.v + 2) continue; // the other lane must be clearly better
+              const aNew = this.idm(c, v0, ln.gap, ln.v);
+              let gain = aNew - aCur + (nl > c.lane ? c.p.keepRight : -c.p.keepRight * 0.3);
+              if (c.driver === 'fast') gain += r() * 0.3; // weaving
+              if (c.driver === 'scared' && r() < 0.05) gain += 0.8; // unpredictable
+              if (gain > bestGain) { bestGain = gain; best = nl; }
+            }
+            if (best >= 0) {
+              const noSig = r() < c.p.noSignalChance;
+              c.pendingLane = best;
+              c.signal = noSig ? 0 : best < c.lane ? -1 : 1;
+              c.signalT = noSig ? 0.01 : range(r, c.p.signalLead[0], c.p.signalLead[1]);
+              if (noSig) { if (this.safeToChange(c, best, player)) this.beginChange(c, best); c.pendingLane = -1; }
+            }
           }
         }
       }
@@ -428,6 +454,9 @@ export class Traffic {
   private beginChange(c: TrafficCar, nl: number) {
     this.stats.laneChanges[c.driver]++;
     if (c.signal !== 0) this.stats.signalled[c.driver]++;
+    c.prevLane = c.lane;
+    c.laneT = 0;
+    c.lcCool = range(this.rng, c.p.cool[0], c.p.cool[1]);
     c.targetLane = nl;
     c.lcT = 0;
     c.dFrom = c.d;

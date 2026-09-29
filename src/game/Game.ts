@@ -40,6 +40,8 @@ export class Game {
   private proxy: PlayerProxy;
   scrape = 0;
   crashTimer = 0;
+  private crashCalm = 0;
+  private crashPressT = -1;
   result: RunResult | null = null;
   onPopup: ((p: Popup) => void) | null = null;
   private sGuess = 0;
@@ -184,8 +186,15 @@ export class Game {
       this.proxy.alive = false;
       this.crash.update(dt, this.traffic);
       this.crashTimer += realDt;
-      if (this.crashTimer > 0.6 && (input.pressed('pause') || input.pressed('handbrake'))) this.finish();
-      if (this.crashTimer > 5.5) this.finish();
+      // Let the wreck play out: results only once everything has come to rest (and lingered a moment), never before
+      // 4 s, and at most 14 s. A deliberate key press can skip after 2.5 s; button mashing during the impact is ignored.
+      this.crashCalm = this.crash.settled() ? this.crashCalm + realDt : 0;
+      if (input.pressed('pause') || input.pressed('handbrake')) {
+        const mashing = this.crashTimer - this.crashPressT < 0.5;
+        this.crashPressT = this.crashTimer;
+        if (this.crashTimer > 2.5 && !mashing) this.finish();
+      }
+      if ((this.crashTimer > 4 && this.crashCalm > 1.4) || this.crashTimer > 14) this.finish();
     }
 
     this.traffic.update(dt, this.proxy, this.scoring.distance);
@@ -342,7 +351,7 @@ export class Game {
   startCrash(kind: CrashKind, impact: number, hit: TrafficCar | null) {
     if (this.state === 'crash' || this.state === 'done') return;
     this.state = 'crash';
-    this.crashTimer = 0;
+    this.crashTimer = 0; this.crashCalm = 0; this.crashPressT = -1;
     const ph = this.player.phys;
     this.player.sync(1 / 60);
     const contact = this.player.model.root.position.clone().add(new THREE.Vector3(0, 0.6, 0));

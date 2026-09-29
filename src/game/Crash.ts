@@ -313,10 +313,17 @@ export class CrashScene {
   }
 
   /** real-time driven time-scale curve: fast ramp into slow motion, then ease back */
+  /** true once every wreck and the rider have (nearly) stopped moving */
+  settled() {
+    for (const w of this.wrecks) if (w.body.vel.lengthSq() > 1.2 || w.body.angVel.lengthSq() > 0.8) return false;
+    if (this.riderBody && (this.riderBody.vel.lengthSq() > 1.2 || this.riderBody.angVel.lengthSq() > 0.8)) return false;
+    return true;
+  }
+
   updateTimeScale(realDt: number) {
     this.real += realDt;
     const r = this.real;
-    this.timeScale = r < 0.25 ? 1 - (r / 0.25) * 0.82 : r < 2.6 ? 0.18 : Math.min(0.75, 0.18 + (r - 2.6) * 0.35);
+    this.timeScale = r < 0.25 ? 1 - (r / 0.25) * 0.82 : r < 2.6 ? 0.18 : Math.min(1, 0.18 + (r - 2.6) * 0.4);
     return this.timeScale;
   }
 
