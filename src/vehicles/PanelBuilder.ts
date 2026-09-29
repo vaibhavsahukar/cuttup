@@ -50,12 +50,12 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   const z0 = -L / 2;
   const zAt = (i: number) => z0 + ((i + 0.5) / nz) * L;
   // ---- measurements -> design lines ----
-  const hw = smooth(sh.hw, 3);
+  const hw = smooth(smooth(sh.hw, 5), 5);
   const centre = smooth(Array.from({ length: nz }, (_, i) => sh.t[i * nu]), 2); // centre-line top profile
   const edge = smooth(Array.from({ length: nz }, (_, i) => sh.t[i * nu + nu - 1]), 3); // top at the outer edge
   const H = Math.max(...centre);
   // shoulder (belt) line: the outer-edge height, clamped into a sensible band
-  const shoulder = edge.map((e) => Math.min(Math.max(e, H * 0.5), H * 0.78));
+  const shoulder = smooth(smooth(edge.map((e) => Math.min(Math.max(e, H * 0.5), H * 0.78)), 8), 8);
   // cabin: where the centre line rises clearly above the shoulder
   const cab: number[] = [];
   for (let i = 0; i < nz; i++) if (centre[i] > shoulder[i] + 0.14) cab.push(i);
@@ -145,10 +145,12 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   const plate = (tag: Tag, top: [number, number, number][], t: number) => {
     let a = out.get(tag); if (!a) out.set(tag, (a = []));
     const n = top.length, bot = top.map(([x, y, z]) => [x, y - t, z]);
-    // faces are emitted in both windings so the point order doesn't matter
-    const tri = (p: number[], q: number[], r: number[]) => a!.push(...p, ...q, ...r, ...p, ...r, ...q);
-    for (let k = 1; k < n - 1; k++) { tri(top[0], top[k + 1], top[k]); tri(bot[0], bot[k], bot[k + 1]); }
-    for (let k = 0; k < n; k++) { const k2 = (k + 1) % n; tri(top[k], top[k2], bot[k]); tri(bot[k], top[k2], bot[k2]); }
+    // orient so the top face points up
+    const ax = top[1][0] - top[0][0], az = top[1][2] - top[0][2], bx = top[2][0] - top[0][0], bz = top[2][2] - top[0][2];
+    if (az * bx - ax * bz < 0) { top.reverse(); bot.reverse(); }
+    const tri = (p: number[], q: number[], r: number[]) => a!.push(...p, ...q, ...r);
+    for (let k = 1; k < n - 1; k++) { tri(top[0], top[k], top[k + 1]); tri(bot[0], bot[k + 1], bot[k]); }
+    for (let k = 0; k < n; k++) { const k2 = (k + 1) % n; tri(top[k], bot[k], top[k2]); tri(bot[k], bot[k2], top[k2]); }
   };
   const idx = (z: number) => Math.min(nz - 1, Math.max(0, Math.round(((z - z0) / L) * nz - 0.5)));
   const design = DESIGNS[sh.id];
@@ -226,7 +228,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     const { L, ground, box, plate } = c;
     const F = L / 2, R = -L / 2;
     // a point resting on the body top at (x, z)
-    const onTop = (x: number, z: number, lift = 0.012): [number, number, number] => {
+    const onTop = (x: number, z: number, lift = 0.035): [number, number, number] => {
       const f = Math.min(1, Math.abs(x) / c.hwAt(z));
       return [x, c.deckAt(z) + (c.shAt(z) - c.deckAt(z)) * f * f + lift, z];
     };
@@ -235,7 +237,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
       // headlamp: a thin wedge swept back along the fender
       const w1 = c.hwAt(F - 0.1), w2 = c.hwAt(F - 0.5);
       const p = [onTop(sx * w1 * 0.9, F - 0.08), onTop(sx * w1 * 0.55, F - 0.14), onTop(sx * w2 * 0.74, F - 0.46), onTop(sx * w2 * 0.96, F - 0.54)];
-      plate('head', sx > 0 ? p : [p[3], p[2], p[1], p[0]], 0.03);
+      plate('head', p, 0.06);
       // brake ducts either side of the mouth
       box('dark', sx * c.noseW * 0.8, ground + 0.2, F - 0.03, c.noseW * 0.3, 0.17, 0.06);
       // fender vent behind the front wheel, big scoop behind the door, side skirt

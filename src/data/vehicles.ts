@@ -64,7 +64,7 @@ export const VEHICLES: VehicleSpec[] = [
     rollFactor: 0, pitchFactor: 0.045, brakeG: 1.15, downforce: 0.02, steerLock: 0.5, steerSpeed: 3.9, highSpeedSteer: 0.2,
     stability: 0.92, yawInertia: 0.85,
     dims: { length: 2.03, width: 0.69, height: 1.13 }, engine: { cylinders: 4, tone: 1.35, roughness: 0.15 } },
-  { ...base, id: 'zr1', name: 'Chevrolet Corvette C6 ZR1', kind: 'car', model: 'zr1', color: 0x0c0c0e,
+  { ...base, id: 'zr1', name: 'Conquette', kind: 'car', model: 'zr1', color: 0x0c0c0e,
     hp: 638, massKg: 1530, drive: 'RWD', zeroSixty: 3.3, topSpeedMph: 205,
     character: 'Brutal supercharged torque, tail-happy on throttle, stable at speed',
     gears: 6, redline: 6600, idleRpm: 800, torquePeak: 0.58, torqueFlat: 0.92,
