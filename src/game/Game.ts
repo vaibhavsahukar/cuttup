@@ -39,6 +39,7 @@ export class Game {
   gameTime = 0;
   private bumpCd = 0;
   private lampLights: THREE.PointLight[] = [];
+  private hornCd = 0;
 
   constructor(public renderer: THREE.WebGLRenderer, public audio: AudioEngine, public input: Input, public settings: Settings, mapId: string, vehicleId: string, pmrem: THREE.Texture) {
     const q = QUALITY[settings.quality];
@@ -76,6 +77,7 @@ export class Game {
     this.scene.add(this.traffic.root);
     this.proxy = { s: 0, d: this.player.phys.d, v: 22, L: this.player.collL, W: this.player.collW, alive: true };
     this.traffic.populate(0);
+    this.traffic.prewarm(4);
     this.traffic.onHonk = (c, intensity) => {
       const rel = c.s - this.player.phys.s;
       const dist = Math.hypot(rel, c.d - this.player.phys.d);
@@ -140,6 +142,7 @@ export class Game {
       if (this.state === 'driving') this.scoring.update(dt, ds, ph.v);
       this.collide();
       this.nearMisses();
+      this.horn(dt);
       this.bumpCd -= dt;
     } else if (this.state === 'crash') {
       this.proxy.alive = false;
@@ -255,6 +258,20 @@ export class Game {
       c.v = Math.max(0, c.v + Math.max(0, vn) * nS * 0.4);
       c.panicT = 1.2; c.swerveTarget = Math.sign(nD) * 0.8;
       if (this.bumpCd <= 0) { this.audio.thud(0.5); this.rig.addShake(0.5); this.scoring.bump(); this.bumpCd = 0.6; this.traffic.onHonk?.(c, 1); }
+    }
+  }
+
+  /** player horn: scared drivers just ahead flinch */
+  private horn(dt: number) {
+    this.hornCd -= dt;
+    if (!this.input.horn || this.hornCd > 0) return;
+    this.hornCd = 0.45;
+    this.audio.honk(0.9, 0);
+    const ph = this.player.phys;
+    for (const c of this.traffic.cars) {
+      if (c.wrecked || c.dir < 0 || c.driver !== 'scared') continue;
+      const rel = c.s - ph.s;
+      if (rel > 0 && rel < 45 && c.panicT <= 0) { c.panicT = 1; c.swerveTarget = (Math.sign(c.d - ph.d) || 1) * 0.8; }
     }
   }
 

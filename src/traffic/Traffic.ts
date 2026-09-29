@@ -140,6 +140,19 @@ export class Traffic {
     return true;
   }
 
+  /** build spare models up front so spawning never has to create geometry mid-run */
+  prewarm(perType = 3) {
+    for (const t of TRAFFIC_TYPES) {
+      if (!this.pool.has(t)) this.pool.set(t, []);
+      for (let i = 0; i < perType; i++) {
+        const m = buildTrafficModel(t, TRAFFIC_COLORS[i % TRAFFIC_COLORS.length], false);
+        m.root.visible = false;
+        this.root.add(m.root);
+        this.pool.get(t)!.push(m);
+      }
+    }
+  }
+
   populate(playerS: number) {
     // initial fill: evenly from just ahead of the player out to the spawn horizon (before the first frame)
     for (const dir of [1, -1] as const) {

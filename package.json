@@ -13,7 +13,10 @@
     "start": "electron .",
     "dist": "npm run build && electron-builder --win nsis portable --x64",
     "tune": "tsx scripts/tune.ts",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "check:traffic": "tsx scripts/traffic-check.ts",
+    "check:features": "tsx scripts/features-check.ts",
+    "dist:dir": "npm run build && electron-builder --win dir --x64"
   },
   "build": {
     "appId": "com.cutup.game",
@@ -41,9 +44,6 @@
       "artifactName": "CUT-UP-${version}-portable.exe"
     }
   },
-  "dependencies": {
-    "three": "^0.186.1"
-  },
   "devDependencies": {
     "@types/three": "^0.186.0",
     "concurrently": "^10.0.5",
@@ -54,6 +54,7 @@
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.1",
-    "wait-on": "^9.4.0"
+    "wait-on": "^9.4.0",
+    "three": "^0.186.1"
   }
 }

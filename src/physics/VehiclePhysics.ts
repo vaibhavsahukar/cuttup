@@ -282,9 +282,10 @@ export class VehiclePhysics {
     // bike pitch (wheelie / stoppie)
     if (this.bike) {
       const maxAcc = (G * this.b) / this.h, maxDec = (G * this.a) / this.h;
-      const up = clamp((this.ax / maxAcc - 0.9) * 3, 0, 1) * (c.throttle > 0.5 ? 1 : 0);
-      const stp = clamp((-this.ax / maxDec - 0.85) * 3, 0, 1);
-      const tgt = up * (0.28 + (sp.id === 'smc' ? 0.25 : 0)) - stp * 0.22;
+      // front lifts when acceleration approaches the load-transfer limit (low gears, full throttle)
+      const up = clamp((this.ax / maxAcc - 0.45) * 2.5, 0, 1) * clamp((c.throttle - 0.7) * 4, 0, 1) * clamp(1 - av / 45, 0, 1);
+      const stp = clamp((-this.ax / maxDec - 0.6) * 3, 0, 1) * clamp((c.brake - 0.7) * 4, 0, 1) * clamp(av / 8, 0, 1);
+      const tgt = up * (sp.id === 'smc' ? 0.5 : 0.2) - stp * 0.16;
       this.wheelie = lerp(this.wheelie, tgt, clamp(dt * 3, 0, 1));
     }
 

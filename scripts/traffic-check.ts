@@ -2,7 +2,7 @@
 import { chromium } from 'playwright';
 const base = process.argv[2] ?? 'http://localhost:5173/';
 const map = process.argv[3] ?? 'city';
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const b = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await b.newPage({ viewport: { width: 640, height: 360 } });
 const errors: string[] = [];
 await page.addInitScript('window.__name = (f) => f');

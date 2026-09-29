@@ -1,7 +1,7 @@
 // Screenshot probe: menu + a run with given settings, prints renderer stats.
 import { chromium } from 'playwright';
 const [base, out, map, veh, extra] = [process.argv[2], process.argv[3], process.argv[4] ?? 'city', process.argv[5] ?? 'zr1', process.argv[6] ?? '{}'];
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const b = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await b.newPage({ viewport: { width: 1280, height: 720 } });
 await page.addInitScript('window.__name = (f) => f');
 const errors: string[] = [];

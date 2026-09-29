@@ -4,7 +4,7 @@ const base = process.argv[2] ?? 'http://localhost:5173/';
 const out = process.argv[3] ?? 'shots';
 const only = process.argv[4];
 const vehicles = (process.argv[5] ?? 'zr1').split(',');
-const b = await chromium.launch({ executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
+const b = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
 const page = await b.newPage({ viewport: { width: 1280, height: 720 } });
 const errors: string[] = [];
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
