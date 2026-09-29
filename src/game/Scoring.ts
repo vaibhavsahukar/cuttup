@@ -39,12 +39,14 @@ export class Scoring {
   /** clearance in metres, relative speed m/s */
   nearMiss(clearance: number, relSpeed: number, oncoming: boolean) {
     const close = clamp(1 - clearance / 1.4, 0, 1);
-    const pts = Math.round((150 + 450 * close * close) * clamp(relSpeed / 18, 0.5, 3) * (oncoming ? 2 : 1));
+    // Oncoming passes (backroad) come far more often than overtakes and have a huge closing speed, so they pay
+    // less per pass, build the combo slowly and can't chain into cut-ups; otherwise that map out-scores the rest.
+    const pts = Math.round((150 + 450 * close * close) * clamp(relSpeed / 18, 0.5, oncoming ? 2 : 3) * (oncoming ? 1.4 : 1));
     this.score += pts * this.multiplier;
     this.nearMisses++;
-    const cut = this.time - this.lastNearMissT < 1.4;
+    const cut = !oncoming && this.time - this.lastNearMissT < 1.4;
     this.lastNearMissT = this.time;
-    this.multiplier = Math.min(10, this.multiplier + (cut ? 1 : 0.5));
+    this.multiplier = Math.min(10, this.multiplier + (oncoming ? 0.25 : cut ? 1 : 0.5));
     this.comboTimer = this.COMBO_TIME;
     const label = cut ? 'CUT UP!' : oncoming ? 'ONCOMING!' : close > 0.7 ? 'INSANE MISS' : close > 0.4 ? 'CLOSE CALL' : 'NEAR MISS';
     if (cut) { this.cutUps++; this.score += 500 * this.multiplier; }

@@ -12,7 +12,8 @@ import type { Shape } from './ShapeBuilder';
  *  - cabin: a separate tapered greenhouse (windscreen, side windows, rear glass; painted roof),
  *  - bumpers, grille and lamps as flat panels on the body faces.
  */
-type Tag = 'paint' | 'glass' | 'dark' | 'head' | 'tail' | 'chrome' | 'carbon' | 'roofglass';
+type Tag = 'paint' | 'glass' | 'dark' | 'head' | 'tail' | 'chrome' | 'carbon' | 'roofglass' | 'white';
+const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf2f2f0, metalness: 0.2, roughness: 0.5, envMapIntensity: 0.5 });
 interface Section { z: number; pts: [number, number, Tag][] } // pts go around the section (x, y); tag = material of the segment to the next point
 
 let roofGlass: THREE.MeshStandardMaterial | undefined;
@@ -48,7 +49,7 @@ function loft(sections: Section[], out: Map<Tag, number[]>, capStart: Tag | null
   cap(sections[sections.length - 1], capEnd, true);
 }
 
-export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows = true): VehicleModel {
+export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows = true, livery?: 'police'): VehicleModel {
   const { nz, nu, length: L } = sh;
   const z0 = -L / 2;
   const zAt = (i: number) => z0 + ((i + 0.5) / nz) * L;
@@ -64,12 +65,12 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   }
   const H = Math.max(...centre);
   // shoulder (belt) line: the outer-edge height, clamped into a sensible band
-  const shoulder = smooth(smooth(edge.map((e) => Math.min(Math.max(e, H * 0.5), H * 0.78)), 8), 8);
+  const shoulder = smooth(smooth(edge.map((e) => Math.min(Math.max(e, H * 0.5), H * (prof?.beltMax ?? 0.78))), 8), 8);
   // cabin: where the centre line rises clearly above the shoulder
   const cab: number[] = [];
   for (let i = 0; i < nz; i++) if (centre[i] > shoulder[i] + 0.14) cab.push(i);
   // trucks: only the frontmost run is the cabin (the bed / cargo box behind it is solid body)
-  if (sh.id === 't_pickup' || sh.id === 't_boxtruck') {
+  if (sh.id === 't_pickup' || sh.id === 't_boxtruck' || sh.id === 't_van') {
     let k = cab.length - 1;
     while (k > 0 && cab[k - 1] === cab[k] - 1) k--;
     cab.splice(0, k);
@@ -176,6 +177,8 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
     for (let k = 0; k < n; k++) { const k2 = (k + 1) % n; tri(top[k], bot[k], top[k2]); tri(bot[k], bot[k2], top[k2]); }
   };
   const idx = (z: number) => Math.min(nz - 1, Math.max(0, Math.round(((z - z0) / L) * nz - 0.5)));
+  const idxHw = (z: number) => hw[idx(z)] * 0.985;
+  const deckH = (z: number) => { const i = idx(z); return i >= c0 && i <= c1 ? shoulder[i] + 0.01 : Math.max(centre[i] * 0.98, shoulder[i] - 0.02); };
   const design = DESIGNS[sh.id];
   if (design) {
     const ctx: DesignCtx = {
@@ -204,6 +207,18 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   }
   box('dark', 0, ground + 0.1, -L / 2 + 0.03, tailW * 1.6, 0.14, 0.06);
   }
+  // police livery: white door panels (two doors a side) between the wheel arches, plus a white boot / bonnet stripe
+  if (livery === 'police') {
+    const wf = Math.max(...wheels.map((w) => w.z)), wr = Math.min(...wheels.map((w) => w.z));
+    const zStart = wr + 0.62, zEnd = wf - 0.62, len = (zEnd - zStart) / 2 - 0.04;
+    for (const sx of [1, -1]) for (let k = 0; k < 2; k++) {
+      const zc = zStart + len / 2 + k * (len + 0.08);
+      const x = idxHw(zc) + 0.006;
+      const yTop = shoulder[idx(zc)] - 0.1, yBot = ground + 0.36;
+      if (yTop - yBot > 0.15) box('white', sx * x, (yTop + yBot) / 2, zc, 0.02, yTop - yBot, len);
+    }
+    box('white', 0, deckH(-L / 2 + 0.55) + 0.006, -L / 2 + 0.55, hw[idx(-L / 2 + 0.55)] * 0.9, 0.012, 0.5);
+  }
   // side mirrors at the front of the cabin
   if (cabSecs.length) {
     const i = c0 + 2;
@@ -213,13 +228,13 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   // ---- meshes ----
   const root = new THREE.Group(), chassis = new THREE.Group();
   root.add(chassis);
-  const matFor = (tag: Tag): THREE.Material => tag === 'paint' ? (lite ? paintLite(color) : paint(color)) : tag === 'glass' ? (lite ? MAT.glassLite : MAT.glass) : tag === 'head' ? MAT.head : tag === 'tail' ? MAT.tailOff : tag === 'chrome' ? MAT.chrome : tag === 'carbon' ? MAT.carbon : tag === 'roofglass' ? (roofGlass ??= new THREE.MeshStandardMaterial({ color: 0x10161c, metalness: 0.1, roughness: 0.45, envMapIntensity: 0.35 })) : MAT.trim;
+  const matFor = (tag: Tag): THREE.Material => tag === 'paint' ? (lite ? paintLite(color) : paint(color)) : tag === 'glass' ? (lite ? MAT.glassLite : MAT.glass) : tag === 'head' ? MAT.head : tag === 'tail' ? MAT.tailOff : tag === 'white' ? whiteMat : tag === 'chrome' ? MAT.chrome : tag === 'carbon' ? MAT.carbon : tag === 'roofglass' ? (roofGlass ??= new THREE.MeshStandardMaterial({ color: 0x10161c, metalness: 0.1, roughness: 0.45, envMapIntensity: 0.35 })) : MAT.trim;
   let body: THREE.Mesh | undefined;
   const brake: THREE.Mesh[] = [], heads: THREE.Mesh[] = [];
   if (lite) {
     // traffic / cops: everything but the lamps in one vertex-coloured mesh, so the instancer can
     // draw it in one call and tint the paint per car (dark parts barely change under the tint)
-    const TONE: Partial<Record<Tag, number>> = { glass: 0x0b1620, roofglass: 0x10161c, dark: 0x121314, carbon: 0x1a1b1d, chrome: 0xb8bcc0 };
+    const TONE: Partial<Record<Tag, number>> = { white: 0xf2f2f0, glass: 0x0b1620, roofglass: 0x10161c, dark: 0x121314, carbon: 0x1a1b1d, chrome: 0xb8bcc0 };
     const pos: number[] = [], cols: number[] = [], cc = new THREE.Color();
     for (const [tag, arr] of out) {
       if (tag === 'head' || tag === 'tail') continue;
@@ -258,15 +273,33 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
     chassis.add(s);
     (sx > 0 ? sigL : sigR).push(s);
   }
+  // police roof light bar: a dark base with a red lens and a blue lens that the pursuit code flashes
+  let lightBar: { red: THREE.Mesh[]; blue: THREE.Mesh[] } | undefined;
+  if (livery === 'police' && cabSecs.length) {
+    const zm = (zc0 + zc1) / 2, ym = Math.max(...cabSecs.map((s) => s.pts[3][1]));
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.05, 0.3), MAT.trim);
+    bar.position.set(0, ym + 0.02, zm);
+    chassis.add(bar);
+    const lens = (x: number) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.12, 0.26), MAT.policeOff); m.position.set(x, ym + 0.1, zm); chassis.add(m); return m; };
+    lightBar = { red: [lens(0.26)], blue: [lens(-0.26)] };
+  }
   const wheelRefs = sh.wheels.map((w) => makeWheel(root, w.x, w.r, w.z, w.r, Math.max(0.2, w.w), w.z > 0, 0x9aa0a6, 5, false, lite));
   return {
     root, chassis, body: body!, wheels: wheelRefs, brake, sigL, sigR, heads,
-    length: L, width: sh.width, height: H, color, lod: [],
+    length: L, width: sh.width, height: H, color, lod: [], lightBar,
   };
 }
 
 /** side profiles, t = 0 at the tail to 1 at the nose: centre-line top and belt (shoulder) line */
-const PROFILES: Record<string, { centre: [number, number][]; belt: [number, number][]; roof?: number }> = {
+const PROFILES: Record<string, { centre: [number, number][]; belt: [number, number][]; roof?: number; beltMax?: number }> = {
+  // cargo van: tall flat-roofed box with solid sides, a short cab with side windows at the front, short bonnet.
+  // The belt line rides at the roof in the cargo area (no windows), then drops to the window line in the cab.
+  t_van: {
+    centre: [[0, 0.95], [0.015, 1.9], [0.03, 2.03], [0.7, 2.05], [0.76, 2.0], [0.84, 1.18], [0.9, 1.08], [0.96, 0.96], [1, 0.72]],
+    belt: [[0, 1.0], [0.03, 1.9], [0.6, 1.92], [0.68, 1.15], [0.85, 1.1], [0.96, 0.95], [1, 0.72]],
+    roof: 0.9,
+    beltMax: 0.97,
+  },
   // Model 3: short high boot, long fastback glass, tall rounded roof, short sloping nose
   tesla: {
     centre: [[0, 0.74], [0.03, 0.98], [0.1, 1.01], [0.18, 1.04], [0.3, 1.3], [0.42, 1.43], [0.54, 1.43], [0.64, 1.28], [0.73, 1.0], [0.84, 0.92], [0.95, 0.8], [1, 0.64]],
@@ -414,6 +447,22 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     box('paint', 0, c.deckAt(R + 0.16) + 0.02, R + 0.16, c.tailW * 1.7, 0.04, 0.14); // boot lip spoiler
     box('carbon', 0, ground + 0.09, R + 0.05, c.tailW * 1.3, 0.13, 0.12); // diffuser
     box('dark', 0, c.tailH - 0.06, R + 0.012, c.tailW * 1.8, 0.05, 0.04); // lamp bar between the tail lamps
+  },
+  // Delivery van: dark grille and bumper up front, tall vertical tail lamps, rear door seam and a sliding door line
+  t_van(c) {
+    const { L, ground, box } = c;
+    const F = L / 2, R = -L / 2;
+    box('dark', 0, c.noseH - 0.22, F + 0.01, c.noseW * 0.9, 0.24, 0.05); // grille
+    box('dark', 0, ground + 0.14, F - 0.03, c.noseW * 1.5, 0.2, 0.1); // front bumper
+    for (const sx of [1, -1]) {
+      c.lamp(sx, F - 0.04, F - 0.3, 0.55, 0.94, 0.8, 0.98);
+      box('tail', sx * c.tailW * 0.93, 1.0, R + 0.004, 0.13, 0.5, 0.05); // tall tail lamps
+      const zs = 0.3;
+      box('dark', sx * (c.hwAt(zs) + 0.004), 1.05, zs, 0.02, 1.35, 0.03); // sliding door seam
+    }
+    box('dark', 0, ground + 0.16, R + 0.03, c.tailW * 1.9, 0.2, 0.1); // rear bumper
+    box('dark', 0, 1.15, R + 0.008, 0.03, 1.5, 0.03); // rear door seam
+    box('carbon', 0, 1.78, R + 0.006, c.tailW * 1.7, 0.03, 0.03); // rear door top seam
   },
   // Honda Civic Type R (FL5): tall rear wing, triple centre exhaust, bonnet scoop,
   // honeycomb grille and big corner intakes, red accents.

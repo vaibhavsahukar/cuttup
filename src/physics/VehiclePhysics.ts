@@ -246,15 +246,18 @@ export class VehiclePhysics {
       // traction control: 1 lets some spin through, 3 keeps the tyre just under the limit
       if (A.tc > 0) { const keep = [1, 1.3, 1.12, 0.98][A.tc]; if (Fdrive > capR * keep) { Fdrive = capR * keep; this.tcOn = true; } }
       // anti-wheelie: 3 keeps the front down, 2 / 1 allow a small / bigger lift before cutting power
-      if (A.aw > 0) {
+      // riding assist: an assisted rider who deliberately pulls a wheelie keeps it balanced even on a bike whose stock
+      // electronics have no anti-wheelie (otherwise it just loops out); manual riding leaves that entirely to you
+      const awLvl = A.aw > 0 ? A.aw : !A.manual && this.pull > 0.3 ? 1 : 0;
+      if (awLvl > 0) {
         // allow the front up to `cap`, then pick the drive that brings pitch back toward it
         // when the rider asks for a wheelie, levels 1 / 2 only stop a loop-out; 3 keeps it tiny
-        const cap = this.pull > 0.3 ? [0, 0.55, 0.35, 0.08][A.aw] : [0, 0.1, 0.04, 0][A.aw], t = Math.max(0, this.wheelie);
+        const cap = this.pull > 0.3 ? [0, 0.55, 0.35, 0.08][awLvl] : [0, 0.1, 0.04, 0][awLvl], t = Math.max(0, this.wheelie);
         const bw = this.bEff;
         const hE = this.h * Math.cos(t) + bw * Math.sin(t), bE = bw * Math.cos(t) - this.h * Math.sin(t);
         const accWant = -14 * (t - cap * 0.8) - 5 * this.pitchRate;
-        const Fmax = (this.m * (accWant * (this.h * this.h + bw * bw) * PITCH_I + G * bE)) / hE * (A.aw === 3 && this.pull < 0.3 ? 0.97 : 1);
-        if (Fdrive > Fmax && (t > 0 || A.aw === 3 || Fmax < (this.m * G * bw) / this.h)) { Fdrive = Math.max(0, Fmax); this.awOn = true; }
+        const Fmax = (this.m * (accWant * (this.h * this.h + bw * bw) * PITCH_I + G * bE)) / hE * (awLvl === 3 && this.pull < 0.3 ? 0.97 : 1);
+        if (Fdrive > Fmax && (t > 0 || awLvl === 3 || Fmax < (this.m * G * bw) / this.h)) { Fdrive = Math.max(0, Fmax); this.awOn = true; }
       }
     }
     let FxF = 0, FxR = 0;
@@ -463,6 +466,9 @@ export class VehiclePhysics {
       const hE = this.h * Math.cos(t) + this.a * Math.sin(t), aE = this.a * Math.cos(t) - this.h * Math.sin(t);
       acc = -(-Ax * hE - G * aE) / ((this.h * this.h + this.a * this.a) * PITCH_I);
     } else { this.pitchRate = 0; }
+    // the rider heaves on the bars when a wheelie is asked for: extra lift that fades with speed, so a wheelie is
+    // possible from a standstill up to roughly 100 mph (engine torque alone only lifts the front at low speed)
+    if (this.pull > 0.5 && this.throttle > 0.5 && th >= 0) acc += 3 * this.pull * clamp(1 - th / 0.4, 0, 1) * clamp(1 - av / 55, 0, 1) * (this.aids.manual ? 0.6 : 1);
     if (acc !== 0 || th !== 0 || this.pitchRate !== 0) {
       this.pitchRate = (this.pitchRate + acc * dt) * Math.exp(-2 * dt);
       this.wheelie += this.pitchRate * dt;

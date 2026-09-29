@@ -325,7 +325,10 @@ export class Game {
       if (c.passedSign !== 0 && sign !== c.passedSign && !c.nearMissed && Math.abs(rel) < 8) {
         const relSpeed = c.dir > 0 ? ph.v - c.v : ph.v + c.v;
         const clearance = Math.abs(c.d - ph.d) - (c.W + this.player.collW) / 2;
-        if (relSpeed > 4 && clearance > -0.05 && clearance < 1.4 && c.passedSign > 0) {
+        // Oncoming cars pass close by just because you are in your own lane (the backroad is two lanes wide), so
+        // they only count when you deliberately hug the centre line; otherwise the backroad out-scores every map.
+        const limit = c.dir < 0 ? 0.6 : 1.4;
+        if (relSpeed > 4 && clearance > -0.05 && clearance < limit && c.passedSign > 0) {
           c.nearMissed = true;
           this.scoring.nearMiss(Math.max(0, clearance), relSpeed, c.dir < 0);
           this.audio.whoosh(relSpeed / 30);

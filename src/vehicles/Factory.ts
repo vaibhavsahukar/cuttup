@@ -6,9 +6,9 @@ import { buildBike } from './BikeBuilder';
 
 /** cars with hand-made signature details (others get the generic panel build; bikes keep ShapeBuilder) */
 export const DESIGNED = new Set(['zr1', 'm4', 'huracan', 'c63', 'civic', 'tesla']);
-const build = (id: string, color: number, lite: boolean, shadows: boolean) => {
+const build = (id: string, color: number, lite: boolean, shadows: boolean, livery?: 'police') => {
   const sh = getShape(id)!;
-  return sh.bike ? buildFromShape(sh, color, lite, shadows) : buildPanelCar(sh, color, lite, shadows);
+  return sh.bike ? buildFromShape(sh, color, lite, shadows) : buildPanelCar(sh, color, lite, shadows, livery);
 };
 
 /**
@@ -35,7 +35,8 @@ export function buildViewerModel(key: string, drivable: (id: string) => VehicleS
   const [kind, id] = key.split(':');
   if (kind === 'v') return buildPlayerModel(drivable(id), true);
   if (kind === 't') return build(TRAFFIC_SHAPES[id as TrafficType], id === 'boxtruck' ? 0xeeeeee : 0x8f9499, false, true);
-  return build(id, id === 'cop_charger' ? 0x16181b : 0x2a2d31, false, true);
+  const cop = id as CopType;
+  return build(COP_SHAPES[cop], COP_COLORS[cop], false, true, 'police');
 }
 
 export function buildTrafficModel(type: TrafficType, color = 0xffffff, _shadows = false): VehicleModel {
@@ -48,10 +49,13 @@ export function trafficDims(type: TrafficType) {
 }
 
 export type CopType = 'cop_basic' | 'cop_charger';
+/** the slower patrol car is a hatchback, the fast interceptor is built on the Conquette; both black with white doors */
+const COP_SHAPES: Record<CopType, string> = { cop_basic: 't_hatch', cop_charger: 'zr1' };
+const COP_COLORS: Record<CopType, number> = { cop_basic: 0x17191c, cop_charger: 0x101114 };
 export function buildCopModel(type: CopType): VehicleModel {
-  return build(type, type === 'cop_charger' ? 0x16181b : 0x1d1f22, true, false);
+  return build(COP_SHAPES[type], COP_COLORS[type], true, false, 'police');
 }
 export function copDims(type: CopType) {
-  const s = getShape(type)!;
+  const s = getShape(COP_SHAPES[type])!;
   return { length: s.length, width: s.width, height: s.height };
 }

@@ -369,6 +369,11 @@ export class UI {
     el.hidden = !on;
     if (on) el.textContent = `${Math.round(fps)} FPS · worst frame ${Math.round(worstMs)} ms · render ${Math.round(scale * 100)}%`;
   }
+  /** results screen controller shortcuts (A retry, X vehicle, Y map, B main menu) */
+  resultsShortcut(a: 'retry' | 'vehicle' | 'map' | 'menu') {
+    this.h.click();
+    if (a === 'retry') this.h.restart(); else if (a === 'vehicle') this.h.garage(); else if (a === 'map') this.h.maps(); else this.h.toMenu();
+  }
   crashMessage(text: string) { const e = $('#crashui .shame'); e.textContent = text; e.hidden = !text; }
   flash(v: number) { ($('#flash') as HTMLElement).style.opacity = String(v); }
 
@@ -396,7 +401,12 @@ export class UI {
       </div>
       <div><h2>Best runs · local</h2>
         <table>${board.map((e: RunEntry, i) => `<tr class="${i === rank ? 'me' : ''}"><td>${i + 1}</td><td>${e.score.toLocaleString()}</td><td>${esc(getVehicle(e.vehicle).name)}</td><td>${Math.round(e.topSpeed * k)}</td></tr>`).join('') || '<tr><td>No runs</td></tr>'}</table></div>
-      <div class="btns"><button data-a="retry" class="primary">Retry</button><button data-a="vehicle">Change vehicle</button><button data-a="map">Change map</button><button data-a="menu">Main menu</button></div>`;
+      <div class="btns">
+        <div class="rb"><button data-a="retry" class="primary">Retry</button><span class="padkey a" title="Controller A">A</span></div>
+        <div class="rb"><button data-a="vehicle">Change vehicle</button><span class="padkey x" title="Controller X">X</span></div>
+        <div class="rb"><button data-a="map">Change map</button><span class="padkey y" title="Controller Y">Y</span></div>
+        <div class="rb"><button data-a="menu">Main menu</button><span class="padkey b" title="Controller B">B</span></div>
+      </div>`;
     $('#results .panel').onclick = (e) => {
       const a = (e.target as HTMLElement).dataset.a;
       if (!a) return;

@@ -13,15 +13,16 @@ const res = await page.evaluate(() => {
   const app = (window as any).__app;
   app.startGame('city', 'zr1');
   const g = app.game;
+  g.startCrash = () => undefined; // probe: the player is never wrecked, so every tier can be observed
   app.advance(3);
   const log: any[] = [];
-  for (const [score, secs] of [[16000, 30], [31000, 25], [51000, 25], [101000, 25]]) {
+  for (const [score, secs, spd] of [[10500, 30, 42], [12800, 25, 42], [15500, 25, 42], [20500, 25, 42], [25500, 30, 42], [26000, 30, 85]]) {
     g.scoring.score = score as number;
     let minGap = 1e9, copWrecks = 0, reachT = -1, t = 0;
     const before = g.police.wrecks.length;
     for (let i = 0; i < (secs as number) * 60; i++) {
       // invulnerable probe: player cruises on the shoulder at 45 m/s
-      g.player.phys.v = 42; g.player.phys.psi = 0; g.player.phys.vl = 0; g.player.phys.d = g.layout.playerMax - 1.2;
+      g.player.phys.v = spd as number; g.player.phys.psi = 0; g.player.phys.vl = 0; g.player.phys.d = g.layout.playerMax - 1.2;
       app.advance(1 / 60);
       if (g.state !== 'driving') break;
       t += 1 / 60;

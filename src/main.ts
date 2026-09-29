@@ -145,6 +145,12 @@ async function boot() {
     const edge = (i: number) => b[i] && !padPrev[i];
     if (edge(12) || edge(14)) ui.nav(-1);
     if (edge(13) || edge(15)) ui.nav(1);
+    if (mode === 'results') {
+      // results screen: A retry, X change vehicle, Y change map, B main menu (badges under the buttons)
+      if (edge(0)) ui.resultsShortcut('retry'); else if (edge(2)) ui.resultsShortcut('vehicle'); else if (edge(3)) ui.resultsShortcut('map'); else if (edge(1)) ui.resultsShortcut('menu');
+      padPrev = b;
+      return;
+    }
     if (edge(0)) ui.activate();
     if (edge(1)) { if (mode === 'paused') { mode = 'game'; ui.show('hud'); } else if (ui.current !== 'menu' && ui.current !== 'results') ui.h.back(); }
     padPrev = b;

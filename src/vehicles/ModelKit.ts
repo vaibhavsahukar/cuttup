@@ -26,6 +26,8 @@ export interface VehicleModel {
   /** detail meshes hidden at distance (traffic LOD) */
   lod?: THREE.Object3D[];
   wheelMesh?: THREE.Mesh;
+  /** police roof light bar: lenses that the pursuit code flashes */
+  lightBar?: { red: THREE.Mesh[]; blue: THREE.Mesh[] };
   /** traffic proxy drawn by the instancer (no meshes of its own) */
   proxy?: boolean;
 }

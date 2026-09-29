@@ -7,20 +7,21 @@ import { RigidBody } from '../physics/RigidBody';
 import { projectToRoad, type RoadPath } from '../world/RoadPath';
 import type { Particles } from '../game/Particles';
 import { clamp } from '../core/math';
+import { MAT } from '../vehicles/Materials';
 
 /** Score thresholds -> number of pursuing police cars. */
-export const POLICE_TIERS: [number, number][] = [[15000, 1], [30000, 2], [50000, 3], [100000, 5]];
+export const POLICE_TIERS: [number, number][] = [[10000, 1], [12500, 2], [15000, 3], [20000, 4], [25000, 5]];
 export function copsForScore(score: number) {
   let n = 0;
   for (const [s, c] of POLICE_TIERS) if (score >= s) n = c;
   return n;
 }
 
-const redOn = new THREE.MeshStandardMaterial({ color: 0xff2020, emissive: 0xff0000, emissiveIntensity: 4 });
-const blueOn = new THREE.MeshStandardMaterial({ color: 0x2040ff, emissive: 0x0030ff, emissiveIntensity: 4 });
-const lampOff = new THREE.MeshStandardMaterial({ color: 0x222228, emissive: 0x000000 });
-
-interface Cop { car: TrafficCar; red: THREE.Mesh; blue: THREE.Mesh; skill: number; vMax: number; charger: boolean; laneT: number; stuckT: number }
+interface Cop { car: TrafficCar; red: THREE.Mesh; blue: THREE.Mesh; skill: number; vMax: number; charger: boolean; laneT: number; stuckT: number; slot: number }
+/** where each cop in the pack aims relative to the player until it closes in (fans out instead of queueing in one line) */
+const SLOT_OFFSET = [0, -2.7, 2.7, -5.4, 5.4];
+/** how far a cop is behind the player (m) */
+const pl_rel = (cop: { car: TrafficCar }, player: PlayerProxy) => player.s - cop.car.s;
 interface Wreck { car: TrafficCar; body: RigidBody; age: number }
 
 /**
@@ -51,12 +52,8 @@ export class Police {
     const type = charger ? 'cop_charger' : 'cop_basic';
     const dims = copDims(type);
     const model = buildCopModel(type);
-    // flashing light bar on the roof (imported models' own bars are unlit)
-    const red = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.22), redOn);
-    const blue = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.22), blueOn);
-    red.position.set(0.25, dims.height + 0.02, -0.15);
-    blue.position.set(-0.25, dims.height + 0.02, -0.15);
-    model.chassis.add(red, blue);
+    // flashing red / blue light bar on the roof (part of the model)
+    const red = model.lightBar!.red[0], blue = model.lightBar!.blue[0];
     this.traffic.root.add(model.root);
     // enter from behind, out of view, in a free lane near the player
     const lanes = this.layout.lanes;
@@ -64,13 +61,13 @@ export class Police {
     for (let l = 0; l < lanes; l++) { const dd = Math.abs(this.layout.laneCenter(l) - player.d); if (dd < best) { best = dd; lane = l; } }
     const car: TrafficCar = {
       id: -Math.floor(Math.random() * 1e9), type: 'sedan', model, L: dims.length, W: dims.width, dir: 1,
-      s: player.s - 140 - Math.random() * 40, d: this.layout.laneCenter(lane), v: Math.max(20, player.v + 8), v0: 90, acc: 0,
+      s: player.s - 100 - Math.random() * 40, d: this.layout.laneCenter(lane), v: Math.max(20, player.v + 12), v0: 90, acc: 0,
       lane, targetLane: lane, lcT: 1, lcDur: 1, dFrom: 0, signal: 0, signalT: 0, pendingLane: -1,
       driver: 'fast', p: DRIVERS.fast, decideT: 0, wander: 0, wanderPhase: 0, swerve: 0, swerveTarget: 0,
       panicT: 0, freezeT: 0, honkCd: 0, braking: false, wrecked: false, yaw: 0, passedSign: 0, nearMissed: true, alive: true, cop: true,
     };
     this.traffic.cars.push(car);
-    this.cops.push({ car, red, blue, skill: charger ? 0.9 + Math.random() * 0.1 : 0.7 + Math.random() * 0.2, vMax: charger ? 105 : 80, charger, laneT: 0, stuckT: 0 });
+    this.cops.push({ car, red, blue, skill: charger ? 0.9 + Math.random() * 0.1 : 0.7 + Math.random() * 0.2, vMax: charger ? 105 : 80, charger, laneT: 0, stuckT: 0, slot: this.cops.length });
     this.onDispatch?.(this.cops.length, charger);
   }
 
@@ -81,8 +78,15 @@ export class Police {
     this.cops = this.cops.filter((c) => c.car.alive && !c.car.wrecked);
     if (active && this.cops.length < this.wanted) {
       this.respawnT -= dt;
-      if (this.respawnT <= 0) { this.spawn(player, score); this.respawnT = 3.5; }
+      if (this.respawnT <= 0) { this.spawn(player, score); this.respawnT = 3; }
     }
+    // a cop left far behind (a very fast player) is pulled back into the chase instead of being lost
+    for (const cop of this.cops) {
+      if (pl_rel(cop, player) > 420) { cop.car.s = player.s - 160; cop.car.v = Math.max(cop.car.v, player.v + 10); }
+    }
+    this.cops.forEach((cop, i) => { cop.slot = i; });
+    // tell the traffic where the cops are so that cars ahead of them pull over and clear the way
+    this.traffic.copAlerts = this.cops.map((cop) => ({ s: cop.car.s, d: cop.car.d, v: cop.car.v }));
     const hw = this.map.road === 'highway';
     const dMin = (hw ? this.layout.playerMin : this.layout.softMin) + 1.1;
     const dMax = (hw ? this.layout.playerMax : this.layout.softMax) - 1.1;
@@ -91,15 +95,17 @@ export class Police {
     this.updateWrecks(dt, player);
     // light bar flash
     const phase = Math.floor(this.time * 7) % 4;
-    for (const c of this.cops) { c.red.material = phase < 2 ? redOn : lampOff; c.blue.material = phase >= 2 ? blueOn : lampOff; }
+    for (const c of this.cops) { c.red.material = phase < 2 ? MAT.policeRed : MAT.policeOff; c.blue.material = phase >= 2 ? MAT.policeBlue : MAT.policeOff; }
   }
 
   private drive(cop: Cop, dt: number, pl: PlayerProxy, playerVl: number, dMin: number, dMax: number) {
     const c = cop.car;
     const rel = pl.s - c.s; // + = player ahead
-    const vMax = cop.vMax;
+    // never outrun: a cop can always exceed the player's speed by a margin, so a fast car can't just lose them
+    const vMax = Math.max(cop.vMax, pl.v + (cop.charger ? 32 : 22));
     // longitudinal: catch up fast, then close in to ram
-    let vT = rel > 40 ? pl.v + 14 + rel * 0.06 : rel > 6 ? pl.v + 6 : rel > -4 ? pl.v + 3 : pl.v - 6;
+    // a cop that has overshot drops back hard to tuck in behind again
+    let vT = rel > 40 ? pl.v + 14 + rel * 0.06 : rel > 6 ? pl.v + 6 : rel > -4 ? pl.v + 3 : pl.v - 14;
     vT = clamp(vT, 0, vMax);
     // curve speed (cops brake for bends a bit later than traffic)
     let kMax = 0;
@@ -107,16 +113,22 @@ export class Police {
     vT = Math.min(vT, Math.sqrt(4.5 / Math.max(1e-5, kMax)));
     // lateral: aim at the player (with lead) when close, otherwise pick the clearest line
     const lead = clamp(rel / Math.max(5, c.v - pl.v + 5), 0, 1.2);
-    let dT = rel < 35 ? pl.d + playerVl * lead * 0.6 : pl.d;
+    // the pack fans out (slot offsets) while approaching, then every cop converges on the player
+    const slotOff = SLOT_OFFSET[cop.slot % SLOT_OFFSET.length] * clamp((rel - 12) / 40, 0, 1);
+    let dT = (rel < 35 ? pl.d + playerVl * lead * 0.6 : pl.d) + slotOff;
     // obstacle scan ahead in the cop's path
     const look = 25 + c.v * 1.8; // plan the escape line well ahead
     const blocked = (d: number) => {
       let g = 1e9, v = 0;
       for (const o of this.traffic.cars) {
-        if (o === c || !o.alive || o.dir !== 1 || o.cop) continue;
+        if (o === c || !o.alive || o.cop) continue;
         if (Math.abs(o.d - d) > (o.W + c.W) / 2 + 0.3) continue;
         const gap = o.s - c.s - (o.L + c.L) / 2;
-        if (gap > -1 && gap < g) { g = gap; v = o.v; }
+        if (o.dir === 1) { if (gap > -1 && gap < g) { g = gap; v = o.v; } }
+        else if (gap > -1) { // oncoming: the gap closes at both speeds, so it is effectively that much nearer
+          const ge = gap * c.v / Math.max(1, c.v + o.v);
+          if (ge < g) { g = ge; v = 0; }
+        }
       }
       for (const o of this.traffic.obstacles) {
         if (o === c) continue;
@@ -170,7 +182,7 @@ export class Police {
         if (o === c || !o.alive || o.wrecked) continue;
         if (Math.abs(o.s - c.s) > (o.L + c.L) / 2 - 0.1 || Math.abs(o.d - c.d) > (o.W + c.W) / 2 - 0.05) continue;
         const rv = Math.abs(c.v - o.v * o.dir);
-        if (rv > 12 || (o.dir < 0 && rv > 20)) { // skilled drivers glance off light contact
+        if (rv > 16 || (o.dir < 0 && rv > 24)) { // skilled drivers glance off light contact
           const pc = new THREE.Vector3();
           this.path.toWorld((c.s + o.s) / 2, (c.d + o.d) / 2, 0.6, pc);
           this.wreck(c, 1, o, pc);

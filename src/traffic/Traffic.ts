@@ -55,6 +55,8 @@ const v3 = new THREE.Vector3();
 const eul = new THREE.Euler(0, 0, 0, 'YXZ');
 
 export class Traffic {
+  /** police cars currently chasing (set by Police every frame): cars ahead of them pull over */
+  copAlerts: { s: number; d: number; v: number }[] = [];
   cars: TrafficCar[] = [];
   root = new THREE.Group();
   private pool = new Map<TrafficType, VehicleModel[]>();
@@ -181,6 +183,7 @@ export class Traffic {
     for (const c of this.cars) {
       if (!c.alive || c.wrecked) continue;
       const rel = c.s - ps;
+      if (c.cop) continue; // police manage their own presence (a fast player must not lose them)
       if (rel < -260 || rel > this.spawnAhead + 250) this.release(c);
     }
     this.cars = this.cars.filter((c) => c.alive);
@@ -282,6 +285,33 @@ export class Traffic {
       }
       c.honkCd -= dt;
       if (c.panicT > 0) c.panicT -= dt; else c.swerveTarget *= Math.max(0, 1 - dt * 1.5);
+
+      // ------------- make way for police -------------
+      // A cop closing from behind in this car's lane: change lane away from it if possible, otherwise pull to the
+      // side of the road and slow so the cop can get past.
+      if (c.dir > 0 && this.copAlerts.length) {
+        let cop: { s: number; d: number; v: number } | null = null;
+        for (const a of this.copAlerts) {
+          const back = c.s - a.s;
+          if (back > 0 && back < 50 + a.v * 2.4 && Math.abs(a.d - c.d) < 3.2 && a.v > c.v + 2) { cop = a; break; }
+        }
+        if (cop) {
+          const away = c.d >= cop.d ? 1 : -1; // + = towards the right edge
+          if (hw && lanes > 1 && c.lcT >= 1) {
+            for (const nl of [c.lane + away, c.lane - away]) {
+              if (nl < 0 || nl >= lanes) continue;
+              if (Math.abs(this.laneD(c.dir, nl) - cop.d) < 2.2) continue; // not into the cop's own lane
+              if (!this.safeToChange(c, nl, player)) continue;
+              c.signal = nl < c.lane ? -1 : 1; c.pendingLane = -1;
+              this.beginChange(c, nl);
+              c.lcDur = Math.min(c.lcDur, 1.6); // a hurried lane change
+              break;
+            }
+          }
+          if (c.lcT >= 1) c.swerveTarget = away * (hw ? 1.1 : 1.7); // hug the edge of the lane / the shoulder
+          v0 = Math.min(v0, Math.max(6, c.v * 0.8)); // ease off so the cop can pass
+        }
+      }
 
       // ------------- longitudinal (IDM) -------------
       const dNow = c.d;
