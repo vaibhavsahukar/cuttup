@@ -8,14 +8,11 @@ import { UI } from './ui/UI';
 import { PreviewStage } from './ui/PreviewStage';
 import { Game } from './game/Game';
 import { getVehicle, VEHICLES } from './data/vehicles';
-import { preloadGlbs } from './vehicles/GlbLibrary';
-import { ALL_MODEL_IDS } from './vehicles/Factory';
 
 const params = new URLSearchParams(location.search);
 
 async function boot() {
-  if (params.get('glb')) { const { glbGallery } = await import('./dev/glbGallery'); await glbGallery(params.get('glb')!, Number(params.get('rot') ?? 0.6)); return; }
-  if (params.get('convert')) { const { convertFbx } = await import('./dev/convert'); (window as any).__glb = await convertFbx(params.get('convert')!); return; }
+  if (params.get('shape')) { const { shapeCompare } = await import('./dev/shapeCompare'); await shapeCompare(params.get('shape')!.split(','), params.get('ref') === '1', Number(params.get('rot') ?? 0), parseInt(params.get('color') ?? '0c0c0e', 16)); return; }
   const save = new Save();
   await save.load();
   const st = save.data.settings;
@@ -29,9 +26,7 @@ async function boot() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.body.appendChild(renderer.domElement);
-  // load every imported vehicle model up front (the game builds vehicles synchronously)
   const loadingEl = document.getElementById('loading');
-  await preloadGlbs(ALL_MODEL_IDS, (f) => { if (loadingEl) loadingEl.textContent = `LOADING VEHICLES ${Math.round(f * 100)}%`; });
   // saved vehicle may no longer exist (roster changed)
   if (!VEHICLES.some((v) => v.id === st.vehicle)) st.vehicle = 'zr1';
   loadingEl?.remove();

@@ -109,7 +109,7 @@ export class Police {
     const lead = clamp(rel / Math.max(5, c.v - pl.v + 5), 0, 1.2);
     let dT = rel < 35 ? pl.d + playerVl * lead * 0.6 : pl.d;
     // obstacle scan ahead in the cop's path
-    const look = 12 + c.v * 1.1 * cop.skill;
+    const look = 25 + c.v * 1.8; // plan the escape line well ahead
     const blocked = (d: number) => {
       let g = 1e9, v = 0;
       for (const o of this.traffic.cars) {
@@ -138,9 +138,16 @@ export class Police {
       }
       dT = bestD;
       // only slow down when the car directly ahead is close and the escape line is not yet reached
-      if (here.g < 10 + c.v * 0.25 && Math.abs(bestD - c.d) > 1) vT = Math.min(vT, here.v + here.g * 0.6);
+      // hold a safe gap to whatever is still in the current path until the new line is reached
+      if (Math.abs(bestD - c.d) > 0.6) vT = Math.min(vT, here.v + Math.max(0, here.g - 6) * 0.9);
     }
     dT = clamp(dT, dMin, dMax);
+    // braking-distance check on the car directly ahead in the current path (never when committed to the ram)
+    if (!toPlayer && here.g < 1e8) {
+      const closing = c.v - here.v;
+      const need = closing > 0 ? (closing * closing) / (2 * 7) + 5 : 0;
+      if (here.g < need + 4) vT = Math.min(vT, here.v + Math.max(0, here.g - 5) * 0.8);
+    }
     // actuate with skill-limited rates (this is where imperfect cops make mistakes)
     const acc = clamp((vT - c.v) * 2, -9, (cop.charger ? 9 : 6.5) * cop.skill);
     c.acc = acc;
@@ -163,7 +170,7 @@ export class Police {
         if (o === c || !o.alive || o.wrecked) continue;
         if (Math.abs(o.s - c.s) > (o.L + c.L) / 2 - 0.1 || Math.abs(o.d - c.d) > (o.W + c.W) / 2 - 0.05) continue;
         const rv = Math.abs(c.v - o.v * o.dir);
-        if (rv > 6 || o.dir < 0) {
+        if (rv > 12 || (o.dir < 0 && rv > 20)) { // skilled drivers glance off light contact
           const pc = new THREE.Vector3();
           this.path.toWorld((c.s + o.s) / 2, (c.d + o.d) / 2, 0.6, pc);
           this.wreck(c, 1, o, pc);

@@ -15,19 +15,20 @@ const res = await page.evaluate(() => {
   const g = app.game;
   app.advance(3);
   const log: any[] = [];
-  for (const [score, secs] of [[16000, 12], [31000, 10], [51000, 10], [101000, 14]]) {
+  for (const [score, secs] of [[16000, 30], [31000, 25], [51000, 25], [101000, 25]]) {
     g.scoring.score = score as number;
-    let minGap = 1e9, copWrecks = 0;
+    let minGap = 1e9, copWrecks = 0, reachT = -1, t = 0;
     const before = g.police.wrecks.length;
     for (let i = 0; i < (secs as number) * 60; i++) {
       // invulnerable probe: player cruises on the shoulder at 45 m/s
-      g.player.phys.v = 45; g.player.phys.psi = 0; g.player.phys.vl = 0;
+      g.player.phys.v = 42; g.player.phys.psi = 0; g.player.phys.vl = 0; g.player.phys.d = g.layout.playerMax - 1.2;
       app.advance(1 / 60);
       if (g.state !== 'driving') break;
-      for (const c of g.police.cops) minGap = Math.min(minGap, Math.abs(c.car.s - g.player.phys.s));
+      t += 1 / 60;
+      for (const c of g.police.cops) { const gap = Math.abs(c.car.s - g.player.phys.s); minGap = Math.min(minGap, gap); if (gap < 8 && reachT < 0) reachT = +t.toFixed(1); }
     }
     copWrecks = g.police.wrecks.length - before;
-    log.push({ score, wanted: g.police.wanted, cops: g.police.cops.length, closestCop: Math.round(minGap), copWrecks, state: g.state, crashKind: g.result?.crashKind });
+    log.push({ score, wanted: g.police.wanted, cops: g.police.cops.length, closestCop: Math.round(minGap), reachedAfterS: reachT, copWrecks, chargers: g.police.cops.filter((c: any) => c.charger).length, state: g.state, crashKind: g.result?.crashKind });
     if (g.state !== 'driving') break;
   }
   return log;

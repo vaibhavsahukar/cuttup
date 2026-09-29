@@ -44,6 +44,7 @@ export interface TrafficCar {
   nearMissed: boolean;
   alive: boolean;
   cop?: boolean; // driven by the Police controller, not by the traffic AI
+  color?: number; // paint colour
 }
 
 export interface PlayerProxy { s: number; d: number; v: number; L: number; W: number; alive: boolean }
@@ -94,7 +95,7 @@ export class Traffic {
   /** swap a proxy for a real, individually animated model (needed when a car crashes) */
   materialize(c: TrafficCar) {
     if (!c.model.proxy) return;
-    const full = buildTrafficModel(c.type, 0xffffff, false);
+    const full = buildTrafficModel(c.type, c.color ?? 0xffffff, false);
     full.root.position.copy(c.model.root.position);
     full.root.quaternion.copy(c.model.root.quaternion);
     this.root.add(full.root);
@@ -133,7 +134,7 @@ export class Traffic {
     const v0 = driver === 'fast' ? f * range(r, 1.1, 1.25) : driver === 'slow' ? f * range(r, 0.78, 0.9) : f * range(r, 0.85, 1.0);
     const color = pick(r, TRAFFIC_COLORS);
     const car: TrafficCar = {
-      id: this.nextId++, type, model: this.getModel(type, color), L: dims.length, W: dims.width,
+      id: this.nextId++, type, color, model: this.getModel(type, color), L: dims.length, W: dims.width,
       dir, s, d: this.laneD(dir, lane), v: v ?? v0 * 0.95, v0, acc: 0,
       lane, targetLane: lane, lcT: 1, lcDur: 3, dFrom: 0,
       signal: 0, signalT: 0, pendingLane: -1,
@@ -425,7 +426,7 @@ export class Traffic {
       m.root.quaternion.setFromEuler(eul);
       if (m.proxy) {
         const sigOn = blink && c.signal !== 0;
-        this.instancer.add(c.type, m.root, c.braking, sigOn && c.signal === -1, sigOn && c.signal === 1);
+        this.instancer.add(c.type, m.root, c.color ?? 0xffffff, c.braking, sigOn && c.signal === -1, sigOn && c.signal === 1);
         continue;
       }
       // body dive under braking, squat on accel
