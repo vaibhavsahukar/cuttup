@@ -255,7 +255,7 @@ export class ChunkManager {
       for (let k = 0; k < 2; k++) this.place(this.pools.streetlight, s0 + k * 32 + 8, 0, 0, 1, 1, 1);
       for (let k = 0; k < 2; k++) this.place(this.pools.lamp, s0 + k * 32 + 8, 0, 0, 1, 1, 1);
       if (index > 2 && hash2(index, 5) < 0.14 && hash2(index - 1, 5) >= 0.14) this.place(this.pools.overpass, s0 + 32, 0, 0, 1, 1, 1);
-      else if (hash2(index, 6) < 0.1) this.place(this.pools.sign, s0 + 20, (E - 4) * 0.5 + 2, 0, 1.3, 1, 1, undefined, 0.2);
+      else if (hash2(index, 6) < 0.1) this.place(this.pools.sign, s0 + 20, E + 5, 0, 1.3, 1, 1, undefined, 0.2); // beside the road, past the barrier (its posts span +-3.9 m)
     } else if (this.map.id === 'country') {
       for (let k = 0; k < 2; k++) if (rng() < 0.25) {
         const sd = side();
@@ -275,7 +275,7 @@ export class ChunkManager {
       const poleD = E + 14;
       this.place(this.pools.pole, s0 + 10, poleD, 0, 1, 1, 1);
       if (slot.wires) this.buildWires(slot.wires, s0 + 10, s0 + 10 + CHUNK, poleD);
-      if (hash2(index, 6) < 0.07) this.place(this.pools.sign, s0 + 20, E - 4, 0, 1.3, 1, 1, undefined, 0.2);
+      if (hash2(index, 6) < 0.07) this.place(this.pools.sign, s0 + 20, E + 5, 0, 1.3, 1, 1, undefined, 0.2);
     } else {
       const cp = this.pools.conifer;
       const n = Math.round(60 * dens);
