@@ -71,16 +71,12 @@ export class UI {
         <div class="speedo">
           <div class="tyre" hidden><label>TIRE</label><div class="bar"><i></i></div></div>
           <svg class="gauge" viewBox="0 0 300 200">
-            <defs>
-              <linearGradient id="ggSpeed" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#2de2e6"/><stop offset="0.65" stop-color="#ffe25a"/><stop offset="1" stop-color="#ff3d6e"/></linearGradient>
-              <linearGradient id="ggRev" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#7ab8ff"/><stop offset="0.75" stop-color="#ffb84d"/><stop offset="1" stop-color="#ff3030"/></linearGradient>
-            </defs>
             <path class="bg" d="M 10 200 A 290 200 0 0 1 300 0 L 300 200 Z"/>
             <g class="ticks"></g>
             <path class="trk" pathLength="100" d="M 38 200 A 262 180 0 0 1 300 20"/>
             <path class="fil" pathLength="100" stroke-dasharray="0 100" d="M 38 200 A 262 180 0 0 1 300 20"/>
-            <path class="trk rev" pathLength="100" d="M 90 200 A 210 144 0 0 1 300 56"/>
-            <path class="fil rev" pathLength="100" stroke-dasharray="0 100" d="M 90 200 A 210 144 0 0 1 300 56"/>
+            <path class="trk rev" pathLength="100" d="M 109 200 A 191 132 0 0 1 300 68"/>
+            <path class="fil rev" pathLength="100" stroke-dasharray="0 100" d="M 109 200 A 191 132 0 0 1 300 68"/>
           </svg>
           <div class="read">
             <div class="line"><span class="spd">0</span><span class="gear">1</span></div>
