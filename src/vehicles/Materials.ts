@@ -21,7 +21,7 @@ export function paintLite(color: number) {
 }
 
 export const MAT = {
-  glass: new THREE.MeshPhysicalMaterial({ color: 0x0a1014, metalness: 0.1, roughness: 0.02, transparent: true, opacity: 0.85, envMapIntensity: 0.9 }),
+  glass: new THREE.MeshPhysicalMaterial({ color: 0x0b1620, metalness: 0.2, roughness: 0.02, transparent: true, opacity: 0.9, envMapIntensity: 0.9 }),
   glassLite: new THREE.MeshStandardMaterial({ color: 0x0c1216, metalness: 0.3, roughness: 0.1, envMapIntensity: 0.8 }),
   clearGlass: new THREE.MeshStandardMaterial({ color: 0x9fb4c0, metalness: 0.2, roughness: 0.02, transparent: true, opacity: 0.35 }),
   trim: new THREE.MeshStandardMaterial({ color: 0x121314, metalness: 0.1, roughness: 0.75 }),
@@ -32,7 +32,7 @@ export const MAT = {
   tire: new THREE.MeshStandardMaterial({ color: 0x151515, metalness: 0, roughness: 0.92 }),
   engine: new THREE.MeshStandardMaterial({ color: 0x555a60, metalness: 0.8, roughness: 0.4 }),
   head: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4e0, emissiveIntensity: 1.2 }),
-  tailOff: new THREE.MeshStandardMaterial({ color: 0x5a0a0a, emissive: 0xff1010, emissiveIntensity: 0.35, roughness: 0.3 }),
+  tailOff: new THREE.MeshStandardMaterial({ color: 0x5a0a0a, emissive: 0xff1010, emissiveIntensity: 0.8, roughness: 0.3 }),
   tailOn: new THREE.MeshStandardMaterial({ color: 0xff2020, emissive: 0xff1010, emissiveIntensity: 3.2 }),
   sigOff: new THREE.MeshStandardMaterial({ color: 0x6a4205, emissive: 0xff9a00, emissiveIntensity: 0.1 }),
   sigOn: new THREE.MeshStandardMaterial({ color: 0xffb020, emissive: 0xffa000, emissiveIntensity: 3.5 }),
