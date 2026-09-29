@@ -16,6 +16,7 @@ export interface Settings {
   /** bike rider aids: abs 0..2, tc 0..3, aw 0..3 (0 = off), eb 0..2 engine braking low / medium / high */
   aids: { abs: number; tc: number; aw: number; eb: number };
   ridingStyle: 'assisted' | 'manual';
+  showFps: boolean;
   vehicle: string;
   map: string;
 }
@@ -34,7 +35,7 @@ const defaults = (): SaveData => ({
     quality: 'high', resolution: 'native', fullscreen: false,
     volumes: { master: 0.8, engine: 0.8, sfx: 0.8 }, units: 'mph', camera: 'chase', difficulty: 1, timeOfDay: 'auto',
     bindings: structuredClone(DEFAULT_BINDINGS), padBindings: structuredClone(DEFAULT_PAD),
-    aids: { abs: 2, tc: 2, aw: 1, eb: 1 }, ridingStyle: 'assisted', vehicle: 'zr1', map: 'city',
+    aids: { abs: 2, tc: 2, aw: 1, eb: 1 }, ridingStyle: 'assisted', showFps: false, vehicle: 'zr1', map: 'city',
   },
   leaderboard: {},
 });

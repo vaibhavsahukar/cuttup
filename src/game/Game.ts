@@ -131,7 +131,10 @@ export class Game {
     return pr.y + (Math.abs(pr.d) > edge ? this.chunks.terrainH(pr.s, pr.d) : 0);
   }
 
-  resize(w: number, h: number) { this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); this.composer?.setSize(w, h); }
+  resize(w: number, h: number) {
+    this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
+    if (this.composer) { this.composer.setPixelRatio(this.renderer.getPixelRatio()); this.composer.setSize(w, h); }
+  }
 
   /** returns true while the run continues */
   update(realDt: number) {

@@ -43,9 +43,12 @@ async function boot() {
   let mode: 'menu' | 'game' | 'paused' | 'results' = 'menu';
   let lastRun = { map: st.map, vehicle: st.vehicle };
 
+  let renderScale = 1;
+  const basePR = () => Math.min(devicePixelRatio, 2) * QUALITY[st.quality].pixelRatio;
+  const setRenderScale = () => { renderer.setPixelRatio(basePR() * renderScale); resize(); };
   const applyDisplay = () => {
     const qq = QUALITY[st.quality];
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2) * qq.pixelRatio);
+    renderer.setPixelRatio(basePR() * renderScale);
     renderer.shadowMap.enabled = qq.shadows;
     window.native?.setFullscreen(st.fullscreen);
     if (!window.native && st.fullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => undefined);
@@ -64,6 +67,7 @@ async function boot() {
 
   const startGame = (mapId: string, vehicleId: string) => {
     game?.dispose();
+    renderScale = 1; renderer.setPixelRatio(basePR());
     lastRun = { map: mapId, vehicle: vehicleId };
     st.map = mapId; st.vehicle = vehicleId; save.persist();
     audio.resume();
@@ -147,22 +151,39 @@ async function boot() {
   };
 
   let flashT = 0;
-  const dtHist: number[] = [];
-  let last = performance.now();
-  let fpsAcc = 0, fpsN = 0;
+  let last = -1;
+  let fpsAcc = 0, fpsN = 0, worst = 0;
   (window as any).__fps = 0;
-  const frame = () => {
+  // Adaptive resolution: if the GPU can't hold ~60 fps the frame pacing goes uneven, which feels like
+  // stutter. Watch the frame interval and lower / raise the render resolution to keep it steady.
+  let baseline = 1 / 60; // fastest steady interval seen (the display's refresh)
+  const win: number[] = [];
+  let checkT = 0, goodChecks = 0;
+  const frame = (ts: number) => {
     requestAnimationFrame(frame);
-    const now = performance.now();
-    const rawDt = Math.min(0.05, (now - last) / 1000);
-    last = now;
-    // rAF timestamps jitter by a millisecond or two even on a steady display; feeding that straight into
-    // the simulation makes motion visibly uneven. Use the recent average unless the frame really hitched.
-    dtHist.push(rawDt); if (dtHist.length > 8) dtHist.shift();
-    const avgDt = dtHist.reduce((a, b) => a + b, 0) / dtHist.length;
-    const dt = Math.abs(rawDt - avgDt) < avgDt * 0.3 ? avgDt : rawDt;
-    fpsAcc += dt; fpsN++;
-    if (fpsAcc > 1) { (window as any).__fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0; }
+    // the rAF timestamp is the frame's vsync-aligned start time, much steadier than performance.now()
+    if (last < 0) last = ts;
+    const rawDt = (ts - last) / 1000;
+    last = ts;
+    const dt = Math.min(0.05, Math.max(0.001, rawDt));
+    fpsAcc += rawDt; fpsN++; worst = Math.max(worst, rawDt);
+    if (fpsAcc > 1) {
+      (window as any).__fps = fpsN / fpsAcc;
+      ui.fps(st.showFps, fpsN / fpsAcc, worst * 1000, renderScale);
+      fpsAcc = 0; fpsN = 0; worst = 0;
+    }
+    if (mode === 'game' && rawDt < 1) {
+      win.push(rawDt); if (win.length > 45) win.shift();
+      baseline = Math.min(baseline * 1.0005, Math.max(0.004, rawDt));
+      checkT += rawDt;
+      if (checkT > 0.75 && win.length >= 8) {
+        checkT = 0;
+        const avg = [...win].sort((a, b) => a - b)[win.length >> 1]; // median: one hitch doesn't count
+        if (avg > 1 / 55 && avg > baseline * 1.2 && renderScale > 0.5) { renderScale = Math.max(0.5, renderScale - 0.1); goodChecks = 0; setRenderScale(); win.length = 0; }
+        else if (avg < baseline * 1.1 && renderScale < 1) { if (++goodChecks >= 8) { renderScale = Math.min(1, renderScale + 0.05); goodChecks = 0; setRenderScale(); win.length = 0; } }
+        else goodChecks = 0;
+      }
+    }
     input.update(dt);
     if (mode !== 'game') pollPadMenu();
     if (game && (mode === 'game')) {
@@ -183,7 +204,7 @@ async function boot() {
       renderer.render(preview.scene, preview.camera);
     }
   };
-  frame();
+  frame(performance.now());
   /** test hook: advance the simulation without rendering (headless software GL is too slow for real time) */
   const advance = (seconds: number, stepDt = 1 / 60) => {
     for (let t = 0; t < seconds && game && mode === 'game'; t += stepDt) {

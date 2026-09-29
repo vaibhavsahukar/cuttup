@@ -65,6 +65,7 @@ export class UI {
       <div id="hud" class="screen">
         <div class="ctrl" id="ctrlHint"></div>
         <div class="score"><div class="v">0</div><div class="m">x1.0</div><div class="combo"><i></i></div></div>
+        <div class="fps" hidden></div>
         <div class="pops"></div>
         <div class="count"></div>
         <div class="dist"></div>
@@ -240,6 +241,7 @@ export class UI {
       <div class="row"><span>Resolution</span>${opt('resolution', res.map((r) => [r, r === 'native' ? 'Window' : r]), st.resolution)}</div>
       <div class="row"><span>Display</span>${opt('fullscreen', [['false', 'Windowed'], ['true', 'Fullscreen']], String(st.fullscreen))}</div>
       <div class="row"><span>Difficulty (traffic)</span>${opt('difficulty', [['0', 'Easy'], ['1', 'Normal'], ['2', 'Hard'], ['3', 'Insane']], String(st.difficulty))}</div>
+      <div class="row"><span>FPS counter <small>(shows frame rate and render resolution)</small></span>${opt('showFps', [['false', 'Off'], ['true', 'On']], String(st.showFps))}</div>
       <div class="row"><span>Speed units</span>${opt('units', [['mph', 'MPH'], ['kph', 'KM/H']], st.units)}</div>
       <div class="row"><span>Default camera</span>${opt('camera', [['chase', 'Chase'], ['hood', 'Hood / Cockpit']], st.camera)}</div>
       <div class="row"><span>Master volume</span><input type="range" min="0" max="1" step="0.05" data-vol="master" value="${st.volumes.master}"></div>
@@ -266,6 +268,7 @@ export class UI {
         else if (k === 'resolution') st.resolution = v;
         else if (k === 'fullscreen') st.fullscreen = v === 'true';
         else if (k === 'difficulty') st.difficulty = Number(v);
+        else if (k === 'showFps') st.showFps = v === 'true';
         else if (k === 'units') st.units = v as 'mph' | 'kph';
         else if (k === 'camera') st.camera = v as 'chase' | 'hood';
         else if (k === 'abs' || k === 'tc' || k === 'aw' || k === 'eb') st.aids[k] = Number(v);
@@ -360,6 +363,11 @@ export class UI {
     i.style.width = `${Math.round(Math.min(1.3, temp) / 1.3 * 100)}%`;
     i.style.background = temp < 0.75 ? '#5ab0ff' : temp < 1.1 ? '#4dff88' : '#ff5a4d';
     i.style.opacity = String(1 - wear * 0.5);
+  }
+  fps(on: boolean, fps: number, worstMs: number, scale: number) {
+    const el = $('#hud .fps');
+    el.hidden = !on;
+    if (on) el.textContent = `${Math.round(fps)} FPS · worst frame ${Math.round(worstMs)} ms · render ${Math.round(scale * 100)}%`;
   }
   crashMessage(text: string) { const e = $('#crashui .shame'); e.textContent = text; e.hidden = !text; }
   flash(v: number) { ($('#flash') as HTMLElement).style.opacity = String(v); }

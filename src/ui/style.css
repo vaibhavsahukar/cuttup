@@ -58,6 +58,8 @@ h2 { margin: 0 0 14px; font-size: 13px; letter-spacing: 0.35em; color: var(--dim
 .row .opts button { padding: 6px 12px; font-size: 12px; }
 .row .opts button.sel { border-color: var(--accent2); background: rgba(45,226,230,0.18); }
 input[type=range] { width: 260px; accent-color: var(--accent); }
+.fps { position: absolute; right: 16px; top: 12px; font-size: 11px; letter-spacing: 0.1em; color: var(--dim); }
+.fps[hidden] { display: none; }
 .bikehud[hidden] { display: none; }
 .bikehud { position: absolute; right: 40px; bottom: 150px; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; font-size: 12px; letter-spacing: 0.15em; }
 .bikehud .lights { display: flex; gap: 8px; }
