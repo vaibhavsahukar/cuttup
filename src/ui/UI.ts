@@ -385,7 +385,12 @@ export class UI {
     this.h.click();
     if (a === 'retry') this.h.restart(); else if (a === 'vehicle') this.h.garage(); else if (a === 'map') this.h.maps(); else this.h.toMenu();
   }
-  crashMessage(text: string) { const e = $('#crashui .shame'); e.textContent = text; e.hidden = !text; }
+  crashMessage(text: string, caught = false) {
+    const e = $('#crashui .shame'); e.textContent = text; e.hidden = !text;
+    const w = $('#crashui .wreck'); w.textContent = caught ? 'CAUGHT' : 'WRECKED'; w.classList.toggle('caught', caught);
+    // restart the banner animation for this crash
+    w.style.animation = 'none'; void w.offsetWidth; w.style.animation = '';
+  }
   flash(v: number) { ($('#flash') as HTMLElement).style.opacity = String(v); }
 
   // ---------------- results ----------------
@@ -393,7 +398,7 @@ export class UI {
     const k = units === 'mph' ? MPH : KPH;
     const board = this.save.data.leaderboard[mapId] ?? [];
     const dist = units === 'mph' ? `${(r.distance / 1609.34).toFixed(2)} mi` : `${(r.distance / 1000).toFixed(2)} km`;
-    const how = { car: 'Rear-ended / side-swiped traffic', headon: 'Head-on collision', barrier: 'Hit the barrier', tree: 'Left the road', rock: 'Hit a rock', lowside: 'Lowside: the bike slid out from under you', highside: 'Highside: the rear grabbed and threw you', looped: 'Looped it: flipped over backwards', endo: 'Went over the bars', tipover: 'Fell over' }[r.crashKind];
+    const how = r.caught ? 'Caught by the police' : { car: 'Rear-ended / side-swiped traffic', headon: 'Head-on collision', barrier: 'Hit the barrier', tree: 'Left the road', rock: 'Hit a rock', lowside: 'Lowside: the bike slid out from under you', highside: 'Highside: the rear grabbed and threw you', looped: 'Looped it: flipped over backwards', endo: 'Went over the bars', tipover: 'Fell over' }[r.crashKind];
     $('#results .panel').innerHTML = `
       <div>
         <h2>Run over · ${esc(getMap(mapId).name)}</h2>

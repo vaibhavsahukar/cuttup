@@ -8,6 +8,7 @@
  *   headon                hit an oncoming car
  *   truck                 what was hit is a truck, van or pickup
  *   cop                   what was hit is a police car
+ *   caught                a police car got you (the only tag such lines need: they replace the hit / solo lines)
  *   barrier / tree / rock ran into the roadside barrier / a tree / a rock
  *   fall                  a rider fall (lowside, highside, looped, endo, tipover), also by its own name
  *   bike / car            what you were driving
@@ -59,8 +60,6 @@ headon|Two cars, one lane, and somebody's whole future in between
 hit,truck|That was somebody's work truck. Their livelihood, and possibly more
 hit,truck|Hitting a truck. A bold way to find out what a few tons of steel think of you
 hit,truck|The driver of that vehicle was almost done for the day. Now they are done for good
-hit,cop|You rammed a police car. The paperwork is going to be the least of your problems
-hit,cop|Assaulting an officer, resisting arrest, and now this. The judge will read your obituary instead
 hit,bike|A motorcycle has no crumple zone. Neither does the rider, or the person you hit
 hit,bike|Helmets are great. Physics does not care
 hit,city|Rush hour on the highway, and somebody was just trying to get home
@@ -93,6 +92,25 @@ solo|You are officially the safest driver on the road now. Zero risk from the in
 solo|That was a really fast way to become a statistic
 solo|The world is a slightly safer place today. Thank you for your sacrifice
 solo|Congrats. The ambulance will not be needing the siren
+caught|Congratulations, you outran nobody. The officer would like a word
+caught|Nice run. The officer had a full tank, a siren and absolutely nothing better to do
+caught|You have the right to remain silent. Your driving already said plenty
+caught|Great news, you finally got a police escort. The handcuffs are complimentary
+caught|That was a bold strategy, outrunning a car that comes with a siren and a radio
+caught|Speeding, reckless driving and being outdriven by a patrol car. Quite the hat trick
+caught|The officer thanks you for your cooperation, which was not voluntary
+caught|You just made a police officer's whole week. He will tell this story at every dinner
+caught|Somebody call your lawyer. Then call a better one
+caught|Officer 1, you 0. He did not even spill his coffee
+caught|Slow down, they said. You did not, and now he gets to say it in person
+caught,car|Your car is going to the impound lot. You are going to explain this to your mother
+caught|You put up a good fight, for about as long as a coffee break
+caught|The good news is you are finally going somewhere with a police escort
+caught,city|Six lanes of open highway and you still got caught by the guy with the siren
+caught,country|Beautiful day, open road, and a patrol car that would not quit
+caught,forest|A winding backroad, no witnesses, and yet here comes the paperwork
+caught,bike|Two wheels, no siren, and a cop who did not even need to hurry
+caught,bike|Helmets are mandatory. So is stopping when the lights come on
 barrier,city|The wall had the right of way. It always does
 barrier,country|The rail had the right of way. It always does
 barrier|You found out what the barrier is made of. Spoiler: it is harder than you
@@ -134,8 +152,10 @@ const TRUCKS = new Set(['boxtruck', 'van', 'pickup']);
 
 /** the facts about a crash that messages are matched against */
 export function crashFacts(c: CrashContext) {
-  const f = new Set<string>([c.map, c.kind, c.bike ? 'bike' : 'car']);
   const hit = c.kind === 'car' || c.kind === 'headon';
+  // a police car catching you gets its own set of lines
+  if (hit && c.cop) return new Set<string>(['caught', c.map, c.bike ? 'bike' : 'car']);
+  const f = new Set<string>([c.map, c.kind, c.bike ? 'bike' : 'car']);
   f.add(hit ? 'hit' : 'solo');
   if (FALLS.has(c.kind)) f.add('fall');
   if (c.kind === 'barrier' || c.kind === 'tree' || c.kind === 'rock') f.add(c.kind);

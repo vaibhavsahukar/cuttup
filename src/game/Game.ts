@@ -23,7 +23,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
-export interface RunResult { score: number; distance: number; topSpeed: number; nearMisses: number; cutUps: number; time: number; crashKind: CrashKind; message: string }
+export interface RunResult { score: number; distance: number; topSpeed: number; nearMisses: number; cutUps: number; time: number; crashKind: CrashKind; message: string; caught: boolean }
 
 const fr: Frame = { x: 0, y: 0, z: 0, heading: 0, k: 0, grade: 0 };
 const PHYS_DT = 1 / 240;
@@ -400,14 +400,15 @@ export class Game {
     this.audio.crash(clamp(impact / 30, 0.4, 1.5));
     // hitting traffic gets a line about the other people; a solo crash gets one about you
     const message = randomCrashMessage({ map: this.map.id, kind, victim: hit?.type, cop: !!hit?.cop, bike: this.player.bike });
-    this.onCrash?.(message);
+    const caught = !!hit?.cop && (kind === 'car' || kind === 'headon');
+    this.onCrash?.(message, caught);
     this.result = {
       score: Math.round(this.scoring.score), distance: this.scoring.distance, topSpeed: this.player.topSpeed,
-      nearMisses: this.scoring.nearMisses, cutUps: this.scoring.cutUps, time: this.scoring.time, crashKind: kind, message,
+      nearMisses: this.scoring.nearMisses, cutUps: this.scoring.cutUps, time: this.scoring.time, crashKind: kind, message, caught,
     };
     void ph;
   }
-  onCrash: ((message: string) => void) | null = null;
+  onCrash: ((message: string, caught: boolean) => void) | null = null;
 
   finish() { this.state = 'done'; }
 

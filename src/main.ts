@@ -74,7 +74,7 @@ async function boot() {
     input.captureCb = null; input.padCaptureCb = null;
     game = new Game(renderer, audio, input, st, mapId, vehicleId, pmrem);
     game.onPopup = (p) => ui.popup(p);
-    game.onCrash = (msg) => { ui.crashMessage(msg); ui.show('crashui'); flashT = 0.6; };
+    game.onCrash = (msg, caught) => { ui.crashMessage(msg, caught); ui.show('crashui'); flashT = 0.6; };
     game.resize(innerWidth, innerHeight);
     input.clearPressed();
     ui.controlsHint();

@@ -111,6 +111,8 @@ input[type=range] { width: 260px; accent-color: var(--accent); }
 @keyframes shame { 0% { opacity: 0; } 12% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; } }
 .shame.small { position: static; transform: none; width: auto; text-align: left; font-size: 15px; color: #ff9aa2; margin: 6px 0 14px; text-shadow: none; animation: none; font-style: italic; }
 #crashui .skip { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: var(--dim); letter-spacing: 0.3em; font-size: 12px; }
+#crashui .wreck.caught { animation: pop 5s ease-out forwards, copflash 0.5s steps(1) infinite; letter-spacing: 0.12em; }
+@keyframes copflash { 0% { color: #ff4a4a; } 50% { color: #4d7dff; } }
 #crashui .wreck { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); font-size: 64px; font-weight: 900; font-style: italic; color: var(--accent); letter-spacing: 0.05em; text-shadow: 0 4px 30px rgba(0,0,0,0.8); animation: pop 5s ease-out forwards; }
 .letterbox::before, .letterbox::after { content: ''; position: fixed; left: 0; right: 0; height: 9vh; background: #000; }
 .letterbox::before { top: 0; } .letterbox::after { bottom: 0; }
