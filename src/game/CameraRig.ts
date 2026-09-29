@@ -64,35 +64,45 @@ export class CameraRig {
       this.look.lerp(desiredLook, 1 - Math.exp(-dt * 16));
     }
     this.init = true;
-    // shake: constant speed rumble + events
-    const rumble = clamp((spd - 30) / 60, 0, 1) * 0.03 + p.phys.wobble * 0.05 + (p.phys.onGrass ? 0.06 : 0);
-    const s = rumble + this.shake * 0.25;
+    // Shake is small, slow and applied sideways / up in camera space. (A fast speed rumble in world axes made
+    // the whole car look like it was juddering forwards and backwards at speed, so there is none.)
+    const rumble = p.phys.wobble * 0.02 + (p.phys.onGrass ? 0.02 : 0);
+    const s = rumble + this.shake * 0.06;
     this.shake = Math.max(0, this.shake - dt * 2.5);
     const n = (a: number) => Math.sin(this.t * a) * Math.sin(this.t * a * 0.37 + 1.3);
-    this.cam.position.copy(this.pos).add(new THREE.Vector3(n(41) * s, n(37) * s, n(29) * s * 0.5));
+    this.cam.position.copy(this.pos);
     this.cam.up.set(0, 1, 0);
     this.cam.lookAt(this.look);
+    this.cam.translateX(n(13) * s); this.cam.translateY(n(9) * s);
     this.cam.updateProjectionMatrix();
   }
 
   /** orbiting dramatic crash cam */
   crash(dt: number, focus: THREE.Vector3, angle: number, t: number, ground: number, side: number) {
     this.t += dt;
+    // the wreck tumbles and bounces; the camera follows a smoothed copy of it, not the raw body
+    this.focus.lerp(focus, 1 - Math.exp(-dt * 5));
     const phase = t < 1.2 ? 0 : 1;
     const r = phase === 0 ? 7 : 9 + t * 0.6;
     const a = angle + side * t * (phase === 0 ? 0.25 : 0.45);
     const hgt = phase === 0 ? 1.1 : 2.5 + t * 0.4;
-    const desired = new THREE.Vector3(focus.x + Math.sin(a) * r, Math.max(ground + 0.6, focus.y + hgt), focus.z + Math.cos(a) * r);
-    this.pos.lerp(desired, 1 - Math.exp(-dt * 4));
-    const s = this.shake * 0.3;
-    this.shake = Math.max(0, this.shake - dt * 1.5);
-    this.cam.position.copy(this.pos).add(new THREE.Vector3((Math.random() - 0.5) * s, (Math.random() - 0.5) * s, 0));
+    const f = this.focus;
+    const desired = new THREE.Vector3(f.x + Math.sin(a) * r, Math.max(ground + 0.6, f.y + hgt), f.z + Math.cos(a) * r);
+    this.pos.lerp(desired, 1 - Math.exp(-dt * 2.5));
+    // impact shake: one slow, quickly fading sway (no per-frame random noise)
+    const s = this.shake * 0.12;
+    this.shake = Math.max(0, this.shake - dt * 1.2);
+    this.cam.position.copy(this.pos);
     this.cam.up.set(0, 1, 0);
     this.cam.fov = damp(this.cam.fov, 50, 2, dt);
-    this.cam.lookAt(focus);
+    this.cam.lookAt(f);
+    this.cam.translateX(Math.sin(this.t * 7) * s); this.cam.translateY(Math.sin(this.t * 5 + 1) * s * 0.7);
     this.cam.updateProjectionMatrix();
   }
+  /** smoothed point the crash camera is looking at */
+  focus = new THREE.Vector3();
   snapCrash(focus: THREE.Vector3, angle: number) {
+    this.focus.copy(focus);
     this.pos.set(focus.x + Math.sin(angle) * 6, focus.y + 1.2, focus.z + Math.cos(angle) * 6);
   }
 }

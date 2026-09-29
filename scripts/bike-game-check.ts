@@ -32,7 +32,7 @@ const r2 = await page.evaluate(() => {
   const app = (window as any).__app;
   const g = app.game;
   g.startCrash('lowside', 20, null);
-  return { state: g.state, msg: g.result?.message, ui: document.querySelector('#crashui .shame')?.textContent };
+  return { state: g.state, msg: g.result?.message, kind: g.result?.crashKind, ui: document.querySelector('#crashui .shame')?.textContent };
 });
 console.log('crash:', JSON.stringify(r2));
 await page.waitForTimeout(3500);

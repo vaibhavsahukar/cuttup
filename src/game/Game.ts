@@ -197,7 +197,7 @@ export class Game {
     this.particles.update(dt);
 
     if (this.state === 'crash') {
-      this.rig.crash(dt, this.crash.focus, this.crash.camAngle, this.crash.t, this.groundAt(this.crash.focus), this.crash.camSide);
+      this.rig.crash(realDt, this.crash.focus, this.crash.camAngle, this.crash.t, this.groundAt(this.crash.focus), this.crash.camSide);
       // keep the cinematic camera on the player's side of the barriers (never inside walls / pillars)
       const pr = projectToRoad(this.path, this.camera.position, this.crash.focus ? this.crash.wrecks[0]?.s ?? ph.s : ph.s);
       const lo = this.map.road === 'highway' ? this.layout.playerMin + 0.6 : -30, hi = this.map.road === 'highway' ? this.layout.playerMax - 0.6 : 30;
@@ -206,7 +206,7 @@ export class Game {
         const y = this.camera.position.y;
         this.path.toWorld(pr.s, nd, 0, this.camera.position);
         this.camera.position.y = Math.max(y, this.camera.position.y + 0.6);
-        this.camera.lookAt(this.crash.focus);
+        this.camera.lookAt(this.rig.focus);
       }
     } else this.rig.update(realDt, p, input.lookback);
     this.env.tick(realDt);
@@ -349,11 +349,11 @@ export class Game {
     }
     this.crash.start(this.player, kind, impact, hit, this.traffic, contact);
     this.rig.snapCrash(this.crash.focus, this.crash.camAngle);
-    this.rig.addShake(1.5);
+    this.rig.addShake(0.8);
     this.audio.stopEngine();
     this.audio.crash(clamp(impact / 30, 0.4, 1.5));
-    // falling off on your own (looping it out backwards) hurt nobody else, so no message
-    const message = kind === 'looped' ? '' : randomCrashMessage();
+    // hitting traffic gets a line about the other people; a solo crash gets one about you
+    const message = randomCrashMessage(kind);
     this.onCrash?.(message);
     this.result = {
       score: Math.round(this.scoring.score), distance: this.scoring.distance, topSpeed: this.player.topSpeed,
