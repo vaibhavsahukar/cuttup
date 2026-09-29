@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import type { Player } from './Player';
 import { clamp, damp } from '../core/math';
 
+const tmpD = new THREE.Vector3();
+
 /** Chase cam (speed FOV, shake, lag), hood / cockpit cam, look-back, and cinematic crash orbit. */
 export class CameraRig {
   mode: 'chase' | 'hood' = 'chase';
@@ -60,21 +62,35 @@ export class CameraRig {
       desiredPos = root.position.clone().addScaledVector(cf, -dist).addScaledVector(up, height);
       desiredLook = root.position.clone().addScaledVector(cf, 6).addScaledVector(up, bike ? 0.9 : h * 0.6);
       if (!this.init) { this.pos.copy(desiredPos); this.look.copy(desiredLook); }
-      this.pos.lerp(desiredPos, 1 - Math.exp(-dt * 20)); // stiff follow: no lag-induced zoom out
-      this.look.lerp(desiredLook, 1 - Math.exp(-dt * 16));
+      // Follow rigidly along the driving direction and smooth only sideways / up. Lagging along the direction of
+      // travel turns any uneven frame time into the car lurching towards and away from the camera (a long frame
+      // moves the car a metre or more while the camera only catches part of it up), which looks like the car
+      // shaking forwards and backwards. Rigid means the car sits at the same distance in every frame.
+      this.follow(this.pos, desiredPos, cf, 1 - Math.exp(-dt * 20));
+      this.follow(this.look, desiredLook, cf, 1 - Math.exp(-dt * 16));
     }
     this.init = true;
     // Shake is small, slow and applied sideways / up in camera space. (A fast speed rumble in world axes made
     // the whole car look like it was juddering forwards and backwards at speed, so there is none.)
-    const rumble = p.phys.wobble * 0.02 + (p.phys.onGrass ? 0.02 : 0);
+    // Off-road rumble grows with speed and is zero when stationary.
+    const rumble = p.phys.wobble * 0.02 + (p.phys.onGrass ? clamp(spd / 45, 0, 1.4) * 0.07 : 0);
     const s = rumble + this.shake * 0.06;
     this.shake = Math.max(0, this.shake - dt * 2.5);
     const n = (a: number) => Math.sin(this.t * a) * Math.sin(this.t * a * 0.37 + 1.3);
     this.cam.position.copy(this.pos);
     this.cam.up.set(0, 1, 0);
     this.cam.lookAt(this.look);
-    this.cam.translateX(n(13) * s); this.cam.translateY(n(9) * s);
+    this.cam.translateX(n(19) * s); this.cam.translateY(n(15) * s);
     this.cam.updateProjectionMatrix();
+  }
+
+  /** move `cur` to `target`: exactly along `fwd`, eased across the other axes */
+  private follow(cur: THREE.Vector3, target: THREE.Vector3, fwd: THREE.Vector3, k: number) {
+    const d = tmpD.copy(target).sub(cur);
+    const along = d.dot(fwd);
+    cur.addScaledVector(fwd, along);
+    d.addScaledVector(fwd, -along);
+    cur.addScaledVector(d, k);
   }
 
   /** orbiting dramatic crash cam */
