@@ -7,13 +7,15 @@ import { AudioEngine } from './audio/AudioEngine';
 import { UI } from './ui/UI';
 import { PreviewStage } from './ui/PreviewStage';
 import { Game } from './game/Game';
-import { getVehicle } from './data/vehicles';
-import { modelTest } from './dev/modelTest';
+import { getVehicle, VEHICLES } from './data/vehicles';
+import { preloadGlbs } from './vehicles/GlbLibrary';
+import { ALL_MODEL_IDS } from './vehicles/Factory';
 
 const params = new URLSearchParams(location.search);
 
 async function boot() {
-  if (params.get('models')) { modelTest(params.get('models')!); return; }
+  if (params.get('glb')) { const { glbGallery } = await import('./dev/glbGallery'); await glbGallery(params.get('glb')!, Number(params.get('rot') ?? 0.6)); return; }
+  if (params.get('convert')) { const { convertFbx } = await import('./dev/convert'); (window as any).__glb = await convertFbx(params.get('convert')!); return; }
   const save = new Save();
   await save.load();
   const st = save.data.settings;
@@ -27,7 +29,12 @@ async function boot() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.body.appendChild(renderer.domElement);
-  document.getElementById('loading')?.remove();
+  // load every imported vehicle model up front (the game builds vehicles synchronously)
+  const loadingEl = document.getElementById('loading');
+  await preloadGlbs(ALL_MODEL_IDS, (f) => { if (loadingEl) loadingEl.textContent = `LOADING VEHICLES ${Math.round(f * 100)}%`; });
+  // saved vehicle may no longer exist (roster changed)
+  if (!VEHICLES.some((v) => v.id === st.vehicle)) st.vehicle = 'zr1';
+  loadingEl?.remove();
 
   const pmrem = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
   const input = new Input(st.bindings);

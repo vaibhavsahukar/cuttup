@@ -26,6 +26,8 @@ export interface VehicleModel {
   /** detail meshes hidden at distance (traffic LOD) */
   lod?: THREE.Object3D[];
   wheelMesh?: THREE.Mesh;
+  /** traffic proxy drawn by the instancer (no meshes of its own) */
+  proxy?: boolean;
 }
 
 const miscMat = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.35, roughness: 0.55 });

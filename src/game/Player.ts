@@ -72,8 +72,7 @@ export class Player {
       const r = this.model.bike.rider;
       if (r) r.root.position.x = damp(r.root.position.x, p.lean * 0.12, 6, dt);
       if (r) r.torso.rotation.z = damp(r.torso.rotation.z, -p.lean * 0.3, 6, dt);
-      this.model.wheels[0].spin.rotation.x = p.frontRot;
-      this.model.wheels[1].spin.rotation.x = p.rearRot;
+      if (this.model.wheels[1]) { this.model.wheels[0].spin.rotation.x = p.frontRot; this.model.wheels[1].spin.rotation.x = p.rearRot; }
     } else {
       this.roll = damp(this.roll, clamp(p.ay / 9.81, -1.3, 1.3) * sp.rollFactor, 7, dt);
       this.pitch = damp(this.pitch, clamp(p.ax / 9.81, -1.3, 1.3) * sp.pitchFactor, 7, dt);

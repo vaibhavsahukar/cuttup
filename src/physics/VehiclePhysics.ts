@@ -62,8 +62,9 @@ export class VehiclePhysics {
     // gearing: top gear reaches redline slightly above top speed
     const n = spec.gears;
     const vgN = this.vTop * 1.04;
-    const vg1 = vgN * (this.bike ? 0.36 : n >= 8 ? 0.2 : n === 7 ? 0.24 : 0.28);
-    const q = Math.pow(vgN / vg1, 1 / (n - 1));
+    // single speed (electric): one ratio covers the whole range
+    const vg1 = n === 1 ? vgN : vgN * (this.bike ? 0.36 : n >= 8 ? 0.2 : n === 7 ? 0.24 : 0.28);
+    const q = n === 1 ? 1 : Math.pow(vgN / vg1, 1 / (n - 1));
     this.gearTop = [];
     for (let i = 0; i < n; i++) this.gearTop.push(vg1 * Math.pow(q, i));
     // K = max(T(r) * r) so that peak power == P in every gear
@@ -148,6 +149,8 @@ export class VehiclePhysics {
     let Fdrive = 0;
     const reverse = c.brake > 0.5 && c.throttle < 0.1 && v < 1.0;
     if (this.shiftT <= 0) Fdrive = c.throttle * this.Fpeak[this.gear - 1] * this.torque(Math.min(1, clutchR));
+    // electric motor: flat maximum force up to base speed, then constant power
+    if (sp.gears === 1) Fdrive = c.throttle * Math.min(this.m * G * 1.25, this.P / Math.max(1, Math.abs(v)));
     if (rN >= 1.0) Fdrive = 0; // rev limiter
     // traction control, strength by stability (ZR1 ~ nearly off, Huracan strong)
     Fdrive *= 1 - clamp(this.wheelspin * sp.stability * sp.stability * 1.5, 0, 0.6);

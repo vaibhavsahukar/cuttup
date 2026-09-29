@@ -3,7 +3,8 @@ import type { RoadPath, Frame } from '../world/RoadPath';
 import type { Layout, MapSpec } from '../data/maps';
 import { buildTrafficModel, TRAFFIC_COLORS, TRAFFIC_TYPES, trafficDims, type TrafficType } from '../vehicles/Factory';
 import type { VehicleModel } from '../vehicles/ModelKit';
-import { MAT, paintLite } from '../vehicles/Materials';
+import { MAT } from '../vehicles/Materials';
+import { TrafficInstancer } from './TrafficInstancer';
 import { clamp, lerp, mulberry32, pick, range, smoothstep } from '../core/math';
 
 export type DriverType = 'fast' | 'slow' | 'scared';
@@ -65,10 +66,12 @@ export class Traffic {
   obstacles: Obstacle[] = []; // wrecks etc.
   spawnAhead: number;
   night = false;
+  instancer = new TrafficInstancer();
   /** behaviour counters (debug / verification) */
   stats = { laneChanges: { fast: 0, slow: 0, scared: 0 }, signalled: { fast: 0, slow: 0, scared: 0 }, panics: 0, honks: 0, spawned: 0 };
 
   constructor(public path: RoadPath, public map: MapSpec, public layout: Layout, public difficulty: number, drawDist: number) {
+    this.root.add(this.instancer.root);
     this.flow = map.flowSpeed * (0.9 + difficulty * 0.08);
     this.spawnAhead = Math.max(map.fogFar + 30, 260) * drawDist;
     this.spawnAhead = Math.min(this.spawnAhead, 700);
@@ -79,22 +82,30 @@ export class Traffic {
   }
   private lanesFor(dir: number) { return dir > 0 ? this.layout.lanes : this.layout.oncomingLanes; }
 
-  private getModel(type: TrafficType, color: number) {
+  /** normal traffic gets a light proxy (just a transform); the instancer draws it */
+  private getModel(type: TrafficType, _color: number): VehicleModel {
     const list = this.pool.get(type);
-    let m = list?.pop();
-    if (!m) { m = buildTrafficModel(type, color, false); this.root.add(m.root); }
-    if (type !== 'boxtruck') {
-      m.body.material = paintLite(color);
-      m.chassis.traverse((o) => { const mm = o as THREE.Mesh; if (mm.name === 'paint') mm.material = paintLite(color); });
-    }
-    m.root.visible = true;
-    return m;
+    const m = list?.pop();
+    if (m) return m;
+    const root = new THREE.Group(), chassis = new THREE.Group();
+    root.add(chassis);
+    return { root, chassis, body: new THREE.Mesh(), wheels: [], brake: [], sigL: [], sigR: [], heads: [], length: 0, width: 0, height: 0, color: 0, proxy: true };
+  }
+  /** swap a proxy for a real, individually animated model (needed when a car crashes) */
+  materialize(c: TrafficCar) {
+    if (!c.model.proxy) return;
+    const full = buildTrafficModel(c.type, 0xffffff, false);
+    full.root.position.copy(c.model.root.position);
+    full.root.quaternion.copy(c.model.root.quaternion);
+    this.root.add(full.root);
+    full.root.updateMatrixWorld(true);
+    c.model = full;
   }
   release(c: TrafficCar) {
     c.alive = false;
     c.model.root.visible = false;
     this.obstacles = this.obstacles.filter((o) => o !== c);
-    if (c.cop) { this.root.remove(c.model.root); return; } // police models are never recycled as traffic
+    if (c.cop || !c.model.proxy) { this.root.remove(c.model.root); return; } // real models (cops, wrecks) are not recycled
     if (!this.pool.has(c.type)) this.pool.set(c.type, []);
     this.pool.get(c.type)!.push(c.model);
   }
@@ -144,17 +155,8 @@ export class Traffic {
   }
 
   /** build spare models up front so spawning never has to create geometry mid-run */
-  prewarm(perType = 3) {
-    for (const t of TRAFFIC_TYPES) {
-      if (!this.pool.has(t)) this.pool.set(t, []);
-      for (let i = 0; i < perType; i++) {
-        const m = buildTrafficModel(t, TRAFFIC_COLORS[i % TRAFFIC_COLORS.length], false);
-        m.root.visible = false;
-        this.root.add(m.root);
-        this.pool.get(t)!.push(m);
-      }
-    }
-  }
+  /** proxies are free to create; kept for API compatibility */
+  prewarm(_perType = 3) {}
 
   populate(playerS: number) {
     // initial fill: evenly from just ahead of the player out to the spawn horizon (before the first frame)
@@ -405,6 +407,7 @@ export class Traffic {
   /** push transforms / lights to the scene */
   sync(dt: number, playerS = 0) {
     const blink = Math.floor(this.time * 3) % 2 === 0;
+    this.instancer.begin();
     for (const c of this.cars) {
       if (!c.alive) continue;
       // LOD: drop detail meshes far away (fog hides them anyway)
@@ -412,6 +415,7 @@ export class Traffic {
       if (c.model.lod) for (const o of c.model.lod) o.visible = !far;
       if (c.model.wheelMesh) c.model.wheelMesh.visible = Math.abs(c.s - playerS) < 320;
       if (c.wrecked) continue;
+      if (c.model.proxy && Math.abs(c.s - playerS) > 450) continue; // beyond fog: not drawn
       this.path.frame(c.s, fr);
       this.path.toWorld(c.s, c.d, 0, v3, fr);
       const m = c.model;
@@ -419,6 +423,11 @@ export class Traffic {
       const yaw = fr.heading + (c.dir < 0 ? Math.PI : 0) + c.yaw;
       eul.set(-Math.atan(fr.grade) * c.dir, yaw, 0);
       m.root.quaternion.setFromEuler(eul);
+      if (m.proxy) {
+        const sigOn = blink && c.signal !== 0;
+        this.instancer.add(c.type, m.root, c.braking, sigOn && c.signal === -1, sigOn && c.signal === 1);
+        continue;
+      }
       // body dive under braking, squat on accel
       m.chassis.rotation.x = clamp(c.acc * 0.006, -0.03, 0.02);
       const spin = (c.v / 0.34) * dt;
@@ -431,6 +440,7 @@ export class Traffic {
       for (const s of m.sigL) s.material = left === -1 && blink ? MAT.sigOn : MAT.sigOff;
       for (const s of m.sigR) s.material = left === 1 && blink ? MAT.sigOn : MAT.sigOff;
     }
+    this.instancer.end();
   }
 
   clear() {

@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import type { Traffic, TrafficCar, PlayerProxy } from './Traffic';
 import { DRIVERS } from './Traffic';
-import { buildTrafficModel, trafficDims } from '../vehicles/Factory';
-import { paintLite } from '../vehicles/Materials';
+import { buildCopModel, copDims } from '../vehicles/Factory';
 import type { Layout, MapSpec } from '../data/maps';
 import { RigidBody } from '../physics/RigidBody';
 import { projectToRoad, type RoadPath } from '../world/RoadPath';
@@ -21,7 +20,7 @@ const redOn = new THREE.MeshStandardMaterial({ color: 0xff2020, emissive: 0xff00
 const blueOn = new THREE.MeshStandardMaterial({ color: 0x2040ff, emissive: 0x0030ff, emissiveIntensity: 4 });
 const lampOff = new THREE.MeshStandardMaterial({ color: 0x222228, emissive: 0x000000 });
 
-interface Cop { car: TrafficCar; red: THREE.Mesh; blue: THREE.Mesh; skill: number; laneT: number; stuckT: number }
+interface Cop { car: TrafficCar; red: THREE.Mesh; blue: THREE.Mesh; skill: number; vMax: number; charger: boolean; laneT: number; stuckT: number }
 interface Wreck { car: TrafficCar; body: RigidBody; age: number }
 
 /**
@@ -37,7 +36,7 @@ export class Police {
   private time = 0;
   wanted = 0;
   onWreck: ((intensity: number) => void) | null = null;
-  onDispatch: ((n: number) => void) | null = null;
+  onDispatch: ((n: number, charger: boolean) => void) | null = null;
 
   constructor(public traffic: Traffic, public path: RoadPath, public map: MapSpec, public layout: Layout, public particles: Particles, public ground: (p: THREE.Vector3) => number) {}
 
@@ -45,24 +44,19 @@ export class Police {
     return this.cops.length;
   }
 
-  private spawn(player: PlayerProxy) {
-    const dims = trafficDims('sedan');
-    const model = buildTrafficModel('sedan', 0x101114, false);
-    // livery: white doors, roof light bar
-    const white = paintLite(0xf2f2f2);
-    const side = new THREE.BoxGeometry(0.03, 0.42, 1.9);
-    for (const sx of [1, -1]) {
-      const m = new THREE.Mesh(side, white);
-      m.position.set(sx * (dims.width / 2 + 0.005), 0.62, 0.1);
-      model.chassis.add(m);
-    }
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.1, 0.28), lampOff);
-    bar.position.set(0, dims.height + 0.06, -0.1);
-    const red = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.1, 0.24), redOn);
-    const blue = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.1, 0.24), blueOn);
-    red.position.set(0.27, dims.height + 0.08, -0.1);
-    blue.position.set(-0.27, dims.height + 0.08, -0.1);
-    model.chassis.add(bar, red, blue);
+  /** Dodge Charger pursuit units only join at higher heat, and are faster and sharper */
+  static CHARGER_FROM = 50000;
+  private spawn(player: PlayerProxy, score: number) {
+    const charger = score >= Police.CHARGER_FROM && Math.random() < (score >= 100000 ? 0.7 : 0.5);
+    const type = charger ? 'cop_charger' : 'cop_basic';
+    const dims = copDims(type);
+    const model = buildCopModel(type);
+    // flashing light bar on the roof (imported models' own bars are unlit)
+    const red = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.22), redOn);
+    const blue = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.22), blueOn);
+    red.position.set(0.25, dims.height + 0.02, -0.15);
+    blue.position.set(-0.25, dims.height + 0.02, -0.15);
+    model.chassis.add(red, blue);
     this.traffic.root.add(model.root);
     // enter from behind, out of view, in a free lane near the player
     const lanes = this.layout.lanes;
@@ -76,8 +70,8 @@ export class Police {
       panicT: 0, freezeT: 0, honkCd: 0, braking: false, wrecked: false, yaw: 0, passedSign: 0, nearMissed: true, alive: true, cop: true,
     };
     this.traffic.cars.push(car);
-    this.cops.push({ car, red, blue, skill: 0.75 + Math.random() * 0.2, laneT: 0, stuckT: 0 });
-    this.onDispatch?.(this.cops.length);
+    this.cops.push({ car, red, blue, skill: charger ? 0.9 + Math.random() * 0.1 : 0.7 + Math.random() * 0.2, vMax: charger ? 105 : 80, charger, laneT: 0, stuckT: 0 });
+    this.onDispatch?.(this.cops.length, charger);
   }
 
   update(dt: number, player: PlayerProxy, playerVl: number, score: number, active: boolean) {
@@ -87,7 +81,7 @@ export class Police {
     this.cops = this.cops.filter((c) => c.car.alive && !c.car.wrecked);
     if (active && this.cops.length < this.wanted) {
       this.respawnT -= dt;
-      if (this.respawnT <= 0) { this.spawn(player); this.respawnT = 3.5; }
+      if (this.respawnT <= 0) { this.spawn(player, score); this.respawnT = 3.5; }
     }
     const hw = this.map.road === 'highway';
     const dMin = (hw ? this.layout.playerMin : this.layout.softMin) + 1.1;
@@ -103,7 +97,7 @@ export class Police {
   private drive(cop: Cop, dt: number, pl: PlayerProxy, playerVl: number, dMin: number, dMax: number) {
     const c = cop.car;
     const rel = pl.s - c.s; // + = player ahead
-    const vMax = 88;
+    const vMax = cop.vMax;
     // longitudinal: catch up fast, then close in to ram
     let vT = rel > 40 ? pl.v + 14 + rel * 0.06 : rel > 6 ? pl.v + 6 : rel > -4 ? pl.v + 3 : pl.v - 6;
     vT = clamp(vT, 0, vMax);
@@ -148,7 +142,7 @@ export class Police {
     }
     dT = clamp(dT, dMin, dMax);
     // actuate with skill-limited rates (this is where imperfect cops make mistakes)
-    const acc = clamp((vT - c.v) * 2, -9, 7 * cop.skill);
+    const acc = clamp((vT - c.v) * 2, -9, (cop.charger ? 9 : 6.5) * cop.skill);
     c.acc = acc;
     c.v = Math.max(0, c.v + acc * dt);
     c.braking = acc < -1;
@@ -191,6 +185,7 @@ export class Police {
 
   private wreck(car: TrafficCar, sev: number, other: TrafficCar, at: THREE.Vector3) {
     if (car.wrecked) return;
+    this.traffic.materialize(car);
     car.wrecked = true;
     const body = new RigidBody(car.model.root, new THREE.Vector3(car.W / 2, 0.7, car.L / 2), car.type === 'boxtruck' ? 7000 : 1600, new THREE.Vector3(0, 0.75, 0));
     const f = this.path.frame(car.s);

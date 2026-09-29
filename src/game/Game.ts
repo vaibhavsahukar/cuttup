@@ -102,7 +102,7 @@ export class Game {
     this.crash.onPileup = (v) => { this.audio.crash(clamp(v / 40, 0.2, 0.7)); this.rig.addShake(0.5); };
     this.police = new Police(this.traffic, this.path, this.map, this.layout, this.particles, ground);
     this.police.onWreck = (k) => { this.audio.crash(k * 0.6); this.onPopup?.({ text: 'COP DOWN', sub: 'another unit is coming', color: '#6cf' }); };
-    this.police.onDispatch = (n) => this.onPopup?.({ text: n === 1 ? 'POLICE PURSUIT' : `${n} UNITS IN PURSUIT`, color: '#ff4040', big: true });
+    this.police.onDispatch = (n, charger) => this.onPopup?.({ text: charger ? 'INTERCEPTOR DISPATCHED' : n === 1 ? 'POLICE PURSUIT' : `${n} UNITS IN PURSUIT`, sub: charger ? 'Charger pursuit unit' : undefined, color: '#ff4040', big: true });
     this.scoring = new Scoring();
     this.scoring.onPopup = (p) => this.onPopup?.(p);
     this.rig = new CameraRig(this.camera);

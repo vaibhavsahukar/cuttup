@@ -16,7 +16,8 @@
     "smoke": "tsx scripts/smoke.ts",
     "check:traffic": "tsx scripts/traffic-check.ts",
     "check:features": "tsx scripts/features-check.ts",
-    "dist:dir": "npm run build && electron-builder --win dir --x64"
+    "dist:dir": "npm run build && electron-builder --win dir --x64",
+    "artifact": "npm run build && node scripts/make-artifact.mjs"
   },
   "build": {
     "appId": "com.cutup.game",
@@ -56,6 +57,7 @@
     "electron-builder": "^26.15.3",
     "meshoptimizer": "^1.3.0",
     "playwright": "^1.63.0",
+    "sharp": "^0.35.5",
     "three": "^0.186.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",

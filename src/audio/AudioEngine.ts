@@ -108,7 +108,8 @@ export class AudioEngine {
     const e = this.eng;
     if (e) {
       const sp = e.spec;
-      const fire = (rpm / 60) * (sp.engine.cylinders / 2) * 0.5; // perceived fundamental
+      // electric motors (0 cylinders) whine instead of firing pulses
+      const fire = sp.engine.cylinders === 0 ? 90 + (rpm / sp.redline) * 900 : (rpm / 60) * (sp.engine.cylinders / 2) * 0.5; // perceived fundamental
       const f = clamp(fire * sp.engine.tone, 20, 1200);
       e.o1.frequency.setTargetAtTime(f, t, 0.02);
       e.o2.frequency.setTargetAtTime(f * 0.5, t, 0.02);

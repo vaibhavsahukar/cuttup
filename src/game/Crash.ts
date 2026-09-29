@@ -128,6 +128,7 @@ export class CrashScene {
   }
 
   private wreckCar(c: TrafficCar, traffic: Traffic): Wreck {
+    traffic.materialize(c); // instanced traffic becomes a real object that can tumble and dent
     c.wrecked = true;
     c.braking = true;
     for (const b of c.model.brake) b.material = MAT.tailOn;
