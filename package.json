@@ -1,9 +1,9 @@
 {
   "name": "cut-up",
-  "productName": "CUT-UP",
+  "productName": "Reckless Driving The Game",
   "version": "1.0.0",
   "description": "Infinitely generated arcade traffic game",
-  "author": "CUT-UP",
+  "author": "Reckless Driving The Game",
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
@@ -21,7 +21,7 @@
   },
   "build": {
     "appId": "com.cutup.game",
-    "productName": "CUT-UP",
+    "productName": "Reckless Driving The Game",
     "directories": {
       "output": "release"
     },
@@ -42,7 +42,7 @@
       "allowToChangeInstallationDirectory": true
     },
     "portable": {
-      "artifactName": "CUT-UP-${version}-portable.exe"
+      "artifactName": "Reckless-Driving-The-Game-${version}-portable.exe"
     }
   },
   "devDependencies": {

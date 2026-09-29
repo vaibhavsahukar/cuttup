@@ -19,8 +19,9 @@ for (const [map, veh, kind, v] of cases) {
     g.player.phys.v = v;
     app.advance(0.4);
     g.startCrash(kind, v, null);
-    let f = 0;
-    while (g.state === 'crash' && f < 60 * 30) { g.update(1 / 60); f++; }
+    // the crash screen now waits for the player: measure until the wreck has been at rest for 1.4 s
+    let f = 0, calm = 0;
+    while (g.state === 'crash' && f < 60 * 30 && calm < 1.4) { g.update(1 / 60); f++; calm = g.crash.settled() ? calm + 1 / 60 : 0; }
     const w = g.crash.wrecks[0];
     return { seconds: +(f / 60).toFixed(1), state: g.state, wreckSpeed: +w.body.vel.length().toFixed(2) };
   }, [map, veh, kind, v] as const);

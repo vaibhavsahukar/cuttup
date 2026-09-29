@@ -1,4 +1,4 @@
-# CUT-UP
+# Reckless Driving: The Game
 
 Infinitely generated arcade traffic game. Pick a car or a motorcycle, pick a map, and cut through endless traffic for distance, sustained speed and near misses until you wreck.
 
@@ -22,9 +22,9 @@ Built with TypeScript, Three.js (WebGL) and Vite, wrapped in Electron and packag
 
 Outputs of `npm run dist`:
 
-* `release/CUT-UP Setup 1.0.0.exe` (NSIS installer, lets you choose the install directory)
-* `release/CUT-UP-1.0.0-portable.exe` (single file, no install)
-* `release/win-unpacked/CUT-UP.exe` (unpacked app)
+* `release/Reckless Driving The Game Setup 1.0.0.exe` (NSIS installer, lets you choose the install directory)
+* `release/Reckless-Driving-The-Game-1.0.0-portable.exe` (single file, no install)
+* `release/win-unpacked/Reckless Driving The Game.exe` (unpacked app)
 
 Building the Windows targets on Windows needs nothing extra. On Linux/macOS electron-builder needs **Wine** (both 64 and 32 bit prefixes; NSIS runs its uninstaller stub under Wine). The exe is unsigned and uses the default Electron icon.
 

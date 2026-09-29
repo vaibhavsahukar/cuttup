@@ -5,7 +5,7 @@ const fs = require('fs');
 let win;
 function create() {
   win = new BrowserWindow({
-    width: 1600, height: 900, backgroundColor: '#07080c', title: 'CUT-UP',
+    width: 1600, height: 900, backgroundColor: '#07080c', title: 'Reckless Driving: The Game',
     autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, backgroundThrottling: false },
   });
@@ -14,6 +14,8 @@ function create() {
   else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
 }
 
+// the game was called CUT-UP before: keep its data folder so existing saves and leaderboards survive the rename
+app.setPath('userData', path.join(app.getPath('appData'), 'CUT-UP'));
 const saveFile = () => path.join(app.getPath('userData'), 'cutup-save.json');
 ipcMain.handle('save:read', () => { try { return fs.readFileSync(saveFile(), 'utf8'); } catch { return null; } });
 ipcMain.handle('save:write', (_e, data) => { fs.writeFileSync(saveFile(), String(data)); return true; });

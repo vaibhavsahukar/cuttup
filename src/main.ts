@@ -134,6 +134,15 @@ async function boot() {
       else if (ui.current !== 'menu' && ui.current !== 'results') ui.h.back();
     }
   });
+  // crash screen: stays until the player presses Enter or the gamepad A button
+  addEventListener('keydown', (e) => { if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !e.repeat && mode === 'game' && game?.state === 'crash') { game.continueCrash(); e.preventDefault(); } });
+  let padAHeld = true; // a fresh press is needed: A held while driving must not count
+  const pollCrashPad = () => {
+    const p = [...(navigator.getGamepads?.() ?? [])].find((g) => g && g.connected);
+    const a = !!p?.buttons[0]?.pressed;
+    if (a && !padAHeld && game?.state === 'crash') game.continueCrash();
+    padAHeld = a;
+  };
   // gamepad menu navigation
   let padPrev: boolean[] = [];
   const pollPadMenu = () => {
@@ -190,7 +199,7 @@ async function boot() {
       }
     }
     input.update(dt);
-    if (mode !== 'game') pollPadMenu();
+    if (mode !== 'game') pollPadMenu(); else pollCrashPad();
     if (game && (mode === 'game')) {
       if (input.pressed('pause') && game.state !== 'crash') { mode = 'paused'; ui.show('pause'); }
       else {

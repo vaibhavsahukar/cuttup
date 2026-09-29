@@ -27,6 +27,8 @@ export interface RunResult { score: number; distance: number; topSpeed: number; 
 
 const fr: Frame = { x: 0, y: 0, z: 0, heading: 0, k: 0, grade: 0 };
 const PHYS_DT = 1 / 240;
+/** seconds after a crash before A / Enter can continue (the crash screen's prompt fades in at the same moment) */
+export const CRASH_PROMPT_DELAY = 1.2;
 
 /** One run on one map with one vehicle. Owns its scene. */
 export class Game {
@@ -40,8 +42,6 @@ export class Game {
   private proxy: PlayerProxy;
   scrape = 0;
   crashTimer = 0;
-  private crashCalm = 0;
-  private crashPressT = -1;
   result: RunResult | null = null;
   onPopup: ((p: Popup) => void) | null = null;
   private sGuess = 0;
@@ -187,20 +187,12 @@ export class Game {
       this.proxy.alive = false;
       this.crash.update(dt, this.traffic);
       this.crashTimer += realDt;
-      // Let the wreck play out: results only once everything has come to rest (and lingered a moment), never before
-      // 4 s, and at most 14 s. A deliberate key press can skip after 2.5 s; button mashing during the impact is ignored.
-      this.crashCalm = this.crash.settled() ? this.crashCalm + realDt : 0;
-      if (input.pressed('pause') || input.pressed('handbrake')) {
-        const mashing = this.crashTimer - this.crashPressT < 0.5;
-        this.crashPressT = this.crashTimer;
-        if (this.crashTimer > 2.5 && !mashing) this.finish();
-      }
-      if ((this.crashTimer > 4 && this.crashCalm > 1.4) || this.crashTimer > 14) this.finish();
+      // The wreck plays out and the crash screen stays until the player continues (A or Enter, see continueCrash)
     }
 
     this.traffic.update(dt, this.proxy, this.scoring.distance);
     this.police.update(dt, this.proxy, ph.dDot, this.scoring.score, this.state === 'driving');
-    this.audio.siren(this.police.cops.length > 0 && this.state !== 'done' ? clamp(1 - this.police.nearest(ph.s) / 250, 0.1, 1) : 0);
+    this.audio.siren(this.police.cops.length > 0 && this.state !== 'done' && !(this.state === 'crash' && this.crashTimer > 6) ? clamp(1 - this.police.nearest(ph.s) / 250, 0.1, 1) : 0);
     this.chunks.update(this.state === 'crash' ? this.crash.wrecks[0]?.s ?? ph.s : ph.s);
     if (this.state !== 'crash') p.sync(dt);
     this.traffic.sync(dt, ph.s);
@@ -385,7 +377,7 @@ export class Game {
   startCrash(kind: CrashKind, impact: number, hit: TrafficCar | null) {
     if (this.state === 'crash' || this.state === 'done') return;
     this.state = 'crash';
-    this.crashTimer = 0; this.crashCalm = 0; this.crashPressT = -1;
+    this.crashTimer = 0;
     const ph = this.player.phys;
     this.player.sync(1 / 60);
     const contact = this.player.model.root.position.clone().add(new THREE.Vector3(0, 0.6, 0));
@@ -411,6 +403,8 @@ export class Game {
   onCrash: ((message: string, caught: boolean) => void) | null = null;
 
   finish() { this.state = 'done'; }
+  /** the player pressed A / Enter on the crash screen; ignored for the first moments so a mashed button cannot skip the impact */
+  continueCrash() { if (this.state === 'crash' && this.crashTimer > CRASH_PROMPT_DELAY) this.finish(); }
 
   /** bloom on lights / sun glints, then tone mapping + sRGB via OutputPass */
   private composer?: EffectComposer;

@@ -38,7 +38,7 @@ export class UI {
     document.body.insertAdjacentHTML('beforeend', `
       <div id="menu" class="screen">
         <div class="col">
-          <div class="logo">CUT-UP</div>
+          <div class="logo">RECKLESS DRIVING:<span>THE GAME</span></div>
           <div class="tag">ENDLESS TRAFFIC · NO BRAKES ON FUN</div>
           <button data-a="play" class="primary">Play</button>
           <button data-a="garage">Vehicle Select</button>
@@ -89,7 +89,7 @@ export class UI {
           </div>
         </div>
       </div>
-      <div id="crashui" class="screen letterbox"><div class="wreck">WRECKED</div><div class="shame"></div><div class="skip">PRESS SPACE / ESC TO SKIP</div></div>
+      <div id="crashui" class="screen letterbox"><div class="wreck">WRECKED</div><div class="shame"></div><div class="skip">A or Enter to continue</div></div>
       <div id="pause" class="screen"><div class="panel center">
         <h2>Paused</h2>
         <button data-a="resume" class="primary">Resume</button><button data-a="restart">Restart</button>
