@@ -80,7 +80,7 @@ input[type=range] { width: 260px; accent-color: var(--accent); }
 #hud .unit { font-size: 14px; letter-spacing: 0.3em; color: var(--dim); }
 #hud .gear { display: inline-block; margin-left: 10px; font-size: 22px; font-weight: 800; color: var(--accent2); }
 #hud .tach { width: 240px; height: 6px; background: rgba(255,255,255,0.12); border-radius: 3px; margin: 8px 0 0 auto; overflow: hidden; }
-#hud .tach i { display: block; height: 100%; background: linear-gradient(90deg, #2de2e6, #ffe25a 70%, #ff3d6e); }
+#hud .tach i { display: block; height: 100%; background: #ffb62e; }
 #hud .score { position: absolute; right: 36px; top: 20px; text-align: right; text-shadow: 0 2px 10px rgba(0,0,0,0.6); }
 #hud .score .v { font-size: 40px; font-weight: 900; font-variant-numeric: tabular-nums; }
 #hud .score .m { font-size: 20px; font-weight: 800; color: var(--accent); }
