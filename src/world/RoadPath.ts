@@ -102,3 +102,17 @@ export class RoadPath {
     return out;
   }
 }
+
+const pf: Frame = { x: 0, y: 0, z: 0, heading: 0, k: 0, grade: 0 };
+/** Project a world point to road coordinates near sGuess (Newton-style refinement). */
+export function projectToRoad(path: RoadPath, p: THREE.Vector3, sGuess: number) {
+  let s = sGuess;
+  for (let i = 0; i < 4; i++) {
+    path.frame(s, pf);
+    const dx = p.x - pf.x, dz = p.z - pf.z;
+    s += dx * Math.sin(pf.heading) + dz * Math.cos(pf.heading);
+  }
+  path.frame(s, pf);
+  const d = -(p.x - pf.x) * Math.cos(pf.heading) + (p.z - pf.z) * Math.sin(pf.heading);
+  return { s, d, y: pf.y };
+}
