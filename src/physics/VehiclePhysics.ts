@@ -16,6 +16,8 @@ import { clamp, lerp } from '../core/math';
  */
 export const G = 9.81;
 const MPH = 0.44704;
+/** a wheelie can only loop over below this speed (m/s); faster than 75 mph the front stops short of the balance point */
+const LOOP_V = 75 * MPH;
 /** arcade lateral grip multiplier: makes cornering and lane changes much easier than real tyres */
 export const ARCADE_GRIP = 1.35;
 /** bikes: pitch inertia multiplier (rider + wheels), slows wheelies / stoppies to a catchable pace */
@@ -55,6 +57,8 @@ export class VehiclePhysics {
   pull = 0; // rider weight back (0..1), smoothed
   wheelieT = 0; // seconds with the front up (scoring)
   private pullPrev = 0; private clutchT = 0;
+  /** extra front lift the rider adds by holding the wheelie too long: the assist slowly loses the front (rad) */
+  private overPull = 0;
   /** set when the rider falls; the game turns it into a crash */
   fall: BikeFall | null = null;
   pitchRate = 0;
@@ -145,7 +149,7 @@ export class VehiclePhysics {
   reset(s: number, d: number, v: number) {
     this.s = s; this.d = d; this.psi = 0; this.v = v; this.vl = 0; this.r = 0;
     this.steerAngle = 0; this.lean = 0; this.wheelie = 0; this.pitchRate = 0; this.fall = null; this.hang = 0;
-    this.unbalanced = 0; this.washout = 0; this.slideT = 0; this.frontLock = 0; this.rearLock = 0;
+    this.overPull = 0; this.unbalanced = 0; this.washout = 0; this.slideT = 0; this.frontLock = 0; this.rearLock = 0;
     this.gear = 1;
     while (this.gear < this.spec.gears && v > this.gearTop[this.gear - 1] * 0.85) this.gear++;
   }
@@ -252,7 +256,11 @@ export class VehiclePhysics {
       if (awLvl > 0) {
         // allow the front up to `cap`, then pick the drive that brings pitch back toward it
         // when the rider asks for a wheelie, levels 1 / 2 only stop a loop-out; 3 keeps it tiny
-        const cap = this.pull > 0.3 ? [0, 0.55, 0.35, 0.08][awLvl] : [0, 0.1, 0.04, 0][awLvl], t = Math.max(0, this.wheelie);
+        // hold the wheelie and the assist slowly loses the front (quicker the slower you go, never above 75 mph),
+        // so a held wheelie eventually loops; letting go of the pull brings the front down again
+        if (this.pull > 0.3 && this.wheelie > 0.25 && av < LOOP_V) this.overPull += 0.32 * (1 - av / LOOP_V) * dt;
+        else this.overPull = Math.max(0, this.overPull - 0.6 * dt);
+        const cap = this.pull > 0.3 ? [0, 0.55, 0.35, 0.08][awLvl] + this.overPull : [0, 0.1, 0.04, 0][awLvl], t = Math.max(0, this.wheelie);
         const bw = this.bEff;
         const hE = this.h * Math.cos(t) + bw * Math.sin(t), bE = bw * Math.cos(t) - this.h * Math.sin(t);
         const accWant = -14 * (t - cap * 0.8) - 5 * this.pitchRate;
@@ -484,7 +492,12 @@ export class VehiclePhysics {
 
     // ---- falls ----
     if (this.fall) return;
-    if (this.wheelie > Math.atan2(this.bEff, this.h) + 0.12) { this.fall = 'looped'; return; }
+    const loopAt = Math.atan2(this.bEff, this.h) + 0.12;
+    if (this.wheelie > loopAt) {
+      if (av < LOOP_V) { this.fall = 'looped'; return; }
+      // too fast to flip over: the front simply stops at the balance limit
+      this.wheelie = loopAt; this.pitchRate = Math.min(0, this.pitchRate);
+    }
     if (this.wheelie < -(Math.atan2(this.a, this.h) + 0.1)) { this.fall = 'endo'; return; }
     // balance: a lean the current turn doesn't support (too slow, or the front washed out)
     this.leanEq = Math.atan(this.ayTurn / G);

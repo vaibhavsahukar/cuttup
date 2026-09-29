@@ -1,37 +1,30 @@
-// Loop-out crash: pull a wheelie with aids off until the bike falls, then track its pitch through the wreck.
-import { chromium } from 'playwright';
-const out = process.argv[2] ?? '.';
-const b = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-const page = await b.newPage({ viewport: { width: 1280, height: 720 } });
-await page.addInitScript('window.__name = (f) => f');
-const errors: string[] = [];
-page.on('pageerror', (e) => errors.push(e.message));
-await page.goto('http://localhost:5173/');
-await page.waitForFunction(() => (window as any).__app);
-const r = await page.evaluate(async () => {
-  const app = (window as any).__app;
-  app.save.data.settings.aids = { abs: 2, tc: 0, aw: 0, eb: 1 };
-  app.startGame('city', 'r6');
-  const g = app.game;
-  app.advance(3.3);
-  for (const c of g.traffic.cars) c.s += 5000;
-  g.player.phys.v = 9;
-  const key = (t: string, c: string) => window.dispatchEvent(new KeyboardEvent(t, { code: c, bubbles: true }));
-  key('keydown', 'KeyW'); key('keydown', 'KeyS');
-  for (let i = 0; i < 400 && g.state === 'driving'; i++) app.advance(1 / 60);
-  key('keyup', 'KeyS'); key('keyup', 'KeyW');
-  const pitchAt: number[] = [];
-  const fwd = new (g.player.model.root.position.constructor as any)();
-  for (let t = 0; t < 3; t += 0.25) {
-    for (let k = 0; k < 15; k++) g.update(1 / 60);
-    const q = g.player.model.root.quaternion;
-    fwd.set(0, 0, 1).applyQuaternion(q);
-    pitchAt.push(Math.round(Math.asin(Math.max(-1, Math.min(1, fwd.y))) * 57.3) * 1);
+// Wheelie loop outs: a held wheelie loops below 75 mph, never above it. usage: npx tsx scripts/loop-check.ts [bikeId]
+import { VehiclePhysics, type RiderAids } from '../src/physics/VehiclePhysics';
+import { getVehicle } from '../src/data/vehicles';
+const spec = getVehicle(process.argv[2] ?? 'r6');
+const MPH = 0.44704, dt = 1 / 120;
+function run(label: string, aids: Partial<RiderAids>, mph: number, secs: number, holdFor = secs) {
+  const p = new VehiclePhysics(spec);
+  p.setAids({ abs: 2, tc: 2, aw: 1, eb: 1, manual: false, ...aids });
+  p.reset(0, 0, mph * MPH); p.tyreTemp = 0.9;
+  let t = 0, maxPitch = 0, loopedAt = -1, loopMph = 0;
+  for (; t < secs && !p.fall; t += dt) {
+    const hold = t < holdFor;
+    p.step(dt, { throttle: 1, brake: 0, steer: 0, handbrake: false, pull: hold ? 1 : 0 }, 0, 0);
+    maxPitch = Math.max(maxPitch, p.wheelie);
   }
-  return { state: g.state, kind: g.result?.crashKind, msg: g.result?.message, shame: (document.querySelector('#crashui .shame') as HTMLElement | null)?.hidden, up: (new (g.player.model.root.position.constructor as any)(0, 1, 0)).applyQuaternion(g.player.model.root.quaternion).y.toFixed(2), pitchAt };
-});
-console.log(JSON.stringify(r));
-await page.waitForTimeout(500);
-await page.screenshot({ path: `${out}/loop_end.png` });
-console.log('errors:', errors.length ? errors : 'none');
-await b.close();
+  if (p.fall === 'looped') { loopedAt = t; loopMph = p.v / MPH; }
+  console.log(label.padEnd(58), p.fall ? `${p.fall} at ${t.toFixed(1)}s (${loopMph.toFixed(0)} mph)` : 'no fall', ` max pitch ${(maxPitch * 57.3).toFixed(0)}deg, end ${(p.v / MPH).toFixed(0)} mph`);
+  return loopedAt;
+}
+run('assisted AW1, hold from 15 mph, 12 s', {}, 15, 12);
+run('assisted AW1, hold from 30 mph, 12 s', {}, 30, 12);
+run('assisted AW1, hold from 55 mph, 15 s', {}, 55, 15);
+run('assisted AW1, hold from 80 mph, 12 s (no loop above 75)', {}, 80, 12);
+run('assisted AW1, hold from 100 mph, 12 s (no loop above 75)', {}, 100, 12);
+run('assisted AW1, hold only 1.5 s from 20 mph', {}, 20, 8, 1.5);
+run('assisted AW1, hold only 2.5 s from 20 mph', {}, 20, 8, 2.5);
+run('assisted AW2, hold from 20 mph, 12 s', { aw: 2 }, 20, 12);
+run('assisted AW3, hold from 20 mph, 12 s (anti wheelie holds it down)', { aw: 3 }, 20, 12);
+run('manual, AW off, hold from 20 mph', { manual: true, aw: 0, tc: 0 }, 20, 6);
+run('manual, AW off, hold from 85 mph (no loop above 75)', { manual: true, aw: 0, tc: 0 }, 85, 8);
