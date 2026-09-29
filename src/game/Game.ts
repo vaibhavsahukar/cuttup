@@ -37,7 +37,6 @@ export class Game {
   player: Player; traffic: Traffic; particles: Particles; crash: CrashScene; scoring: Scoring; rig: CameraRig;
   state: 'countdown' | 'driving' | 'crash' | 'done' = 'countdown';
   countdown = 2.6;
-  private acc = 0;
   private proxy: PlayerProxy;
   scrape = 0;
   crashTimer = 0;
@@ -158,12 +157,14 @@ export class Game {
           throttle: input.throttle, brake: keyPull ? input.brakePad : input.brake, frontBrake: input.frontBrake, steer: input.steer, handbrake: input.handbrake,
           hang: input.hang, pull: bike ? Math.max(input.wheelie, keyPull ? 1 : 0) : 0,
         };
-      this.acc += dt;
+      // Split the frame into equal sub-steps that add up to exactly this frame's time. A fixed step with a
+      // leftover accumulator makes the car's drawn position wobble by up to one step from frame to frame
+      // (3 steps one frame, 5 the next), which reads as stutter; equal sub-steps keep physics time == render time.
       let sPrev = ph.s;
       let ds = 0;
-      while (this.acc >= PHYS_DT) {
-        this.acc -= PHYS_DT;
-        p.step(PHYS_DT, c);
+      const n = Math.max(1, Math.ceil(dt / PHYS_DT - 1e-6)), h = dt / n;
+      for (let i = 0; i < n; i++) {
+        p.step(h, c);
         if (ph.fall && this.state === 'driving') { this.startCrash(ph.fall, Math.max(8, ph.speed), null); break; }
         this.edges();
         ds += ph.s - sPrev;

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import type { MapSpec } from '../data/maps';
 import { mulberry32 } from '../core/math';
 
+const UP = new THREE.Vector3(0, 1, 0), snapF = new THREE.Vector3(), snapR = new THREE.Vector3(), snapU = new THREE.Vector3();
+
 export type TimeOfDay = 'day' | 'dusk' | 'night';
 
 /** Sky dome, fog, sun/hemi lights and distant backdrop (mountains / skyline silhouettes). */
@@ -177,8 +179,18 @@ export class Environment {
     this.sky.position.copy(camPos);
     this.backdrop.position.set(camPos.x, focus.y, camPos.z);
     const d = this.sun.userData.dir as THREE.Vector3;
-    this.sun.position.copy(focus).addScaledVector(d, 150);
-    this.sun.target.position.copy(focus);
+    // Snap the shadow camera to whole shadow-map texels. Following the car continuously moves the map by
+    // fractions of a texel every frame, so shadow edges crawl and flicker as you drive (reads as stutter).
+    const f = snapF.copy(focus);
+    if (this.sun.castShadow) {
+      const texel = (this.sun.shadow.camera.right - this.sun.shadow.camera.left) / this.sun.shadow.mapSize.x;
+      snapR.crossVectors(UP, d).normalize();
+      snapU.crossVectors(d, snapR).normalize();
+      const a = f.dot(snapR), b = f.dot(snapU);
+      f.addScaledVector(snapR, Math.round(a / texel) * texel - a).addScaledVector(snapU, Math.round(b / texel) * texel - b);
+    }
+    this.sun.position.copy(f).addScaledVector(d, 150);
+    this.sun.target.position.copy(f);
   }
 
   dispose() {

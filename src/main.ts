@@ -147,14 +147,20 @@ async function boot() {
   };
 
   let flashT = 0;
+  const dtHist: number[] = [];
   let last = performance.now();
   let fpsAcc = 0, fpsN = 0;
   (window as any).__fps = 0;
   const frame = () => {
     requestAnimationFrame(frame);
     const now = performance.now();
-    const dt = Math.min(0.05, (now - last) / 1000);
+    const rawDt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    // rAF timestamps jitter by a millisecond or two even on a steady display; feeding that straight into
+    // the simulation makes motion visibly uneven. Use the recent average unless the frame really hitched.
+    dtHist.push(rawDt); if (dtHist.length > 8) dtHist.shift();
+    const avgDt = dtHist.reduce((a, b) => a + b, 0) / dtHist.length;
+    const dt = Math.abs(rawDt - avgDt) < avgDt * 0.3 ? avgDt : rawDt;
     fpsAcc += dt; fpsN++;
     if (fpsAcc > 1) { (window as any).__fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0; }
     input.update(dt);
