@@ -114,7 +114,7 @@ export class ChunkManager {
     // ---- ribbon materials ----
     const roadMat = hw
       ? new THREE.MeshStandardMaterial({ map: highwayTexture(layout.medianHalf, layout.roadHalfWidth - 1, [0, 1, 2, 3, 4, 5].map((i) => layout.laneCenter(0) - layout.laneWidth / 2 + i * layout.laneWidth), layout.laneCenter(4) + layout.laneWidth / 2), roughness: 0.92 })
-      : new THREE.MeshStandardMaterial({ map: backroadTexture(layout.roadHalfWidth, layout.laneWidth), roughness: 0.9 });
+      : new THREE.MeshStandardMaterial({ map: backroadTexture(layout.roadHalfWidth - 1, layout.laneWidth), roughness: 0.9 });
     const concrete = new THREE.MeshStandardMaterial({ map: concreteTexture(), roughness: 0.95, side: THREE.DoubleSide });
     const metal = new THREE.MeshStandardMaterial({ color: 0xb9bec2, metalness: 0.7, roughness: 0.35, side: THREE.DoubleSide });
     const terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, map: groundDetailTexture(map.id) });

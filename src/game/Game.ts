@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoadPath, projectToRoad, type Frame } from '../world/RoadPath';
 import { ChunkManager } from '../world/ChunkManager';
 import { Environment } from '../world/Environment';
-import { getMap, makeLayout, type Layout, type MapSpec } from '../data/maps';
+import { newRunMap, makeLayout, type Layout, type MapSpec } from '../data/maps';
 import { getVehicle, type VehicleSpec } from '../data/vehicles';
 import { Player } from './Player';
 import type { Controls } from '../physics/VehiclePhysics';
@@ -65,7 +65,7 @@ export class Game {
 
   constructor(public renderer: THREE.WebGLRenderer, public audio: AudioEngine, public input: Input, public settings: Settings, mapId: string, vehicleId: string, pmrem: THREE.Texture) {
     const q = QUALITY[settings.quality];
-    this.map = getMap(mapId);
+    this.map = newRunMap(mapId);
     this.spec = getVehicle(vehicleId);
     this.layout = makeLayout(this.map.road);
     this.camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 6000);

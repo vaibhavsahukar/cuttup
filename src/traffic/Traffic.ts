@@ -64,7 +64,7 @@ export class Traffic {
   cars: TrafficCar[] = [];
   root = new THREE.Group();
   private pool = new Map<TrafficType, VehicleModel[]>();
-  private rng = mulberry32(99);
+  private rng: () => number;
   private nextId = 1;
   private time = 0;
   flow: number;
@@ -79,6 +79,7 @@ export class Traffic {
 
   constructor(public path: RoadPath, public map: MapSpec, public layout: Layout, public difficulty: number, drawDist: number) {
     this.root.add(this.instancer.root);
+    this.rng = mulberry32((map.seed * 7 + 99) >>> 0);
     this.flow = map.flowSpeed * (0.9 + difficulty * 0.08);
     this.spawnAhead = Math.max(map.fogFar + 30, 260) * drawDist;
     this.spawnAhead = Math.min(this.spawnAhead, 700);

@@ -64,6 +64,7 @@ export class UI {
       <div id="settings" class="screen"><div class="panel"></div></div>
       <div id="hud" class="screen">
         <div class="ctrl" id="ctrlHint"></div>
+        <div class="stars" title="Wanted level"><b>WANTED</b><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
         <div class="score"><div class="v">0</div><div class="m">x1.0</div><div class="combo"><i></i></div></div>
         <div class="fps" hidden></div>
         <div class="pops"></div>
@@ -363,6 +364,16 @@ export class UI {
     i.style.width = `${Math.round(Math.min(1.3, temp) / 1.3 * 100)}%`;
     i.style.background = temp < 0.75 ? '#5ab0ff' : temp < 1.1 ? '#4dff88' : '#ff5a4d';
     i.style.opacity = String(1 - wear * 0.5);
+  }
+  private lastStars = -1;
+  /** wanted level as filled stars (upper left); they flash red / blue while cops are on the road */
+  stars(level: number, chased: boolean) {
+    const el = $('#hud .stars');
+    el.classList.toggle('chase', chased && level > 0);
+    if (level === this.lastStars) return;
+    if (level > this.lastStars && this.lastStars >= 0) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+    this.lastStars = level;
+    el.querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i < level));
   }
   fps(on: boolean, fps: number, worstMs: number, scale: number) {
     const el = $('#hud .fps');

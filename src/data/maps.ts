@@ -50,6 +50,14 @@ export const MAPS: MapSpec[] = [
   },
 ];
 export const getMap = (id: string) => MAPS.find((m) => m.id === id) ?? MAPS[0];
+/**
+ * A map for one run: the spec above with a fresh random seed, so the road, hills, scenery and traffic are different every
+ * time. (`window.__forceSeed` pins it for reproducible test runs.)
+ */
+export function newRunMap(id: string): MapSpec {
+  const forced = (globalThis as { __forceSeed?: number }).__forceSeed;
+  return { ...getMap(id), seed: forced ?? 1 + Math.floor(Math.random() * 99999) };
+}
 
 /** Cross-section layout. d is lateral offset from road reference line, +d = right of travel. */
 export interface Layout {
@@ -81,14 +89,15 @@ export function makeLayout(road: RoadType): Layout {
       roadHalfWidth: inner + lw * 5 + shoulderOut + 1,
     };
   }
-  const lw = 3.4;
+  // two wide lanes with a strip of paved verge each side; the grass (and its slow-down) starts at the verge edge
+  const lw = 4.2, verge = 0.6;
   return {
     lanes: 1, laneWidth: lw,
     laneCenter: () => lw / 2,
     oncomingLanes: 1,
     oncomingCenter: () => -lw / 2,
-    playerMin: -lw - 3.2, playerMax: lw + 3.2,
-    softMin: -lw - 0.3, softMax: lw + 0.3, medianHalf: 0,
-    roadHalfWidth: lw + 1.2,
+    playerMin: -lw - verge - 3.2, playerMax: lw + verge + 3.2,
+    softMin: -lw - verge, softMax: lw + verge, medianHalf: 0,
+    roadHalfWidth: lw + verge + 1,
   };
 }
