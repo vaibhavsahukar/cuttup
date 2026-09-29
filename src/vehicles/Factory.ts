@@ -6,9 +6,9 @@ import { buildBike } from './BikeBuilder';
 
 /** cars with hand-made signature details (others get the generic panel build; bikes keep ShapeBuilder) */
 export const DESIGNED = new Set(['zr1', 'm4', 'huracan', 'c63', 'civic', 'tesla']);
-const build = (id: string, color: number, lite: boolean, shadows: boolean, livery?: 'police') => {
+const build = (id: string, color: number, lite: boolean, shadows: boolean, livery?: 'police', player = false) => {
   const sh = getShape(id)!;
-  return sh.bike ? buildFromShape(sh, color, lite, shadows) : buildPanelCar(sh, color, lite, shadows, livery);
+  return sh.bike ? buildFromShape(sh, color, lite, shadows) : buildPanelCar(sh, color, lite, shadows, livery, player);
 };
 
 /**
@@ -17,7 +17,7 @@ const build = (id: string, color: number, lite: boolean, shadows: boolean, liver
  */
 export function buildPlayerModel(spec: VehicleSpec, shadows = true): VehicleModel {
   if (spec.kind === 'bike') return buildBike(spec.model, spec.color, shadows);
-  return build(spec.model, spec.color, false, shadows);
+  return build(spec.model, spec.color, false, shadows, undefined, true);
 }
 
 /** Traffic types -> measured shape ids. */

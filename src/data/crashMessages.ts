@@ -8,7 +8,7 @@
  *   headon                hit an oncoming car
  *   truck                 what was hit is a truck, van or pickup
  *   cop                   what was hit is a police car
- *   barrier / tree        ran into the roadside barrier / a tree
+ *   barrier / tree / rock ran into the roadside barrier / a tree / a rock
  *   fall                  a rider fall (lowside, highside, looped, endo, tipover), also by its own name
  *   bike / car            what you were driving
  *   city / country / forest   the map (city = walled concrete highway, country = guardrails, forest = trees, no rails)
@@ -107,6 +107,12 @@ tree|Nature 1, driver 0
 tree|The forest gets to keep you now
 tree|Trees have been standing there for 200 years. You lasted 4 seconds of bad judgement
 tree|No guardrails on this road. Just you, physics and one very patient tree
+rock|A rock has been sitting there for ten thousand years. You lasted about four seconds
+rock|Rocks do not swerve, they do not brake, and they always win
+rock|You got outperformed by a rock. Let that sink in, briefly
+rock|It was not even a big rock
+rock|Nature left a speed bump. You took it at full speed
+rock|The rock did not even flinch
 fall|Congrats, you rode your own motorcycle into the ground. And yourself along with it
 fall,bike|It has two wheels. You had one job
 looped|You looped it. Gravity always collects
@@ -132,7 +138,7 @@ export function crashFacts(c: CrashContext) {
   const hit = c.kind === 'car' || c.kind === 'headon';
   f.add(hit ? 'hit' : 'solo');
   if (FALLS.has(c.kind)) f.add('fall');
-  if (c.kind === 'barrier' || c.kind === 'tree') f.add(c.kind);
+  if (c.kind === 'barrier' || c.kind === 'tree' || c.kind === 'rock') f.add(c.kind);
   if (c.victim && TRUCKS.has(c.victim)) f.add('truck');
   if (c.cop) f.add('cop');
   return f;

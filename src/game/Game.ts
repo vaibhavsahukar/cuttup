@@ -106,7 +106,7 @@ export class Game {
     this.crash.onPileup = (v) => { this.audio.crash(clamp(v / 40, 0.2, 0.7)); this.rig.addShake(0.5); };
     this.police = new Police(this.traffic, this.path, this.map, this.layout, this.particles, ground);
     this.police.onWreck = (k) => { this.audio.crash(k * 0.6); this.onPopup?.({ text: 'COP DOWN', sub: 'another unit is coming', color: '#6cf' }); };
-    this.police.onDispatch = (n, charger) => this.onPopup?.({ text: charger ? 'INTERCEPTOR DISPATCHED' : n === 1 ? 'POLICE PURSUIT' : `${n} UNITS IN PURSUIT`, sub: charger ? 'Charger pursuit unit' : undefined, color: '#ff4040', big: true });
+    this.police.onDispatch = (n, charger) => this.onPopup?.({ text: charger ? 'INTERCEPTOR DISPATCHED' : n === 1 ? 'POLICE PURSUIT' : `${n} UNITS IN PURSUIT`, sub: charger ? 'Interceptor unit' : undefined, color: '#ff4040', big: true });
     this.scoring = new Scoring();
     this.scoring.onPopup = (p) => this.onPopup?.(p);
     this.rig = new CameraRig(this.camera);
@@ -172,6 +172,7 @@ export class Game {
         p.step(h, c);
         if (ph.fall && this.state === 'driving') { this.startCrash(ph.fall, Math.max(8, ph.speed), null); break; }
         this.edges();
+        this.rockHits();
         ds += ph.s - sPrev;
         sPrev = ph.s;
       }
@@ -264,6 +265,39 @@ export class Game {
         this.particles.spark(pos, this.player.worldVel, 3, 3);
       }
       if (into > 3 && this.bumpCd <= 0) { this.audio.thud(into / 10); this.rig.addShake(0.4); this.scoring.bump(); this.bumpCd = 0.5; }
+    }
+  }
+
+  /** player vs the roadside rocks: a solid hit at speed ends the run, a glancing one scrapes and slows */
+  private rockHits() {
+    if (this.state !== 'driving' || this.map.road !== 'backroad') return;
+    const ph = this.player.phys;
+    const rocks = this.chunks.rocksNear(ph.s, 14);
+    if (!rocks.length) return;
+    const pL = this.player.collL / 2, pW = this.player.collW / 2;
+    const ca = Math.cos(ph.psi), sa = Math.sin(ph.psi); // player forward axis in (s, d) is (cos, -sin)
+    const pvS = ph.v * ca - ph.vl * sa, pvD = ph.dDot;
+    for (const r of rocks) {
+      const dS = r.s - ph.s, dD = r.d - ph.d;
+      const u = dS * ca - dD * sa, w = dS * sa + dD * ca; // rock centre in the player's frame
+      const cu = clamp(u, -pL, pL), cw = clamp(w, -pW, pW);
+      const gx = u - cu, gy = w - cw;
+      const dist = Math.hypot(gx, gy);
+      if (dist >= r.r) continue;
+      // contact normal pointing from the player to the rock, back in road coordinates
+      let nu = gx, nw = gy;
+      if (dist < 1e-4) { nu = u; nw = w; }
+      const nl = Math.hypot(nu, nw) || 1; nu /= nl; nw /= nl;
+      const nS = nu * ca + nw * sa, nD = -nu * sa + nw * ca;
+      const into = pvS * nS + pvD * nD; // speed into the rock
+      if (into > 4.5 || (into > 2.5 && Math.abs(ph.v) > 20)) { this.startCrash('rock', Math.max(into * 1.6, Math.abs(ph.v) * 0.5), null); return; }
+      // a scrape: push clear of the rock, lose a little speed
+      const push = r.r - dist;
+      ph.s -= nS * push; ph.d -= nD * push;
+      ph.v *= 1 - clamp(0.0012 + Math.max(0, into) * 0.006, 0, 0.08); // runs every physics step
+      ph.psi *= 0.9;
+      this.scrape = Math.min(1, 0.4 + Math.max(0, into) * 0.1);
+      if (into > 1.5 && this.bumpCd <= 0) { this.audio.thud(clamp(into / 8, 0.2, 1)); this.rig.addShake(0.4); this.scoring.bump(); this.bumpCd = 0.5; }
     }
   }
 

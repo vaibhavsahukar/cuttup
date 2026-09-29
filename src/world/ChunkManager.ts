@@ -42,6 +42,8 @@ interface Slot {
   ribbons: Ribbon[];
   walls: THREE.Object3D[];
   wires?: THREE.LineSegments;
+  /** rocks in this chunk as circles in road coordinates (s along the road, d across, radius r) */
+  rocks: { s: number; d: number; r: number }[];
 }
 
 export interface Quality { chunksAhead: number; propDensity: number; shadows: boolean }
@@ -164,7 +166,7 @@ export class ChunkManager {
         group.add(wires);
       }
       this.root.add(group);
-      this.slots.push({ index: -99999, group, ribbons, walls, wires });
+      this.slots.push({ index: -99999, group, ribbons, walls, wires, rocks: [] });
     }
   }
 
@@ -202,6 +204,13 @@ export class ChunkManager {
     }
   }
 
+  /** rock colliders within `span` metres of s along the road */
+  rocksNear(s: number, span = 14) {
+    const out: { s: number; d: number; r: number }[] = [];
+    for (const sl of this.slots) for (const r of sl.rocks) if (Math.abs(r.s - s) < span) out.push(r);
+    return out;
+  }
+
   update(playerS: number) {
     const cur = Math.floor(playerS / CHUNK);
     const lo = cur - this.behind, hi = cur + this.quality.chunksAhead;
@@ -232,6 +241,7 @@ export class ChunkManager {
 
   private build(slot: Slot, index: number) {
     slot.index = index;
+    slot.rocks = [];
     const s0 = index * CHUNK;
     for (const r of slot.ribbons) r.update(this.path, s0, CHUNK);
     const si = this.slots.indexOf(slot);
@@ -315,7 +325,9 @@ export class ChunkManager {
       for (let i = 0; i < 4; i++) {
         col.setRGB(1, 1, 1);
         const s2 = range(rng, 0.5, 2);
-        this.place(this.pools.rock, s0 + rng() * CHUNK, side() * (E + 2.5 + rng() * 25), rng() * 6, s2, s2, s2, col, -0.1);
+        const rs = s0 + rng() * CHUNK, rd = side() * (E + 2.5 + rng() * 25);
+        this.place(this.pools.rock, rs, rd, rng() * 6, s2, s2, s2, col, -0.1);
+        slot.rocks.push({ s: rs, d: rd, r: 1.15 * s2 });
       }
     }
     for (const k in this.pools) this.pools[k].finish();

@@ -8,7 +8,7 @@ import type { VehicleModel } from '../vehicles/ModelKit';
 import { paint, MAT } from '../vehicles/Materials';
 import { clamp } from '../core/math';
 
-export type CrashKind = 'car' | 'headon' | 'barrier' | 'tree' | 'lowside' | 'highside' | 'looped' | 'endo' | 'tipover';
+export type CrashKind = 'car' | 'headon' | 'barrier' | 'tree' | 'rock' | 'lowside' | 'highside' | 'looped' | 'endo' | 'tipover';
 
 interface Wreck { body: RigidBody; s: number; d: number; L: number; W: number; car?: TrafficCar }
 

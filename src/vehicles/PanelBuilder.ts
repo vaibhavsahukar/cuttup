@@ -49,7 +49,7 @@ function loft(sections: Section[], out: Map<Tag, number[]>, capStart: Tag | null
   cap(sections[sections.length - 1], capEnd, true);
 }
 
-export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows = true, livery?: 'police'): VehicleModel {
+export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows = true, livery?: 'police', player = false): VehicleModel {
   const { nz, nu, length: L } = sh;
   const z0 = -L / 2;
   const zAt = (i: number) => z0 + ((i + 0.5) / nz) * L;
@@ -58,7 +58,8 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   const centre = smooth(Array.from({ length: nz }, (_, i) => sh.t[i * nu]), 2); // centre-line top profile
   const edge = smooth(Array.from({ length: nz }, (_, i) => sh.t[i * nu + nu - 1]), 3); // top at the outer edge
   // hand-drawn side profiles (rear -> front) where the reference measurement is unreliable
-  const prof = PROFILES[sh.id];
+  // the player's version of a car can have its own profile (traffic keeps the original)
+  const prof = (player ? PROFILES[sh.id + '_player'] : undefined) ?? PROFILES[sh.id];
   if (prof) {
     const lerpK = (k: [number, number][], t: number) => { for (let j = 1; j < k.length; j++) if (t <= k[j][0]) { const u = (t - k[j - 1][0]) / (k[j][0] - k[j - 1][0]); return k[j - 1][1] + (k[j][1] - k[j - 1][1]) * u; } return k[k.length - 1][1]; };
     for (let i = 0; i < nz; i++) { const t = (i + 0.5) / nz; centre[i] = lerpK(prof.centre, t); edge[i] = lerpK(prof.belt, t); }
@@ -307,10 +308,15 @@ const PROFILES: Record<string, { centre: [number, number][]; belt: [number, numb
     centre: [[0, 0.74], [0.03, 0.98], [0.1, 1.01], [0.18, 1.04], [0.3, 1.3], [0.42, 1.43], [0.54, 1.43], [0.64, 1.28], [0.73, 1.0], [0.84, 0.92], [0.95, 0.8], [1, 0.64]],
     belt: [[0, 0.86], [0.15, 0.98], [0.5, 0.97], [0.75, 0.9], [1, 0.76]],
   },
+  // the player's Model 3: same car with a lower boot deck and roofline, so it does not tower over the chase camera
+  tesla_player: {
+    centre: [[0, 0.58], [0.03, 0.76], [0.1, 0.79], [0.18, 0.83], [0.3, 1.1], [0.42, 1.3], [0.54, 1.3], [0.64, 1.17], [0.73, 0.94], [0.84, 0.9], [0.95, 0.78], [1, 0.64]],
+    belt: [[0, 0.68], [0.15, 0.78], [0.35, 0.9], [0.5, 0.94], [0.75, 0.9], [1, 0.76]],
+  },
   // C63 (W205): long bonnet, upright grille nose, cabin set back, distinct boot lid with a short rear window
   c63: {
-    centre: [[0, 0.8], [0.03, 0.95], [0.12, 0.99], [0.22, 1.0], [0.3, 1.24], [0.37, 1.38], [0.42, 1.42], [0.54, 1.42], [0.6, 1.36], [0.68, 1.06], [0.74, 1.01], [0.86, 0.98], [0.95, 0.92], [0.985, 0.84], [1, 0.7]],
-    belt: [[0, 0.88], [0.15, 0.97], [0.5, 0.98], [0.75, 0.97], [1, 0.84]],
+    centre: [[0, 0.64], [0.03, 0.78], [0.12, 0.82], [0.22, 0.85], [0.3, 1.1], [0.37, 1.27], [0.42, 1.32], [0.54, 1.32], [0.6, 1.27], [0.68, 1.02], [0.74, 0.98], [0.86, 0.97], [0.95, 0.92], [0.985, 0.84], [1, 0.7]],
+    belt: [[0, 0.72], [0.15, 0.82], [0.35, 0.92], [0.5, 0.97], [0.75, 0.97], [1, 0.84]],
     roof: 0.72,
   },
   // Huracán: very low wedge, flat engine deck, cabin well forward of the rear axle, long raked screen, low beak

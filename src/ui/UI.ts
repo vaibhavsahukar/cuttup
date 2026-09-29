@@ -393,7 +393,7 @@ export class UI {
     const k = units === 'mph' ? MPH : KPH;
     const board = this.save.data.leaderboard[mapId] ?? [];
     const dist = units === 'mph' ? `${(r.distance / 1609.34).toFixed(2)} mi` : `${(r.distance / 1000).toFixed(2)} km`;
-    const how = { car: 'Rear-ended / side-swiped traffic', headon: 'Head-on collision', barrier: 'Hit the barrier', tree: 'Left the road', lowside: 'Lowside: the bike slid out from under you', highside: 'Highside: the rear grabbed and threw you', looped: 'Looped it: flipped over backwards', endo: 'Went over the bars', tipover: 'Fell over' }[r.crashKind];
+    const how = { car: 'Rear-ended / side-swiped traffic', headon: 'Head-on collision', barrier: 'Hit the barrier', tree: 'Left the road', rock: 'Hit a rock', lowside: 'Lowside: the bike slid out from under you', highside: 'Highside: the rear grabbed and threw you', looped: 'Looped it: flipped over backwards', endo: 'Went over the bars', tipover: 'Fell over' }[r.crashKind];
     $('#results .panel').innerHTML = `
       <div>
         <h2>Run over · ${esc(getMap(mapId).name)}</h2>

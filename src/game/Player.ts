@@ -25,8 +25,9 @@ export class Player {
   constructor(public spec: VehicleSpec, public path: RoadPath, night: boolean, shadows: boolean) {
     this.phys = new VehiclePhysics(spec);
     this.model = buildPlayerModel(spec, shadows);
-    this.collW = spec.kind === 'bike' ? 0.62 : spec.dims.width * 0.96;
-    this.collL = spec.kind === 'bike' ? spec.dims.length * 0.95 : spec.dims.length * 0.97;
+    // a bike's box covers the rider and frame only (not the handlebar ends or the tips of the wheels)
+    this.collW = spec.kind === 'bike' ? spec.dims.width * 0.7 : spec.dims.width * 0.96;
+    this.collL = spec.kind === 'bike' ? spec.dims.length * 0.8 : spec.dims.length * 0.97;
     if (night) {
       const h = new THREE.SpotLight(0xfff2dd, night ? 500 : 250, 120, 0.42, 0.5, 2);
       h.position.set(0, 0.8, spec.dims.length / 2);

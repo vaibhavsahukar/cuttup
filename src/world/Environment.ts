@@ -20,8 +20,8 @@ export class Environment {
   /** current clock (hours 0..24); advances when `cycle` is true */
   hour = 12;
   cycle = false;
-  /** hours of game clock per real second (1 in-game hour per real minute) */
-  rate = 1 / 60;
+  /** hours of game clock per real second (1 in-game hour per 15 real seconds, a full day in 6 minutes) */
+  rate = 1 / 15;
   /** 0 = full day .. 1 = full night */
   nightFactor = 0;
   private keys: { h: number; sky: THREE.Color; hor: THREE.Color; fog: THREE.Color; sun: THREE.Color; sunI: number; amb: number }[];
