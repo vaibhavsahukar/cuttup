@@ -215,6 +215,54 @@ for (let i = 0; i < NZ; i++) { const z = z0 + ((i + 0.5) / NZ) * L; if (Math.abs
 // side wall category (between top edge and underside at the outer edge), sampled at mid height
 const SC = new Uint8Array(NZ);
 for (let i = 0; i < NZ; i++) { const z = z0 + ((i + 0.5) / NZ) * L; SC[i] = nearest(HW[i], (T[i * NU + NU - 1] + B[i * NU + NU - 1]) / 2, z); if (CATS[SC[i]] === 'glass' || CATS[SC[i]] === 'dark') SC[i] = CATS.indexOf('paint'); }
+// Designed surface layout (cars): instead of copying the reference's messy material map, lay out
+// clean regions from the measured shape. Only the cabin's length range is taken from the reference glass.
+if (!BIKE) {
+  const id_ = (c: Cat) => CATS.indexOf(c);
+  const zAt = (i: number) => z0 + ((i + 0.5) / NZ) * L;
+  // cabin extent: where reference glass exists along the length (robust percentiles), else a default
+  const gz: number[] = [];
+  for (let i = 0; i < NZ; i++) for (let k = 0; k < NU; k++) if (CATS[C[i * NU + k]] === 'glass') gz.push(i);
+  gz.sort((a, b) => a - b);
+  let c0 = gz.length > 20 ? gz[Math.floor(gz.length * 0.03)] : Math.floor(NZ * 0.3);
+  let c1 = gz.length > 20 ? gz[Math.floor(gz.length * 0.97)] : Math.floor(NZ * 0.75);
+  const Hmax = Math.max(...T);
+  for (let i = 0; i < NZ; i++) {
+    const z = zAt(i);
+    const edgeY = T[i * NU + NU - 1];
+    const belt = Math.max(edgeY, Hmax * 0.55) + 0.04; // shoulder line
+    const Hst = Math.max(...Array.from({ length: NU }, (_, k) => T[i * NU + k]));
+    const slope = i > 0 && i < NZ - 1 ? Math.abs(T[(i + 1) * NU] - T[(i - 1) * NU]) / (2 * L / NZ) : 0;
+    const inCabin = i >= c0 && i <= c1;
+    for (let k = 0; k < NU; k++) {
+      const y = T[i * NU + k], u = k / (NU - 1);
+      let c = id_('paint');
+      if (inCabin && y > belt) {
+        const roof = y > Hst - 0.045 && u < 0.72 && slope < 0.3;
+        c = roof ? id_('paint') : id_('glass');
+      }
+      C[i * NU + k] = c;
+    }
+    SC[i] = id_('paint');
+  }
+  // lamps: clean shapes on the upper outer corners of the nose and tail faces
+  const nEnd = Math.max(3, Math.round((0.22 / L) * NZ));
+  for (const front of [true, false]) {
+    for (let q = 0; q < nEnd; q++) {
+      const i = front ? NZ - 1 - q : q;
+      const hNose = T[i * NU + Math.floor(NU * 0.7)];
+      for (let k = Math.floor(NU * 0.52); k < NU - 1; k++) {
+        const y = T[i * NU + k];
+        if (y > hNose * 0.62 && y < hNose * 1.02 + 0.02) C[i * NU + k] = id_('light');
+      }
+      // grille / lower intake and bumper lip in dark trim
+      for (let k = 0; k < NU; k++) { const y = T[i * NU + k]; if ((front && k < NU * 0.45 && y < hNose * 0.6 && y > 0.12) || y < 0.2) C[i * NU + k] = id_('dark'); }
+    }
+  }
+  // sill / lower body edge in dark trim along the whole length
+  for (let i = 0; i < NZ; i++) for (let k = 0; k < NU; k++) if (T[i * NU + k] < 0.18) C[i * NU + k] = CATS.indexOf('dark');
+  void c0; void c1;
+}
 const r3 = (x: number) => Math.round(x * 1000) / 1000;
 const out = {
   id, length: L, bike: BIKE, nz: NZ, nu: NU,
