@@ -47,6 +47,13 @@ declare global {
 }
 const KEY = 'cutup-save-v1';
 
+/** the right stick used to shift the bike's weight; it now turns the camera, so old default bindings move to the D-pad */
+function migratePad(saved?: Partial<PadBindings>): Partial<PadBindings> {
+  const s = { ...(saved ?? {}) };
+  if (s.leanLeft === 'A2-' && s.leanRight === 'A2+') { s.leanLeft = DEFAULT_PAD.leanLeft; s.leanRight = DEFAULT_PAD.leanRight; }
+  return s;
+}
+
 export class Save {
   data: SaveData = defaults();
   async load() {
@@ -61,7 +68,7 @@ export class Save {
           settings: {
             ...d.settings, ...(p.settings ?? {}),
             bindings: { ...d.settings.bindings, ...(p.settings?.bindings ?? {}) },
-            padBindings: { ...d.settings.padBindings, ...(p.settings?.padBindings ?? {}) },
+            padBindings: { ...d.settings.padBindings, ...migratePad(p.settings?.padBindings) },
             aids: { ...d.settings.aids, ...(p.settings?.aids ?? {}) },
           },
           leaderboard: p.leaderboard ?? {},

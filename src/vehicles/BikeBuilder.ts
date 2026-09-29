@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { makeWheel, type VehicleModel } from './ModelKit';
 import { MAT, paint } from './Materials';
 
@@ -108,8 +108,20 @@ const DESIGNS: Record<string, BikeDesign> = {
   },
 };
 
-export function buildBike(id: string, color: number, shadows = true): VehicleModel {
-  const d = DESIGNS[id] ?? DESIGNS.cbr650;
+/** police livery: white bodywork with a black tank, stripe and top case, red and blue lamps front and rear */
+function policeLivery(d: BikeDesign): BikeDesign {
+  return {
+    ...d, colors: { a1: 0x131417 },
+    parts: [
+      ...d.parts.map((p, i) => (i === 1 ? { ...p, tag: 'a1' as Tag } : p)),
+      { tag: 'a1', hw: 0.196, pts: [[0.93, 0.68], [0.62, 0.52], [0.44, 0.54], [0.5, 0.62], [0.66, 0.6], [0.9, 0.74]] },
+    ],
+  };
+}
+
+export function buildBike(id: string, color: number, shadows = true, livery?: 'police'): VehicleModel {
+  let d = DESIGNS[id] ?? DESIGNS.cbr650;
+  if (livery === 'police') d = policeLivery(d);
   const out = new Map<Tag, THREE.BufferGeometry[]>();
   const add = (tag: Tag, g: THREE.BufferGeometry) => { let a = out.get(tag); if (!a) out.set(tag, (a = [])); a.push(g.index ? g.toNonIndexed() : g); };
   const side = (p: Part) => {
@@ -143,6 +155,7 @@ export function buildBike(id: string, color: number, shadows = true): VehicleMod
   box('chrome', 0, d.wheelR, d.front, 0.22, 0.06, 0.06); // front axle
   if (d.exhaust) bar('chrome', d.exhaust.from, d.exhaust.to, d.exhaust.x, d.exhaust.r * 2);
   box('tail', 0, d.tailLamp[1], d.tailLamp[0], 0.12, 0.04, 0.03);
+  if (livery === 'police') box('dark', 0, 1.0, -0.74, 0.3, 0.2, 0.34); // rear top case
   // front mudguard
   if (!d.noMudguard) box('paint', 0, d.wheelR * 2 + 0.03, d.front + 0.02, 0.12, 0.02, 0.3, 0.2);
 
@@ -166,6 +179,15 @@ export function buildBike(id: string, color: number, shadows = true): VehicleMod
     if (tag === 'tail') brake.push(m);
     if (tag === 'head') heads.push(m);
   }
+  // flashing lamps: red on the bike's left, blue on its right, one pair on the fairing and one on the top case
+  let lightBar: VehicleModel['lightBar'];
+  if (livery === 'police') {
+    const lamp = (x: number, y: number, z: number) => new THREE.BoxGeometry(0.08, 0.045, 0.06).translate(x, y, z);
+    const red = new THREE.Mesh(mergeGeometries([lamp(0.1, 0.955, 0.86), lamp(0.11, 1.12, -0.86)])!, MAT.policeOff);
+    const blue = new THREE.Mesh(mergeGeometries([lamp(-0.1, 0.955, 0.86), lamp(-0.11, 1.12, -0.86)])!, MAT.policeOff);
+    chassis.add(red, blue);
+    lightBar = { red: [red], blue: [blue] };
+  }
   const sigL: THREE.Mesh[] = [], sigR: THREE.Mesh[] = [];
   const sg = new THREE.BoxGeometry(0.05, 0.03, 0.03);
   for (const sx of [1, -1]) for (const [z, y] of [d.sigF ?? [0.9, 0.84], [d.tailLamp[0] + 0.1, d.tailLamp[1] - 0.08]]) {
@@ -183,6 +205,6 @@ export function buildBike(id: string, color: number, shadows = true): VehicleMod
   return {
     root, chassis, body: body!, wheels, brake, sigL, sigR, heads,
     length: d.dims?.[0] ?? 2.1, width: d.dims?.[1] ?? 0.7, height: d.dims?.[2] ?? 1.16, color, lod: [],
-    bike: { lean, fork: new THREE.Group() },
+    bike: { lean, fork: new THREE.Group() }, lightBar,
   };
 }

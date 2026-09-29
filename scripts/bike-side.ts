@@ -15,7 +15,7 @@ await page.waitForTimeout(800);
 for (const id of ids) for (const view of views) {
   const url = await page.evaluate(([id, view]) => {
     const a = (window as any).__app, p = a.preview, r = a.renderer;
-    p.showModel(`v:${id}`);
+    p.showModel((id as string).includes(":") ? id : `v:${id}`);
     p.table.rotation.y = 0;
     const cam = p.camera, m = p.current;
     const bike = !!m.bike;
@@ -32,7 +32,7 @@ for (const id of ids) for (const view of views) {
     r.render(p.scene, cam);
     return r.domElement.toDataURL('image/png');
   }, [id, view] as const);
-  writeFileSync(`${out}/${id}_${view}.png`, Buffer.from(url.split(',')[1], 'base64'));
+  writeFileSync(`${out}/${id.replace(':', '_')}_${view}.png`, Buffer.from(url.split(',')[1], 'base64'));
 }
 console.log(errors.length ? errors.join('\n') : 'no page errors');
 await b.close();

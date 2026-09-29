@@ -63,6 +63,7 @@ export class UI {
         <div class="actions"><button data-a="back">Back</button><button data-a="go" class="primary">Start run</button></div></div>
       <div id="settings" class="screen"><div class="panel"></div></div>
       <div id="hud" class="screen">
+        <div class="copvig"><i></i></div>
         <div class="stars" title="Wanted level"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
         <div class="score"><div class="v">0</div><div class="m">x1.0</div><div class="combo"><i></i></div></div>
         <div class="fps" hidden></div>
@@ -353,6 +354,14 @@ export class UI {
     i.style.width = `${Math.round(Math.min(1.3, temp) / 1.3 * 100)}%`;
     i.style.background = temp < 0.75 ? '#5ab0ff' : temp < 1.1 ? '#4dff88' : '#ff5a4d';
     i.style.opacity = String(1 - wear * 0.5);
+  }
+  private lastVig = -1;
+  /** red vignette round the screen border while a cop is near; `level` 0..1 grows as the nearest cop closes in */
+  copVignette(level: number) {
+    const v = Math.round(level * 20) / 20;
+    if (v === this.lastVig) return;
+    this.lastVig = v;
+    ($('#hud .copvig') as HTMLElement).style.opacity = String(v);
   }
   private lastStars = -1;
   /** wanted level as filled stars (lower left); they flash red / blue while cops are on the road */

@@ -1,6 +1,6 @@
 import { clamp } from '../core/math';
 
-export type Action = 'throttle' | 'brake' | 'frontBrake' | 'left' | 'right' | 'wheelie' | 'leanLeft' | 'leanRight' | 'handbrake' | 'camera' | 'pause' | 'lookback' | 'horn';
+export type Action = 'throttle' | 'brake' | 'frontBrake' | 'left' | 'right' | 'wheelie' | 'leanLeft' | 'leanRight' | 'handbrake' | 'camera' | 'pause' | 'lookback' | 'lookLeft' | 'lookRight' | 'horn';
 export const ACTIONS: { id: Action; label: string }[] = [
   { id: 'throttle', label: 'Accelerate' }, { id: 'brake', label: 'Brake / Reverse (bike: rear brake)' },
   { id: 'frontBrake', label: 'Bike front brake' },
@@ -8,13 +8,13 @@ export const ACTIONS: { id: Action; label: string }[] = [
   { id: 'wheelie', label: 'Bike: pull back (wheelie)' },
   { id: 'leanLeft', label: 'Bike: shift weight left' }, { id: 'leanRight', label: 'Bike: shift weight right' },
   { id: 'handbrake', label: 'Handbrake' }, { id: 'camera', label: 'Toggle camera' },
-  { id: 'lookback', label: 'Look back' }, { id: 'horn', label: 'Horn' }, { id: 'pause', label: 'Pause' },
+  { id: 'lookback', label: 'Look back' }, { id: 'lookLeft', label: 'Look left (camera)' }, { id: 'lookRight', label: 'Look right (camera)' }, { id: 'horn', label: 'Horn' }, { id: 'pause', label: 'Pause' },
 ];
 export type Bindings = Record<Action, string[]>;
 export const DEFAULT_BINDINGS: Bindings = {
   throttle: ['KeyW', 'ArrowUp'], brake: ['KeyS', 'ArrowDown'], frontBrake: ['KeyE', ''], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
   wheelie: ['', ''], leanLeft: ['KeyZ', ''], leanRight: ['KeyX', ''],
-  handbrake: ['Space', ''], camera: ['KeyC', ''], lookback: ['ShiftLeft', 'KeyQ'], horn: ['KeyH', 'ControlLeft'], pause: ['Escape', 'KeyP'],
+  handbrake: ['Space', ''], camera: ['KeyC', ''], lookback: ['ShiftLeft', 'KeyQ'], lookLeft: ['KeyJ', 'Numpad4'], lookRight: ['KeyL', 'Numpad6'], horn: ['KeyH', 'ControlLeft'], pause: ['Escape', 'KeyP'],
 };
 
 /**
@@ -23,8 +23,8 @@ export const DEFAULT_BINDINGS: Bindings = {
  */
 export type PadBindings = Record<Action, string>;
 export const DEFAULT_PAD: PadBindings = {
-  throttle: 'B7', brake: 'B6', frontBrake: 'B5', left: 'A0-', right: 'A0+', wheelie: 'A1+', leanLeft: 'A2-', leanRight: 'A2+',
-  handbrake: 'B0', camera: 'B3', lookback: 'B1', horn: 'B10', pause: 'B9',
+  throttle: 'B7', brake: 'B6', frontBrake: 'B5', left: 'A0-', right: 'A0+', wheelie: 'A1+', leanLeft: 'B14', leanRight: 'B15',
+  handbrake: 'B0', camera: 'B3', lookback: 'B1', lookLeft: 'A2-', lookRight: 'A2+', horn: 'B10', pause: 'B9',
 };
 const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'L3', 'R3', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right', 'Home'];
 const AXIS_NAMES = [['Left stick left', 'Left stick right'], ['Left stick up', 'Left stick down'], ['Right stick left', 'Right stick right'], ['Right stick up', 'Right stick down']];
@@ -43,6 +43,8 @@ export class Input {
   bindings: Bindings;
   pad: PadBindings;
   steer = 0; throttle = 0; brake = 0; frontBrake = 0; handbrake = false; lookback = false; horn = false;
+  /** camera look angle in radians, + = to the right: keys show 90 degrees to either side, the right stick swings the view up to 135 degrees */
+  lookYaw = 0;
   /** bikes: pull back (0..1), rider weight shift (+ left), keyboard-only brake (S) for the S-while-accelerating wheelie */
   wheelie = 0; hang = 0; brakeKey = 0; brakePad = 0;
   usingPad = false;
@@ -103,6 +105,7 @@ export class Input {
     let thr = key('throttle'), brk = key('brake'), fbrk = key('frontBrake');
     let hb = this.held('handbrake'), lb = this.held('lookback'), horn = this.held('horn');
     let wh = key('wheelie'), hang = key('leanLeft') - key('leanRight');
+    let look = (key('lookRight') - key('lookLeft')) * (Math.PI / 2);
     this.brakeKey = brk; this.brakePad = 0;
     let analogSteer = false;
     const p = this.firstPad();
@@ -129,6 +132,8 @@ export class Input {
         if (Math.abs(ph) > Math.abs(hang)) hang = ph;
         hb = hb || v('handbrake') > 0.5;
         lb = lb || v('lookback') > 0.5;
+        const pLook = (v('lookRight') - v('lookLeft')) * Math.PI * 0.75;
+        if (Math.abs(pLook) > Math.abs(look)) look = pLook;
         horn = horn || v('horn') > 0.5;
         for (const a of ['camera', 'pause', 'handbrake'] as Action[]) {
           const on = v(a) > 0.5;
@@ -144,6 +149,7 @@ export class Input {
     }
     this.throttle = thr; this.brake = brk; this.frontBrake = fbrk; this.handbrake = hb; this.lookback = lb; this.horn = horn;
     this.wheelie = wh; this.hang = clamp(hang, -1, 1);
+    this.lookYaw = look;
   }
 
   /** menu navigation from gamepad (edge-triggered) */

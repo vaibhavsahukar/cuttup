@@ -40,11 +40,13 @@ The headless check scripts use Playwright's Chromium. Set `CHROME=/path/to/chrom
 | Handbrake | Space | A or RB |
 | Camera (chase / hood or cockpit) | C | Y |
 | Look back | Left Shift / Q | B |
+| Look left / right (camera) | J / L (numpad 4 / 6) | Right stick (swings the camera up to 135 degrees) |
+| Bike: shift weight left / right | Z / X | D-pad left / right |
 | Horn | H / Left Ctrl | L3 |
 | Pause | Esc / P | Start / Back |
 | Menus | Arrow keys + Enter, mouse | D-pad + A, B = back |
 
-During the crash scene press Space or Esc to skip to results.
+The crash scene stays on screen until you press Enter or the gamepad A button.
 
 ## Game overview
 

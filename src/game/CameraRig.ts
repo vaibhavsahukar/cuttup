@@ -11,6 +11,7 @@ export class CameraRig {
   private pos = new THREE.Vector3();
   private look = new THREE.Vector3();
   private yaw = 0;
+  private lookYaw = 0; // smoothed free look angle (+ = camera swings to the right)
   private init = false;
   private t = 0;
 
@@ -19,8 +20,11 @@ export class CameraRig {
   reset() { this.init = false; this.shake = 0; }
   addShake(v: number) { this.shake = Math.min(1.5, this.shake + v); }
 
-  update(dt: number, p: Player, lookback: boolean) {
+  /** `look`: free look angle in radians, + = right (side keys, right stick); `lookback` swings the view to the rear */
+  update(dt: number, p: Player, lookback: boolean, look = 0) {
     this.t += dt;
+    this.lookYaw = damp(this.lookYaw, look, 9, dt);
+    const lk = this.lookYaw;
     if (p.model.bike?.rider) p.model.bike.rider.head.visible = this.mode !== 'hood' || lookback;
     const root = p.model.root;
     const q = root.quaternion;
@@ -53,14 +57,18 @@ export class CameraRig {
         off.set(0, 1.25, 0.35); // camera stays level; the bike leans, the view does not
       }
       desiredPos = off.applyQuaternion(q).add(root.position);
-      desiredLook = desiredPos.clone().addScaledVector(fwd, 20).addScaledVector(up, -0.4);
+      // the head turns towards the look direction
+      desiredLook = desiredPos.clone().addScaledVector(fwd.clone().applyAxisAngle(up, -lk), 20).addScaledVector(up, -0.4);
       this.pos.copy(desiredPos);
       this.look.copy(desiredLook);
     } else {
       const dist = (bike ? 3.1 : 3.6 + p.spec.dims.length * 0.22) + clamp(spd / 80, 0, 1) * 0.3; // close, barely pulls back with speed
       const height = (bike ? 1.35 : 1.1 + h * 0.45);
-      desiredPos = root.position.clone().addScaledVector(cf, -dist).addScaledVector(up, height);
-      desiredLook = root.position.clone().addScaledVector(cf, 6).addScaledVector(up, bike ? 0.9 : h * 0.6);
+      // free look orbits the camera around the vehicle: to the right when lk > 0, and the view settles on the vehicle itself
+      const cfo = lk === 0 ? cf : cf.clone().applyAxisAngle(up, lk);
+      const focus = 6 * (1 - clamp(Math.abs(lk) / 0.6, 0, 1));
+      desiredPos = root.position.clone().addScaledVector(cfo, -dist).addScaledVector(up, height);
+      desiredLook = root.position.clone().addScaledVector(cf, focus).addScaledVector(up, bike ? 0.9 : h * 0.6);
       if (!this.init) { this.pos.copy(desiredPos); this.look.copy(desiredLook); }
       // Follow rigidly along the driving direction and smooth only sideways / up. Lagging along the direction of
       // travel turns any uneven frame time into the car lurching towards and away from the camera (a long frame

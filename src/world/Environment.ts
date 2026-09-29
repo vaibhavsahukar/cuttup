@@ -124,7 +124,8 @@ export class Environment {
     if (this.map.id === 'country') {
       // distant mountains, drawn without fog but pre-tinted towards haze
       const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x6f86a0).lerp(fogC, 0.35), fog: false });
-      const snow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xe8eef4).lerp(fogC, 0.3), fog: false });
+      // polygon offset pulls the caps towards the camera: at this distance the depth buffer cannot separate two surfaces a few metres apart
+      const snow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xe8eef4).lerp(fogC, 0.3), fog: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
       // low foothills in front of the peaks give the skyline depth
       const hills = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x5f7a55).lerp(fogC, 0.5), fog: false });
       for (let i = 0; i < 46; i++) {
@@ -155,14 +156,20 @@ export class Environment {
       for (let i = 0; i < 38; i++) {
         const a = (i / 38) * Math.PI * 2 + r() * 0.1;
         const h = 180 + r() * 380, w = 350 + r() * 500;
-        const m = new THREE.Mesh(new THREE.ConeGeometry(w, h, 5 + Math.floor(r() * 3)), mat);
+        const seg = 5 + Math.floor(r() * 3);
+        const m = new THREE.Mesh(new THREE.ConeGeometry(w, h, seg), mat);
         const dist = 2300 + r() * 400;
         m.position.set(Math.sin(a) * dist, h / 2 - 60, Math.cos(a) * dist);
         m.rotation.y = r() * 3;
         this.backdrop.add(m);
         if (h > 380) {
-          const c = new THREE.Mesh(new THREE.ConeGeometry(w * 0.28, h * 0.28, 5), snow);
-          c.position.set(m.position.x, h - 60 - h * 0.14 + 1, m.position.z);
+          // The snow cap is a cone with the same slope and the same number of sides as the mountain, turned the same
+          // way, so its corners sit on the mountain's corners. Its apex is a little above the mountain's, so it wraps
+          // the top evenly: no dark tip poking through, no white shards sticking out, no flickering where the two
+          // surfaces would otherwise coincide.
+          const capH = h * 0.28, lift = 8, slope = w / h;
+          const c = new THREE.Mesh(new THREE.ConeGeometry(slope * (capH + lift), capH + lift, seg), snow);
+          c.position.set(m.position.x, h - 60 + lift - (capH + lift) / 2, m.position.z);
           c.rotation.y = m.rotation.y;
           this.backdrop.add(c);
         }
