@@ -114,3 +114,26 @@ export function windowTextures() {
 }
 
 export function barkTexture() { return null; }
+
+/** Tileable ground detail (grass blades / soil / gravel speckle), multiplied with terrain vertex colours. */
+export function groundDetailTexture(kind: string) {
+  const N = 256;
+  const [c, g] = canvas(N, N);
+  const r = mulberry32(kind.length * 97 + 3);
+  g.fillStyle = '#c8c8c8'; g.fillRect(0, 0, N, N);
+  const draw = (x: number, y: number, f: (xx: number, yy: number) => void) => { for (const dx of [-N, 0, N]) for (const dy of [-N, 0, N]) f(x + dx, y + dy); };
+  // large soft blotches
+  for (let i = 0; i < 60; i++) {
+    const x = r() * N, y = r() * N, rad = 10 + r() * 40, v = 150 + r() * 90;
+    draw(x, y, (xx, yy) => { const gr = g.createRadialGradient(xx, yy, 0, xx, yy, rad); gr.addColorStop(0, `rgba(${v},${v},${v},0.35)`); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(xx - rad, yy - rad, rad * 2, rad * 2); });
+  }
+  // fine strokes (blades) or speckle
+  const blades = kind !== 'city';
+  for (let i = 0; i < (blades ? 9000 : 6000); i++) {
+    const x = r() * N, y = r() * N, v = 120 + r() * 135;
+    g.strokeStyle = g.fillStyle = `rgba(${v},${v},${v},0.55)`;
+    if (blades) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 2, y - 2 - r() * 4); g.stroke(); }
+    else g.fillRect(x, y, 1 + r() * 2, 1 + r() * 2);
+  }
+  return finish(c);
+}

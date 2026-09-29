@@ -1,18 +1,19 @@
 import * as THREE from 'three';
 
 /** Shared materials for vehicle models (one instance each; paint is per colour). */
-const paintCache = new Map<number, THREE.MeshStandardMaterial>();
+const paintCache = new Map<number, THREE.MeshPhysicalMaterial>();
+/** automotive paint: metallic base coat under a glossy clear coat */
 export function paint(color: number) {
   let m = paintCache.get(color);
   if (!m) {
-    m = new THREE.MeshStandardMaterial({ color, metalness: 0.55, roughness: 0.28, envMapIntensity: 1.2 });
+    m = new THREE.MeshPhysicalMaterial({ color, metalness: 0.45, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.12, envMapIntensity: 0.8 });
     paintCache.set(color, m);
   }
   return m;
 }
 
 export const MAT = {
-  glass: new THREE.MeshStandardMaterial({ color: 0x0d1418, metalness: 0.4, roughness: 0.05, transparent: true, opacity: 0.88, envMapIntensity: 1.6 }),
+  glass: new THREE.MeshPhysicalMaterial({ color: 0x0a1014, metalness: 0.1, roughness: 0.02, transparent: true, opacity: 0.85, envMapIntensity: 0.9 }),
   clearGlass: new THREE.MeshStandardMaterial({ color: 0x9fb4c0, metalness: 0.2, roughness: 0.02, transparent: true, opacity: 0.35 }),
   trim: new THREE.MeshStandardMaterial({ color: 0x121314, metalness: 0.1, roughness: 0.75 }),
   carbon: new THREE.MeshStandardMaterial({ color: 0x1a1b1d, metalness: 0.4, roughness: 0.35 }),

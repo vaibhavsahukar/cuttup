@@ -48,7 +48,9 @@ During the crash scene press Space or Esc to skip to results.
 
 ## Game overview
 
-* **Maps**: City Highway (dusk or night), Countryside Highway (day), Forest Backroad (fog, curves, hills). All three are endless.
+* **Maps**: City Highway, Countryside Highway, Forest Backroad (fog, curves, hills). All three are endless.
+* **Time of day**: on the map screen choose *Natural clock* (the sun moves; one in-game hour per real minute, dawn, day, dusk and night with street lamps, lit windows and headlights coming on) or a fixed Dawn / Day / Dusk / Night, which freezes the clock.
+* **Police**: at 15,000 points one police car starts chasing you, 2 at 30,000, 3 at 50,000 and 5 at 100,000. Cops weave through traffic and try to ram you. They are skilled, not perfect: when one crashes into traffic (both cars wreck) another unit is dispatched a few seconds later. A cop that falls far behind is also replaced. Tiers are in `POLICE_TIERS` in `src/traffic/Police.ts`.
 * **Score**: distance scaled by speed, a sustained speed bonus above 100 mph, and near miss bonuses (closer and faster is worth more, oncoming passes are worth double, two near misses within 1.4 s is a **CUT UP** bonus). Near misses build a combo multiplier (up to x10) that decays after 5 s without one; any bump resets it.
 * **Results**: score, distance, top speed, near misses, cut ups, time, how you wrecked, and a local top 10 per map. Retry / Change vehicle / Change map / Main menu.
 * **Persistence**: settings and leaderboards are saved to `cutup-save.json` in the Electron user data folder (`%APPDATA%/CUT-UP` on Windows) via IPC, mirrored to `localStorage` (which is the only store when running in a plain browser).
@@ -169,7 +171,6 @@ On a crash (traffic, head on, barrier, treeline): time scale ramps to 0.18x, a f
 * Difficulty (Easy / Normal / Hard / Insane) scales traffic flow speed and density.
 * Graphics presets: Low (0.75x resolution, no shadows, short draw distance, half props), Medium, High (shadows), Ultra (1.5x resolution, more props, longer draw distance).
 * Resolution setting resizes the window in windowed mode; fullscreen always uses the display resolution.
-* The city map has a Dusk / Night toggle on the map select screen.
 
 ## Verification performed
 
@@ -183,8 +184,8 @@ On a crash (traffic, head on, barrier, treeline): time scale ramps to 0.18x, a f
 * **Not verified on real Windows or a real GPU.** The Windows exes were built and inspected but could not be launched in the build container (Wine 64 bit could not be installed alongside the 32 bit Wine that NSIS needs). The packaged app bundle itself was verified with Linux Electron.
 * **60 FPS not measured.** Only software rendering was available, so frame rate on a mid range laptop GPU is unverified. On High the city scene is ~600 draw calls and ~140k triangles with ~95 traffic cars alive; if it is slow, use Medium or Low (no shadows, fewer props, shorter draw distance).
 * **Audio and gamepad were not heard/tested** (no audio device or controller in the container). The code paths run without errors.
-* Vehicle models are stylised low poly approximations built from extruded profiles and primitives; they capture silhouette, proportions, colours and signature cues (e.g. the ZR1's raised hood with the clear window over the supercharger, wide rear fenders, big splitter and spoiler) but are not detailed replicas. Bike riders are simple capsule figures.
-* Crash "ragdoll" for bikes is a single tumbling rigid body with procedurally flailing limbs, not a jointed physics ragdoll. Deformation is a vertex dent around the impact point.
+* Vehicle models are stylised low poly approximations built from extruded profiles and primitives; they capture silhouette, proportions, colours and signature cues (e.g. the ZR1's raised hood with the clear window over the supercharger, wide rear fenders, big splitter and spoiler) but are not detailed replicas. Motorcycles are shown without a rider for now (the rider builder is kept in `BikeBuilder.ts`).
+* Deformation is a vertex dent around the impact point. With no rider on the bikes there is currently no rider ejection.
 * Traffic wheels do not spin (merged into one mesh per car for performance). Traffic uses per car meshes rather than GPU instancing.
 * The KTM's rear stepping out is modest in the simulation (it is agile and wheelie prone, but the bike model does not power slide much).
 * No custom app icon; the exe is unsigned, so Windows SmartScreen may warn on first launch.

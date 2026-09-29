@@ -184,6 +184,23 @@ export class AudioEngine {
     f.frequency.exponentialRampToValueAtTime(2200, this.ctx.currentTime + 0.2);
     f.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.45);
   }
+  private sir?: { o: OscillatorNode; lfo: OscillatorNode; g: GainNode };
+  /** two-tone wail; level 0 = off */
+  siren(level: number) {
+    const c = this.ctx;
+    if (!this.sir && level > 0) {
+      const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 900;
+      const lfo = c.createOscillator(); lfo.type = 'triangle'; lfo.frequency.value = 0.45;
+      const lg = c.createGain(); lg.gain.value = 320;
+      lfo.connect(lg).connect(o.frequency);
+      const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1100; f.Q.value = 1.2;
+      const g = c.createGain(); g.gain.value = 0;
+      o.connect(f).connect(g).connect(this.sfx);
+      o.start(); lfo.start();
+      this.sir = { o, lfo, g };
+    }
+    if (this.sir) this.sir.g.gain.setTargetAtTime(level * 0.12, c.currentTime, 0.1);
+  }
   click() { this.tone(1200, 0.05, 0.1, 'square'); }
   reset() {
     const t = this.ctx.currentTime;

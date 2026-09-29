@@ -58,7 +58,10 @@ function bodyShape(d: CarDef) {
   s.lineTo(xf - arF, d.wr);
   s.absarc(xf, d.wr, arF, Math.PI, 0, true);
   s.lineTo(xf + arF, gc);
-  for (let i = top.length - 1; i >= 1; i--) s.lineTo(top[i][0], top[i][1]);
+  // front bumper edge, then a smooth spline over nose, hood, deck and tail (no faceted polyline)
+  s.lineTo(top[top.length - 2][0], top[top.length - 2][1]);
+  const curve = top.slice(1, top.length - 2).reverse().map(([x, y]) => new THREE.Vector2(x, y));
+  s.splineThru(curve);
   s.closePath();
   return s;
 }
@@ -74,7 +77,7 @@ function cabinShape(d: CarDef) {
 }
 
 function extrude(shape: THREE.Shape, width: number, bevel: number) {
-  const g = new THREE.ExtrudeGeometry(shape, { depth: width - bevel * 2, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.9, bevelSegments: 2, curveSegments: 10 });
+  const g = new THREE.ExtrudeGeometry(shape, { depth: width - bevel * 2, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.85, bevelSegments: 5, curveSegments: 28 });
   g.translate(0, 0, -(width - bevel * 2) / 2);
   g.rotateY(-Math.PI / 2); // shape x (length) -> +z, extrusion -> x
   return g;
@@ -95,7 +98,7 @@ function taper(g: THREE.BufferGeometry, d: CarDef, zOff: number) {
     s *= 1 - 0.05 * smoothstep(d.gc + 0.2, d.gc, y);
     p.setXYZ(i, x * s, y, z + zOff);
   }
-  return toCreasedNormals(g, Math.PI / 4);
+  return toCreasedNormals(g, Math.PI / 3.2);
 }
 
 /** half-width of the tapered body at profile length x and height y */
@@ -115,13 +118,13 @@ export function buildCar(d: CarDef, color: number, shadows = true, staticWheels 
   const zOff = -d.L / 2;
   const zc = (x: number) => x + zOff; // profile x -> centred z
 
-  const bodyGeo = taper(extrude(bodyShape(d), d.W, 0.06), d, zOff);
+  const bodyGeo = taper(extrude(bodyShape(d), d.W, 0.11), d, zOff);
   const body = new THREE.Mesh(bodyGeo, new Kit(color).material('paint'));
   body.castShadow = shadows;
   body.name = 'paint';
   chassis.add(body);
 
-  const cab = taper(extrude(cabinShape(d), d.W * d.cabinW, 0.08), d, zOff);
+  const cab = taper(extrude(cabinShape(d), d.W * d.cabinW, 0.12), d, zOff);
 
   const k = new Kit(color);
   k.add('glass', cab);
@@ -133,6 +136,21 @@ export function buildCar(d: CarDef, color: number, shadows = true, staticWheels 
   k.pair((sx) => {
     k.box('paint', sx * roofW * 0.5, (d.H + d.beltR) / 2, zc(d.rearBase + (d.roofR - d.rearBase) * 0.95 + (d.roofF - d.roofR) * 0.45), 0.04, d.H - d.beltR - 0.05, 0.08, [0, 0, 0]);
   });
+  // window frame: A and C pillars follow the glass edges, black beltline trim, door seams and handles
+  const cabHalf = (x: number, y: number) => halfWidth(d, x, y) * d.cabinW - 0.012;
+  const strut = (x0: number, y0: number, x1: number, y1: number, w: number, bucket: 'paint' | 'misc' = 'paint', vc?: number) => {
+    const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    const ang = Math.atan2(y1 - y0, x1 - x0);
+    k.pair((sx) => k.box(bucket, sx * cabHalf(mx, my), my, zc(mx), 0.035, w, len, [-ang, 0, 0], vc));
+  };
+  strut(d.rearBase, d.beltR - 0.02, d.wsBase, d.beltF - 0.02, 0.035, 'misc', 0x0b0b0b); // beltline trim
+  const bodyHalf = (x: number) => halfWidth(d, x, (d.gc + d.beltF) / 2) + 0.004;
+  const midY = (d.gc + (d.beltF + d.beltR) / 2) / 2 + 0.05;
+  const seamH = (d.beltF + d.beltR) / 2 - d.gc - 0.2;
+  const doorFront = d.wsBase - 0.08, doorBack = Math.max(d.rearBase + 0.25, d.roofR + (d.roofF - d.roofR) * 0.1);
+  for (const x of [doorFront, doorBack]) k.pair((sx) => k.box('misc', sx * bodyHalf(x), midY, zc(x), 0.006, seamH, 0.012, [0, 0, 0], 0x050505));
+  k.pair((sx) => k.box('chrome', sx * (bodyHalf(doorBack + 0.25) + 0.008), (d.beltF + d.beltR) / 2 - 0.12, zc(doorBack + 0.25), 0.015, 0.03, 0.14));
   // under-body dark and side skirts
   k.box('misc', 0, d.gc + 0.05, 0, d.W * 0.9, 0.1, d.L * 0.8, [0, 0, 0], 0x0c0c0c);
   // mirrors
@@ -144,7 +162,8 @@ export function buildCar(d: CarDef, color: number, shadows = true, staticWheels 
   const hh = style === 'tall' || style === 'truck' ? 0.2 : 0.09;
   k.pair((sx) => {
     const fw = hwAt(d.L - 0.12, d.noseH - 0.1);
-    k.box('head', sx * (fw - hw / 2 - 0.02), d.noseH - 0.12, zc(d.L - 0.14), hw, hh, 0.2, [0.25, sx * 0.12, 0]);
+    k.box('head', sx * (fw - hw / 2 - 0.02), d.noseH - 0.12 + hh * 0.3, zc(d.L - 0.13), hw * 0.9, Math.max(0.02, hh * 0.25), 0.2, [0.25, sx * 0.12, 0]);
+    k.cyl('chrome', sx * (fw - hw * 0.35), d.noseH - 0.13, zc(d.L - 0.12), Math.min(0.05, hh * 0.45), 0.2, [Math.PI / 2 + 0.25, 0, 0]);
     k.box(sx > 0 ? 'sigL' : 'sigR', sx * (fw - 0.05), d.noseH - 0.14, zc(d.L - 0.2), 0.08, 0.06, 0.12);
     const rw = hwAt(0.02, d.tailH - 0.13);
     const tw = style === 'truck' ? 0.18 : 0.45;
@@ -177,7 +196,7 @@ export function buildCar(d: CarDef, color: number, shadows = true, staticWheels 
       root.remove(w.obj);
       return g2;
     });
-    wheelMesh = new THREE.Mesh(mergeGeometries(geos, false)!, (wheels[0].spin.children[0] as THREE.Mesh).material);
+    wheelMesh = new THREE.Mesh(mergeGeometries(geos, false)!, ((wheels[0].spin.children[0] as THREE.Mesh).material as THREE.Material[])[1]);
     wheelMesh.name = 'wheels';
     root.add(wheelMesh);
     wheels.length = 0;

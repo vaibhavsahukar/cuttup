@@ -13,6 +13,8 @@ import { clamp, lerp } from '../core/math';
  */
 export const G = 9.81;
 const MPH = 0.44704;
+/** arcade lateral grip multiplier: makes cornering and lane changes much easier than real tyres */
+export const ARCADE_GRIP = 1.35;
 
 export interface Controls { throttle: number; brake: number; steer: number; handbrake: boolean }
 
@@ -115,7 +117,7 @@ export class VehiclePhysics {
   private lat(alpha: number, Fz: number, mu: number, rear: boolean) {
     // rear axle is stiffer in the linear range (stable, slight understeer); peak grip decides limit behaviour
     const B = (this.bike ? 16 : 20) * (rear ? 1.6 : 1), C = this.bike ? 1.15 : 1.3;
-    return -mu * Fz * Math.sin(C * Math.atan(B * alpha));
+    return -mu * ARCADE_GRIP * Fz * Math.sin(C * Math.atan(B * alpha));
   }
 
   step(dt: number, c: Controls, curvature: number, grade: number) {
@@ -191,13 +193,13 @@ export class VehiclePhysics {
     }
 
     // ---------------- steering ----------------
-    const lockLimit = (this.L * mu * G) / Math.max(25, v * v) + 0.09;
+    const lockLimit = (this.L * mu * ARCADE_GRIP * G) / Math.max(25, v * v) + 0.11;
     let target: number;
     if (this.bike) {
       // steer by leaning: input sets target lean, lean drives the turn
-      const maxLean = Math.min(0.95, Math.atan(mu * 0.95)) * clamp(av / 6, 0, 1);
+      const maxLean = Math.min(1.0, Math.atan(mu * ARCADE_GRIP * 0.95)) * clamp(av / 6, 0, 1);
       const leanTarget = c.steer * maxLean;
-      const rate = sp.steerSpeed * 0.55;
+      const rate = sp.steerSpeed * 1.15;
       this.lean += clamp(leanTarget - this.lean, -rate * dt, rate * dt);
       target = av > 3 ? (this.L * G * Math.tan(this.lean)) / Math.max(9, v * v) + this.lean * 0.04 : c.steer * sp.steerLock;
       // high speed weave
@@ -253,10 +255,10 @@ export class VehiclePhysics {
     const Mz = this.a * (Fyf * cosd + FxF * sind) - this.b * Fyr;
     let dr = Mz / this.Iz;
     // yaw damping assist, stronger with stability
-    dr -= this.r * sp.stability * 0.6 * lowBlend;
+    dr -= this.r * sp.stability * 0.4 * lowBlend;
     // ESC-lite: pull yaw rate back toward what the grip can support (weaker for low-stability cars)
     if (!c.handbrake && av > 5) {
-      const rLim = (mu * G * 1.05) / av;
+      const rLim = (mu * ARCADE_GRIP * G * 1.05) / av;
       const over = Math.abs(this.r) - rLim;
       if (over > 0) dr -= Math.sign(this.r) * over * (2 + 14 * sp.stability * sp.stability) * lowBlend;
       // sideslip recovery torque (arcade): straightens a slide once the driver counter-steers or lifts

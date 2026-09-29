@@ -4,6 +4,7 @@ import { VEHICLES } from '../data/vehicles';
 import { buildPlayerModel, buildTrafficModel, TRAFFIC_TYPES } from '../vehicles/Factory';
 
 export function modelTest(which: string) {
+  document.getElementById('loading')?.remove();
   const r = new THREE.WebGLRenderer({ antialias: true });
   r.setSize(innerWidth, innerHeight);
   r.shadowMap.enabled = true;

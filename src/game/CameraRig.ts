@@ -19,7 +19,7 @@ export class CameraRig {
 
   update(dt: number, p: Player, lookback: boolean) {
     this.t += dt;
-    if (p.model.bike) p.model.bike.rider.head.visible = this.mode !== 'hood' || lookback;
+    if (p.model.bike?.rider) p.model.bike.rider.head.visible = this.mode !== 'hood' || lookback;
     const root = p.model.root;
     const q = root.quaternion;
     const phys = p.phys;
@@ -36,7 +36,7 @@ export class CameraRig {
     const up = new THREE.Vector3(0, 1, 0);
     const bike = p.bike;
     const h = p.spec.dims.height;
-    const targetFov = (this.mode === 'hood' ? 70 : 62) + clamp(spd / 80, 0, 1) ** 1.3 * 24;
+    const targetFov = (this.mode === 'hood' ? 70 : 60) + clamp(spd / 80, 0, 1) ** 1.3 * 12;
     this.cam.fov = damp(this.cam.fov, targetFov, 3, dt);
 
     let desiredPos: THREE.Vector3, desiredLook: THREE.Vector3;
@@ -48,20 +48,19 @@ export class CameraRig {
       const off = bike ? new THREE.Vector3(0, 1.42, 0.45) : new THREE.Vector3(0, h * 0.82, p.spec.dims.length * 0.12);
       if (bike && p.model.bike) {
         // cockpit cam (just in front of the helmet) leans with the bike
-        const lean = p.model.bike.lean.rotation.z;
-        off.set(-Math.sin(lean) * 1.42, Math.cos(lean) * 1.42, 0.45);
+        off.set(0, 1.25, 0.35); // camera stays level; the bike leans, the view does not
       }
       desiredPos = off.applyQuaternion(q).add(root.position);
       desiredLook = desiredPos.clone().addScaledVector(fwd, 20).addScaledVector(up, -0.4);
       this.pos.copy(desiredPos);
       this.look.copy(desiredLook);
     } else {
-      const dist = (bike ? 4.2 : 5.2 + p.spec.dims.length * 0.3) + clamp(spd / 80, 0, 1) * 1.6;
-      const height = (bike ? 1.7 : 1.5 + h * 0.55);
+      const dist = (bike ? 3.1 : 3.6 + p.spec.dims.length * 0.22) + clamp(spd / 80, 0, 1) * 0.3; // close, barely pulls back with speed
+      const height = (bike ? 1.35 : 1.1 + h * 0.45);
       desiredPos = root.position.clone().addScaledVector(cf, -dist).addScaledVector(up, height);
       desiredLook = root.position.clone().addScaledVector(cf, 6).addScaledVector(up, bike ? 0.9 : h * 0.6);
       if (!this.init) { this.pos.copy(desiredPos); this.look.copy(desiredLook); }
-      this.pos.lerp(desiredPos, 1 - Math.exp(-dt * 12));
+      this.pos.lerp(desiredPos, 1 - Math.exp(-dt * 20)); // stiff follow: no lag-induced zoom out
       this.look.lerp(desiredLook, 1 - Math.exp(-dt * 16));
     }
     this.init = true;
@@ -72,15 +71,6 @@ export class CameraRig {
     const n = (a: number) => Math.sin(this.t * a) * Math.sin(this.t * a * 0.37 + 1.3);
     this.cam.position.copy(this.pos).add(new THREE.Vector3(n(41) * s, n(37) * s, n(29) * s * 0.5));
     this.cam.up.set(0, 1, 0);
-    if (bike && this.mode === 'chase' && p.model.bike) {
-      const lean = p.model.bike.lean.rotation.z * 0.3;
-      this.cam.up.set(Math.sin(-lean) * Math.cos(this.yaw) * -1, Math.cos(lean), Math.sin(-lean) * Math.sin(this.yaw)).normalize();
-      this.cam.up.set(0, 1, 0).addScaledVector(new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw)), -Math.sin(lean)).normalize();
-    }
-    if (bike && this.mode === 'hood' && p.model.bike) {
-      const lean = p.model.bike.lean.rotation.z;
-      this.cam.up.set(0, 1, 0).addScaledVector(new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw)), -Math.sin(lean)).normalize();
-    }
     this.cam.lookAt(this.look);
     this.cam.updateProjectionMatrix();
   }

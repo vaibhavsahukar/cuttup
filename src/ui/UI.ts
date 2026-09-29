@@ -1,5 +1,6 @@
 import { VEHICLES, getVehicle, statBars } from '../data/vehicles';
 import { MAPS, getMap } from '../data/maps';
+import { TIME_CHOICES, type TimeChoice } from '../world/TimeOfDay';
 import { ACTIONS, DEFAULT_BINDINGS, type Action } from '../input/Input';
 import type { Save, RunEntry, QualityName } from '../storage/Save';
 import type { Popup } from '../game/Scoring';
@@ -156,12 +157,15 @@ export class UI {
       return `<div class="card panel ${m.id === sel ? 'sel' : ''}" data-m="${m.id}">
         <div class="thumb" style="background:${grad[m.id]}"></div>
         <div class="t">${esc(m.name)}</div><div class="b">${esc(m.blurb)}</div>
-        ${m.id === 'city' ? `<div class="opts" style="margin-bottom:10px">Time: <button class="small ${st.cityTime === 'dusk' ? 'primary' : ''}" data-t="dusk">Dusk</button> <button class="small ${st.cityTime === 'night' ? 'primary' : ''}" data-t="night">Night</button></div>` : ''}
         <div class="best">${best ? `BEST ${best.score.toLocaleString()} · ${esc(getVehicle(best.vehicle).name)}` : 'NO RUNS YET'}</div></div>`;
     }).join('');
+    $('#maps .cards').insertAdjacentHTML('afterend', '');
+    let tb = document.getElementById('todbar');
+    if (!tb) { tb = document.createElement('div'); tb.id = 'todbar'; tb.className = 'panel todbar'; $('#maps').appendChild(tb); tb.onclick = (e) => { const t = (e.target as HTMLElement).dataset.t; if (t) { st.timeOfDay = t as TimeChoice; this.save.persist(); this.h.click(); this.buildMaps(); } }; }
+    tb.innerHTML = `<span>Time of day</span>${TIME_CHOICES.map(([v, l]) => `<button class="small ${st.timeOfDay === v ? 'primary' : ''}" data-t="${v}">${l}</button>`).join('')}<span class="dim">${st.timeOfDay === 'auto' ? 'clock runs: dawn, day, dusk, night' : 'time is fixed'}</span>`;
     $('#maps .cards').onclick = (e) => {
       const t = (e.target as HTMLElement).dataset.t;
-      if (t) { st.cityTime = t as 'dusk' | 'night'; this.save.persist(); this.h.click(); this.buildMaps(); return; }
+      if (t) { st.timeOfDay = t as TimeChoice; this.save.persist(); this.h.click(); this.buildMaps(); return; }
       const card = (e.target as HTMLElement).closest('.card') as HTMLElement | null;
       if (!card) return;
       this.h.click();

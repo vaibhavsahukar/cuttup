@@ -1,3 +1,4 @@
+import type { TimeChoice } from '../world/TimeOfDay';
 import { DEFAULT_BINDINGS, type Bindings } from '../input/Input';
 
 export type QualityName = 'low' | 'medium' | 'high' | 'ultra';
@@ -9,7 +10,7 @@ export interface Settings {
   units: 'mph' | 'kph';
   camera: 'chase' | 'hood';
   difficulty: number; // 0 easy .. 3 insane
-  cityTime: 'dusk' | 'night';
+  timeOfDay: TimeChoice;
   bindings: Bindings;
   vehicle: string;
   map: string;
@@ -27,7 +28,7 @@ export const QUALITY: Record<QualityName, { pixelRatio: number; shadows: boolean
 const defaults = (): SaveData => ({
   settings: {
     quality: 'high', resolution: 'native', fullscreen: false,
-    volumes: { master: 0.8, engine: 0.8, sfx: 0.8 }, units: 'mph', camera: 'chase', difficulty: 1, cityTime: 'dusk',
+    volumes: { master: 0.8, engine: 0.8, sfx: 0.8 }, units: 'mph', camera: 'chase', difficulty: 1, timeOfDay: 'auto',
     bindings: structuredClone(DEFAULT_BINDINGS), vehicle: 'zr1', map: 'city',
   },
   leaderboard: {},

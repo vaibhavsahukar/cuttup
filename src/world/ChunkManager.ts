@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoadPath, type Frame } from './RoadPath';
 import { Ribbon, outline, type ProfilePt } from './Ribbon';
 import type { MapSpec, Layout } from '../data/maps';
-import { highwayTexture, backroadTexture, concreteTexture, windowTextures } from './Textures';
+import { groundDetailTexture, highwayTexture, backroadTexture, concreteTexture, windowTextures } from './Textures';
 import * as P from './Props';
 import { mulberry32, noise2, hash2, smoothstep, clamp, range, type Rng } from '../core/math';
 
@@ -113,7 +113,7 @@ export class ChunkManager {
       : new THREE.MeshStandardMaterial({ map: backroadTexture(layout.roadHalfWidth, layout.laneWidth), roughness: 0.9 });
     const concrete = new THREE.MeshStandardMaterial({ map: concreteTexture(), roughness: 0.95, side: THREE.DoubleSide });
     const metal = new THREE.MeshStandardMaterial({ color: 0xb9bec2, metalness: 0.7, roughness: 0.35, side: THREE.DoubleSide });
-    const terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
+    const terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, map: groundDetailTexture(map.id) });
     const medianMat = new THREE.MeshStandardMaterial({ color: map.id === 'city' ? 0x55565a : 0x4d6a2c, roughness: 1 });
     const wireMat = new THREE.LineBasicMaterial({ color: 0x222222 });
 
@@ -146,11 +146,11 @@ export class ChunkManager {
       const tw = hw ? [0, 2, 6, 12, 22, 36, 55, 80, 115, 160, 220, 300, 400] : [0, 1.2, 2.5, 5, 9, 15, 24, 36, 52, 75];
       const hfn = (s: number, d: number) => this.terrainH(s, d);
       const cfn = (s: number, d: number, h: number, out: THREE.Color) => this.terrainColor(s, d, h, out);
-      const right: ProfilePt[] = tw.map((w, j) => ({ d: E + w, h: j === 0 ? -0.03 : 0, u: 0 }));
-      const left: ProfilePt[] = tw.slice().reverse().map((w) => ({ d: -E - w, h: 0, u: 0 }));
+      const right: ProfilePt[] = tw.map((w, j) => ({ d: E + w, h: j === 0 ? -0.03 : 0, u: (E + w) / 5 }));
+      const left: ProfilePt[] = tw.slice().reverse().map((w) => ({ d: -E - w, h: 0, u: (-E - w) / 5 }));
       left[left.length - 1].h = -0.03;
-      add(new Ribbon(right, ROWS, terrainMat, { heightFn: hfn, colorFn: cfn }));
-      add(new Ribbon(left, ROWS, terrainMat, { heightFn: hfn, colorFn: cfn }));
+      add(new Ribbon(right, ROWS, terrainMat, { heightFn: hfn, colorFn: cfn, vScale: 5 }));
+      add(new Ribbon(left, ROWS, terrainMat, { heightFn: hfn, colorFn: cfn, vScale: 5 }));
       let wires: THREE.LineSegments | undefined;
       if (map.id === 'country') {
         const g = new THREE.BufferGeometry();

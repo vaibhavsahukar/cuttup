@@ -14,6 +14,12 @@ import type { Input } from '../input/Input';
 import type { AudioEngine } from '../audio/AudioEngine';
 import { QUALITY, type Settings } from '../storage/Save';
 import { clamp } from '../core/math';
+import { Police } from '../traffic/Police';
+import { timeSetting } from '../world/TimeOfDay';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
 export interface RunResult { score: number; distance: number; topSpeed: number; nearMisses: number; cutUps: number; time: number; crashKind: CrashKind }
 
@@ -40,6 +46,19 @@ export class Game {
   private bumpCd = 0;
   private lampLights: THREE.PointLight[] = [];
   private hornCd = 0;
+  police: Police;
+  private bloom?: UnrealBloomPass;
+
+  /** push the time of day into everything that depends on light level */
+  private applyLight() {
+    const n = this.env.nightFactor;
+    this.scene.environmentIntensity = (this.map.id === 'city' ? 0.5 : 0.8) * (1 - n) + 0.12 * n;
+    this.chunks.lampMaterial.emissiveIntensity = 0.3 + 2.7 * n;
+    if (this.chunks.buildingMaterial) this.chunks.buildingMaterial.emissiveIntensity = 0.25 + 0.6 * n;
+    for (const l of this.lampLights) l.intensity = 160 * Math.max(0, n - 0.3) / 0.7;
+    if (this.player.headlight) this.player.headlight.intensity = (this.map.id === 'forest' ? 120 : 0) + 480 * n;
+    if (this.bloom) { this.bloom.strength = 0.12 + 0.18 * n; this.bloom.threshold = 3 - 1.2 * n; }
+  }
 
   constructor(public renderer: THREE.WebGLRenderer, public audio: AudioEngine, public input: Input, public settings: Settings, mapId: string, vehicleId: string, pmrem: THREE.Texture) {
     const q = QUALITY[settings.quality];
@@ -48,17 +67,15 @@ export class Game {
     this.layout = makeLayout(this.map.road);
     this.camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 6000);
     this.path = new RoadPath(this.map);
-    const night = this.map.id === 'city' && settings.cityTime === 'night';
-    this.env = new Environment(this.scene, this.map, this.map.id === 'city' ? settings.cityTime : 'day', q.shadows, q.drawDist);
+    const tod = timeSetting(settings.timeOfDay, this.map.id);
+    this.env = new Environment(this.scene, this.map, tod.hour, tod.cycle, q.shadows, q.drawDist);
+    const night = this.env.night;
     this.scene.environment = pmrem;
-    this.scene.environmentIntensity = night ? 0.15 : this.map.id === 'city' ? 0.5 : 0.8;
     this.chunks = new ChunkManager(this.path, this.map, this.layout, { chunksAhead: Math.ceil((this.map.fogFar * q.drawDist) / 64) + 1, propDensity: q.propDensity, shadows: q.shadows });
-    if (night) { this.chunks.lampMaterial.emissiveIntensity = 3; if (this.chunks.buildingMaterial) this.chunks.buildingMaterial.emissiveIntensity = 1.6; }
-    else if (this.map.id === 'city') { this.chunks.lampMaterial.emissiveIntensity = 1.2; }
     this.scene.add(this.chunks.root);
     for (let i = 0; i < 40; i++) this.chunks.update(0);
 
-    if (night) {
+    if (this.map.id === 'city') {
       // moving pool of real lights under the next few median street lamps
       for (let i = 0; i < 6; i++) {
         const l = new THREE.PointLight(0xffc98a, 160, 32, 1.6);
@@ -66,7 +83,7 @@ export class Game {
         this.lampLights.push(l);
       }
     }
-    this.player = new Player(this.spec, this.path, night || this.map.id === 'forest', q.shadows);
+    this.player = new Player(this.spec, this.path, true, q.shadows);
     this.player.model.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = q.shadows; });
     this.scene.add(this.player.model.root);
     const startLane = this.map.road === 'highway' ? 2 : 0;
@@ -91,6 +108,9 @@ export class Game {
     this.crash = new CrashScene(this.scene, this.path, this.particles, ground);
     if (this.map.road === 'highway') this.crash.bounds = { min: this.layout.playerMin, max: this.layout.playerMax };
     this.crash.onPileup = (v) => { this.audio.crash(clamp(v / 40, 0.2, 0.7)); this.rig.addShake(0.5); };
+    this.police = new Police(this.traffic, this.path, this.map, this.layout, this.particles, ground);
+    this.police.onWreck = (k) => { this.audio.crash(k * 0.6); this.onPopup?.({ text: 'COP DOWN', sub: 'another unit is coming', color: '#6cf' }); };
+    this.police.onDispatch = (n) => this.onPopup?.({ text: n === 1 ? 'POLICE PURSUIT' : `${n} UNITS IN PURSUIT`, color: '#ff4040', big: true });
     this.scoring = new Scoring();
     this.scoring.onPopup = (p) => this.onPopup?.(p);
     this.rig = new CameraRig(this.camera);
@@ -99,6 +119,16 @@ export class Game {
     this.audio.startEngine(this.spec);
     this.player.sync(1 / 60);
     this.traffic.sync(0, 0);
+    this.applyLight();
+    if (settings.quality !== 'low') {
+      const size = renderer.getSize(new THREE.Vector2());
+      const rt = new THREE.WebGLRenderTarget(size.x * renderer.getPixelRatio(), size.y * renderer.getPixelRatio(), { type: THREE.HalfFloatType, samples: 4 });
+      this.composer = new EffectComposer(renderer, rt);
+      this.composer.addPass(new RenderPass(this.scene, this.camera));
+      this.bloom = new UnrealBloomPass(size, night ? 0.3 : 0.12, 0.35, night ? 1.8 : 3);
+      this.composer.addPass(this.bloom);
+      this.composer.addPass(new OutputPass());
+    }
   }
 
   groundAt(p: THREE.Vector3) {
@@ -107,7 +137,7 @@ export class Game {
     return pr.y + (Math.abs(pr.d) > edge ? this.chunks.terrainH(pr.s, pr.d) : 0);
   }
 
-  resize(w: number, h: number) { this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); }
+  resize(w: number, h: number) { this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); this.composer?.setSize(w, h); }
 
   /** returns true while the run continues */
   update(realDt: number) {
@@ -153,6 +183,8 @@ export class Game {
     }
 
     this.traffic.update(dt, this.proxy, this.scoring.distance);
+    this.police.update(dt, this.proxy, ph.dDot, this.scoring.score, this.state === 'driving');
+    this.audio.siren(this.police.cops.length > 0 && this.state !== 'done' ? clamp(1 - this.police.nearest(ph.s) / 250, 0.1, 1) : 0);
     this.chunks.update(this.state === 'crash' ? this.crash.wrecks[0]?.s ?? ph.s : ph.s);
     if (this.state !== 'crash') p.sync(dt);
     this.traffic.sync(dt, ph.s);
@@ -171,6 +203,8 @@ export class Game {
         this.camera.lookAt(this.crash.focus);
       }
     } else this.rig.update(realDt, p, input.lookback);
+    this.env.tick(realDt);
+    if (this.env.cycle) this.applyLight();
     this.env.update(this.camera.position, p.model.root.position);
     if (this.lampLights.length) {
       const first = Math.floor((ph.s - 10 - 8) / 32) + 1;
@@ -323,11 +357,19 @@ export class Game {
 
   finish() { this.state = 'done'; }
 
-  render() { this.renderer.render(this.scene, this.camera); }
+  /** bloom on lights / sun glints, then tone mapping + sRGB via OutputPass */
+  private composer?: EffectComposer;
+  render() {
+    if (this.composer) this.composer.render();
+    else this.renderer.render(this.scene, this.camera);
+  }
 
   dispose() {
+    this.composer?.dispose();
     this.audio.stopEngine();
     this.crash.clear();
+    this.police.clear();
+    this.audio.siren(0);
     this.traffic.clear();
     this.chunks.dispose();
     this.env.dispose();

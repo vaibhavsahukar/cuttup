@@ -42,6 +42,7 @@ export interface TrafficCar {
   passedSign: number; // for near-miss detection
   nearMissed: boolean;
   alive: boolean;
+  cop?: boolean; // driven by the Police controller, not by the traffic AI
 }
 
 export interface PlayerProxy { s: number; d: number; v: number; L: number; W: number; alive: boolean }
@@ -89,9 +90,11 @@ export class Traffic {
     m.root.visible = true;
     return m;
   }
-  private release(c: TrafficCar) {
+  release(c: TrafficCar) {
     c.alive = false;
     c.model.root.visible = false;
+    this.obstacles = this.obstacles.filter((o) => o !== c);
+    if (c.cop) { this.root.remove(c.model.root); return; } // police models are never recycled as traffic
     if (!this.pool.has(c.type)) this.pool.set(c.type, []);
     this.pool.get(c.type)!.push(c.model);
   }
@@ -242,7 +245,7 @@ export class Traffic {
     const r = this.rng;
     const hw = this.map.road === 'highway';
     for (const c of this.cars) {
-      if (!c.alive || c.wrecked) continue;
+      if (!c.alive || c.wrecked || c.cop) continue;
       const lanes = this.lanesFor(c.dir);
       // curve speed: look ahead for the tightest curvature
       let kMax = 0;

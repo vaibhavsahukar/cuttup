@@ -100,7 +100,7 @@ export class CrashScene {
       if (sev > 0.5) this.detachWheel(m, pb.vel, sev);
       if (sev > 0.9) this.detachWheel(m, pb.vel, sev);
       if (sev > 0.8) this.detachPanel(m, 'bumper', pc, pb.vel, sev);
-    } else if (m.bike) {
+    } else if (m.bike?.rider) {
       // rider ejected: ragdoll-style flailing tumble
       const r = m.bike.rider;
       r.root.updateMatrixWorld(true);
@@ -229,7 +229,7 @@ export class CrashScene {
       // flailing limbs, calming down as the body slows
       const e = Math.min(1, this.riderBody.angVel.length() / 6 + this.riderBody.vel.length() / 15);
       const tt = this.t * 9;
-      const r = this.rider.rider;
+      const r = this.rider.rider!;
       r.armL.rotation.set(Math.sin(tt) * 1.5 * e - 1.5, 0, 0.6 + Math.sin(tt * 1.3) * e);
       r.armR.rotation.set(Math.cos(tt * 1.1) * 1.5 * e - 1.5, 0, -0.6 - Math.cos(tt) * e);
       r.legL.rotation.set(Math.sin(tt * 0.8) * 1.0 * e - 0.4, 0, 0.3);
@@ -293,7 +293,7 @@ export class CrashScene {
 
   clear() {
     for (const p of this.parts) this.scene.remove(p.obj);
-    if (this.rider) this.scene.remove(this.rider.rider.root);
+    if (this.rider?.rider) this.scene.remove(this.rider.rider.root);
     this.parts = [];
     this.wrecks = [];
     this.riderBody = undefined;

@@ -70,8 +70,8 @@ export class Player {
       ch.rotation.y = Math.sin(performance.now() * 0.03) * 0.012 * p.wobble;
       // rider hangs off a little into corners
       const r = this.model.bike.rider;
-      r.root.position.x = damp(r.root.position.x, p.lean * 0.12, 6, dt);
-      r.torso.rotation.z = damp(r.torso.rotation.z, -p.lean * 0.3, 6, dt);
+      if (r) r.root.position.x = damp(r.root.position.x, p.lean * 0.12, 6, dt);
+      if (r) r.torso.rotation.z = damp(r.torso.rotation.z, -p.lean * 0.3, 6, dt);
       this.model.wheels[0].spin.rotation.x = p.frontRot;
       this.model.wheels[1].spin.rotation.x = p.rearRot;
     } else {

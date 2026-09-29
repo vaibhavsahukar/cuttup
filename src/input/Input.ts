@@ -69,7 +69,7 @@ export class Input {
     }
     if (analogSteer) this.steer = tSteer;
     else {
-      const rate = tSteer === 0 || Math.sign(tSteer) !== Math.sign(this.steer) ? 7 : 3.2;
+      const rate = tSteer === 0 || Math.sign(tSteer) !== Math.sign(this.steer) ? 10 : 7;
       this.steer += clamp(tSteer - this.steer, -rate * dt, rate * dt);
     }
     this.throttle = thr; this.brake = brk; this.handbrake = hb; this.lookback = lb; this.horn = horn;

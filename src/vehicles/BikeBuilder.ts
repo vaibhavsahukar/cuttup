@@ -145,9 +145,8 @@ export function buildBike(id: string, color: number, shadows = true): VehicleMod
   ];
   wheels[0].left = true;
 
-  const rider = buildRider(sport ? d.accent2 === 0x0a0a0a ? 0x1446c8 : color : 0xff6a00, !sport);
-  rider.root.position.set(0, sport ? 0.9 : 1.0, sport ? -0.28 : -0.3);
-  chassis.add(rider.root);
+  // riderless for now (buildRider kept for later use)
+  const rider = undefined;
 
   const g = (b: string) => (meshes.get(b as never) ? [meshes.get(b as never)!] : []);
   return {

@@ -15,15 +15,33 @@ export class Environment {
   night = false;
   private skyMat: THREE.ShaderMaterial;
 
-  constructor(public scene: THREE.Scene, public map: MapSpec, tod: TimeOfDay, shadows: boolean, drawScale: number) {
-    let skyTop = new THREE.Color(map.sky), horizon = new THREE.Color(map.skyHorizon), fogC = new THREE.Color(map.fog);
-    let sunI = map.sunIntensity, amb = map.ambient;
-    let sunC = new THREE.Color(map.sunColor);
-    if (tod === 'night') {
-      this.night = true;
-      skyTop = new THREE.Color(0x03040a); horizon = new THREE.Color(0x1a1d2e); fogC = new THREE.Color(0x0d0f18);
-      sunI = 0.25; amb = 0.28; sunC = new THREE.Color(0x8ea0d0);
-    }
+  /** current clock (hours 0..24); advances when `cycle` is true */
+  hour = 12;
+  cycle = false;
+  /** hours of game clock per real second (1 in-game hour per real minute) */
+  rate = 1 / 60;
+  /** 0 = full day .. 1 = full night */
+  nightFactor = 0;
+  private keys: { h: number; sky: THREE.Color; hor: THREE.Color; fog: THREE.Color; sun: THREE.Color; sunI: number; amb: number }[];
+  private backMats: { m: THREE.MeshBasicMaterial; base: THREE.Color }[] = [];
+
+  constructor(public scene: THREE.Scene, public map: MapSpec, hour: number, cycle: boolean, shadows: boolean, drawScale: number) {
+    const C = (c: number) => new THREE.Color(c);
+    const dayFog = map.id === 'city' ? C(0xa9b4c2) : C(map.fog);
+    const daySky = map.id === 'city' ? C(0x5c8fd6) : C(map.sky);
+    const dayHor = map.id === 'city' ? C(0xcad8e6) : C(map.skyHorizon);
+    const night = { sky: C(0x03040a), hor: C(0x1a1d2e), fog: C(map.id === 'forest' ? 0x14181a : 0x0d0f18), sun: C(0x8ea0d0), sunI: 0.25, amb: 0.3 };
+    const dawn = { sky: C(0x3a4a78), hor: C(0xf2a060), fog: C(0x8a7c80).lerp(dayFog, 0.3), sun: C(0xffb07a), sunI: 1.2, amb: 0.55 };
+    const day = { sky: daySky, hor: dayHor, fog: dayFog, sun: C(0xfff3dc), sunI: map.id === 'forest' ? 1.6 : 2.3, amb: map.id === 'forest' ? 0.8 : 0.8 };
+    const dusk = { sky: C(0x2a2f4a), hor: C(0xf08a4b), fog: C(0x6b5a66), sun: C(0xffb27a), sunI: 1.4, amb: 0.55 };
+    this.keys = [
+      { h: 0, ...night }, { h: 5, ...night }, { h: 6.5, ...dawn }, { h: 9, ...day },
+      { h: 16.5, ...day }, { h: 18.8, ...dusk }, { h: 20.5, ...night }, { h: 24, ...night },
+    ];
+    const fogC = C(map.fog), skyTop = C(map.sky), horizon = C(map.skyHorizon);
+    const tod: TimeOfDay = hour >= 20 || hour < 5.5 ? 'night' : hour > 17.5 || hour < 7.5 ? 'dusk' : 'day';
+    this.night = tod === 'night';
+    const sunC = C(map.sunColor), sunI = map.sunIntensity, amb = map.ambient;
     this.fog = new THREE.Fog(fogC, map.fogNear * drawScale, map.fogFar * drawScale);
     scene.fog = this.fog;
     scene.background = fogC.clone();
@@ -57,6 +75,46 @@ export class Environment {
     this.buildBackdrop(fogC, tod);
     this.root.add(this.backdrop);
     scene.add(this.root);
+    this.backdrop.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial; if (m && m.color && !this.backMats.find((x) => x.m === m)) this.backMats.push({ m, base: m.color.clone() }); });
+    this.hour = hour;
+    this.cycle = cycle;
+    this.applyHour();
+  }
+
+  /** advance the natural clock (only when cycling) */
+  tick(dt: number) {
+    if (!this.cycle) return;
+    this.hour = (this.hour + dt * this.rate) % 24;
+    this.applyHour();
+  }
+
+  /** interpolate sky, fog, sun and ambient for the current hour */
+  applyHour() {
+    const h = this.hour;
+    let i = 0;
+    while (i < this.keys.length - 2 && this.keys[i + 1].h <= h) i++;
+    const a = this.keys[i], b = this.keys[i + 1];
+    const t = (h - a.h) / Math.max(1e-3, b.h - a.h);
+    const u = this.skyMat.uniforms;
+    (u.top.value as THREE.Color).copy(a.sky).lerp(b.sky, t);
+    (u.horizon.value as THREE.Color).copy(a.hor).lerp(b.hor, t);
+    (u.fogC.value as THREE.Color).copy(a.fog).lerp(b.fog, t);
+    this.fog.color.copy(u.fogC.value);
+    (this.scene.background as THREE.Color).copy(u.fogC.value);
+    this.sun.color.copy(a.sun).lerp(b.sun, t);
+    this.sun.intensity = a.sunI + (b.sunI - a.sunI) * t;
+    this.hemi.intensity = (a.amb + (b.amb - a.amb) * t) * 1.6;
+    this.hemi.color.copy(u.top.value).lerp(new THREE.Color(1, 1, 1), 0.5);
+    // sun path: rises in the east (+x), sets in the west; moonlight from high up at night
+    const el = Math.sin(((h - 6) / 12) * Math.PI);
+    const az = ((h - 6) / 12) * Math.PI;
+    const dir = el > 0.05 ? new THREE.Vector3(Math.cos(az), Math.max(0.12, el), 0.35) : new THREE.Vector3(-0.3, 0.8, 0.4);
+    this.sun.userData.dir = dir.normalize();
+    // night factor from sun intensity curve
+    this.nightFactor = Math.min(1, Math.max(0, (1.3 - this.sun.intensity) / 1.05));
+    this.night = this.nightFactor > 0.6;
+    const bright = 1 - this.nightFactor * 0.85;
+    for (const bm of this.backMats) bm.m.color.copy(bm.base).multiplyScalar(bright).lerp(this.fog.color, 0.2);
   }
 
   private buildBackdrop(fogC: THREE.Color, tod: TimeOfDay) {
