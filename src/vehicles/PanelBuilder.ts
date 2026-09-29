@@ -12,9 +12,10 @@ import type { Shape } from './ShapeBuilder';
  *  - cabin: a separate tapered greenhouse (windscreen, side windows, rear glass; painted roof),
  *  - bumpers, grille and lamps as flat panels on the body faces.
  */
-type Tag = 'paint' | 'glass' | 'dark' | 'head' | 'tail' | 'chrome' | 'carbon';
+type Tag = 'paint' | 'glass' | 'dark' | 'head' | 'tail' | 'chrome' | 'carbon' | 'roofglass';
 interface Section { z: number; pts: [number, number, Tag][] } // pts go around the section (x, y); tag = material of the segment to the next point
 
+let roofGlass: THREE.MeshStandardMaterial | undefined;
 let liteBody: THREE.MeshStandardMaterial | undefined;
 
 const smooth = (a: number[], r: number) => a.map((_, i) => { let s = 0, n = 0; for (let d = -r; d <= r; d++) { const j = i + d; if (j < 0 || j >= a.length) continue; const w = r + 1 - Math.abs(d); s += a[j] * w; n += w; } return s / n; });
@@ -55,6 +56,12 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   const hw = smooth(smooth(sh.hw, 5), 5);
   const centre = smooth(Array.from({ length: nz }, (_, i) => sh.t[i * nu]), 2); // centre-line top profile
   const edge = smooth(Array.from({ length: nz }, (_, i) => sh.t[i * nu + nu - 1]), 3); // top at the outer edge
+  // hand-drawn side profiles (rear -> front) where the reference measurement is unreliable
+  const prof = PROFILES[sh.id];
+  if (prof) {
+    const lerpK = (k: [number, number][], t: number) => { for (let j = 1; j < k.length; j++) if (t <= k[j][0]) { const u = (t - k[j - 1][0]) / (k[j][0] - k[j - 1][0]); return k[j - 1][1] + (k[j][1] - k[j - 1][1]) * u; } return k[k.length - 1][1]; };
+    for (let i = 0; i < nz; i++) { const t = (i + 0.5) / nz; centre[i] = lerpK(prof.centre, t); edge[i] = lerpK(prof.belt, t); }
+  }
   const H = Math.max(...centre);
   // shoulder (belt) line: the outer-edge height, clamped into a sensible band
   const shoulder = smooth(smooth(edge.map((e) => Math.min(Math.max(e, H * 0.5), H * 0.78)), 8), 8);
@@ -79,7 +86,7 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
     for (let k = 0; k < nu; k++) if (sh.t[i * nu + k] > centre[i] - 0.07) u = k / (nu - 1);
     return Math.max(0.25, Math.min(0.85, u)) * hw[i];
   });
-  const roofHalfS = smooth(roofHalf, 4);
+  const roofHalfS = prof ? hw.map((w) => w * (prof.roof ?? 0.68)) : smooth(roofHalf, 4);
   const ground = 0.12;
   const wheels = sh.wheels.filter((w) => w.x >= 0 || sh.bike);
 
@@ -140,6 +147,9 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   const steepIdx = new Set<number>();
   for (let q = 1; q < M - 1; q++) { const dz = cabSecs[q + 1].z - cabSecs[q - 1].z; const dy = cabSecs[q + 1].pts[3][1] - cabSecs[q - 1].pts[3][1]; if (Math.abs(dy / dz) > 0.35) steepIdx.add(q); }
   if (cabSecs.length) {
+    // one continuous windscreen / rear window: fill short gaps between steep sections
+    const st = [...steepIdx].sort((a, b) => a - b);
+    for (let k = 1; k < st.length; k++) if (st[k] - st[k - 1] <= 4) for (let q = st[k - 1]; q < st[k]; q++) steepIdx.add(q);
     for (let q = 0; q < M; q++) if (steepIdx.has(q) || steepIdx.has(q - 1)) for (const k of [1, 2, 3, 4]) cabSecs[q].pts[k][2] = 'glass';
     loft(cabSecs, out, 'glass', 'glass');
   }
@@ -203,13 +213,13 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   // ---- meshes ----
   const root = new THREE.Group(), chassis = new THREE.Group();
   root.add(chassis);
-  const matFor = (tag: Tag): THREE.Material => tag === 'paint' ? (lite ? paintLite(color) : paint(color)) : tag === 'glass' ? (lite ? MAT.glassLite : MAT.glass) : tag === 'head' ? MAT.head : tag === 'tail' ? MAT.tailOff : tag === 'chrome' ? MAT.chrome : tag === 'carbon' ? MAT.carbon : MAT.trim;
+  const matFor = (tag: Tag): THREE.Material => tag === 'paint' ? (lite ? paintLite(color) : paint(color)) : tag === 'glass' ? (lite ? MAT.glassLite : MAT.glass) : tag === 'head' ? MAT.head : tag === 'tail' ? MAT.tailOff : tag === 'chrome' ? MAT.chrome : tag === 'carbon' ? MAT.carbon : tag === 'roofglass' ? (roofGlass ??= new THREE.MeshStandardMaterial({ color: 0x10161c, metalness: 0.1, roughness: 0.45, envMapIntensity: 0.35 })) : MAT.trim;
   let body: THREE.Mesh | undefined;
   const brake: THREE.Mesh[] = [], heads: THREE.Mesh[] = [];
   if (lite) {
     // traffic / cops: everything but the lamps in one vertex-coloured mesh, so the instancer can
     // draw it in one call and tint the paint per car (dark parts barely change under the tint)
-    const TONE: Partial<Record<Tag, number>> = { glass: 0x0b1620, dark: 0x121314, carbon: 0x1a1b1d, chrome: 0xb8bcc0 };
+    const TONE: Partial<Record<Tag, number>> = { glass: 0x0b1620, roofglass: 0x10161c, dark: 0x121314, carbon: 0x1a1b1d, chrome: 0xb8bcc0 };
     const pos: number[] = [], cols: number[] = [], cc = new THREE.Color();
     for (const [tag, arr] of out) {
       if (tag === 'head' || tag === 'tail') continue;
@@ -255,7 +265,21 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   };
 }
 
-const ROOF: Record<string, Tag> = { zr1: 'carbon', m4: 'carbon', tesla: 'glass' };
+/** side profiles, t = 0 at the tail to 1 at the nose: centre-line top and belt (shoulder) line */
+const PROFILES: Record<string, { centre: [number, number][]; belt: [number, number][]; roof?: number }> = {
+  // Model 3: short high boot, long fastback glass, tall rounded roof, short sloping nose
+  tesla: {
+    centre: [[0, 0.74], [0.03, 0.98], [0.1, 1.01], [0.18, 1.04], [0.3, 1.3], [0.42, 1.43], [0.54, 1.43], [0.64, 1.28], [0.73, 1.0], [0.84, 0.92], [0.95, 0.8], [1, 0.64]],
+    belt: [[0, 0.86], [0.15, 0.98], [0.5, 0.97], [0.75, 0.9], [1, 0.76]],
+  },
+  // Huracán: very low wedge, flat engine deck, cabin well forward of the rear axle, long raked screen, low beak
+  huracan: {
+    centre: [[0, 0.86], [0.05, 0.96], [0.3, 1.0], [0.4, 1.07], [0.47, 1.13], [0.56, 1.11], [0.7, 0.86], [0.8, 0.75], [0.93, 0.64], [1, 0.5]],
+    belt: [[0, 0.84], [0.3, 0.88], [0.55, 0.82], [0.75, 0.72], [1, 0.56]],
+  },
+};
+
+const ROOF: Record<string, Tag> = { zr1: 'carbon', m4: 'carbon', tesla: 'roofglass' };
 
 /** what a hand-made design gets: body measurements along z plus the part tools */
 interface DesignCtx {
@@ -359,7 +383,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     for (let k = 0; k < 4; k++) box('dark', 0, c.deckAt(ze - k * 0.12) + 0.012, ze - k * 0.12, c.hwAt(ze) * 0.8, 0.012, 0.05);
   },
   // Mercedes-AMG C63 (W205): Panamericana grille with vertical chrome slats, wide headlamps,
-  // big lower intakes, bonnet power domes, boot lip, quad round exhausts.
+  // big lower intakes, boot lip, quad round exhausts.
   c63(c) {
     const { L, ground, box } = c;
     const F = L / 2, R = -L / 2;
@@ -376,8 +400,6 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     box('dark', 0, ground + 0.16, F - 0.02, c.noseW * 0.7, 0.14, 0.06);
     box('carbon', 0, c.deckAt(R + 0.12) + 0.02, R + 0.12, c.tailW * 1.8, 0.03, 0.1);
     box('carbon', 0, ground + 0.08, R + 0.05, c.tailW * 1.2, 0.12, 0.12);
-    const zh = F - 0.8;
-    for (const sx of [1, -1]) box('paint', sx * c.hwAt(zh) * 0.28, c.deckAt(zh) + 0.015, zh, 0.14, 0.03, 0.9);
   },
   // Honda Civic Type R (FL5): tall rear wing, triple centre exhaust, bonnet scoop,
   // honeycomb grille and big corner intakes, red accents.

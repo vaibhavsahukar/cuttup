@@ -2,6 +2,7 @@ import type { VehicleSpec } from '../data/vehicles';
 import type { VehicleModel } from './ModelKit';
 import { buildFromShape, getShape } from './ShapeBuilder';
 import { buildPanelCar } from './PanelBuilder';
+import { buildBike } from './BikeBuilder';
 
 /** cars with hand-made signature details (others get the generic panel build; bikes keep ShapeBuilder) */
 export const DESIGNED = new Set(['zr1', 'm4', 'huracan', 'c63', 'civic', 'tesla']);
@@ -15,6 +16,7 @@ const build = (id: string, color: number, lite: boolean, shadows: boolean) => {
  * reference models the user supplied (src/data/shapes/*.json). Nothing is loaded at runtime.
  */
 export function buildPlayerModel(spec: VehicleSpec, shadows = true): VehicleModel {
+  if (spec.kind === 'bike') return buildBike(spec.model, spec.color, shadows);
   return build(spec.model, spec.color, false, shadows);
 }
 

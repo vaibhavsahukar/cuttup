@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { getShape, buildFromShape } from '../vehicles/ShapeBuilder';
 import { buildPanelCar } from '../vehicles/PanelBuilder';
+import { buildBike } from '../vehicles/BikeBuilder';
 
 /** Dev-only (?shape=<id>[,<id>]&ref=1): our rebuilt vehicle, optionally beside its reference model. */
 export async function shapeCompare(ids: string[], withRef: boolean, rot: number, color: number) {
@@ -20,7 +21,7 @@ export async function shapeCompare(ids: string[], withRef: boolean, rot: number,
   let col = 0;
   for (const id of ids) {
     const sh = getShape(id)!;
-    const ours = new URLSearchParams(location.search).get('panel') === '1' ? buildPanelCar(sh, color, false) : buildFromShape(sh, color, false);
+    const ours = id === 'r6' || id === 'cbr650' ? buildBike(id, color) : new URLSearchParams(location.search).get('panel') === '1' ? buildPanelCar(sh, color, false) : buildFromShape(sh, color, false);
     ours.root.position.set((col % 4) * 6.5, 0, -Math.floor(col / 4) * 7.5);
     ours.root.rotation.y = rot;
     scene.add(ours.root);
