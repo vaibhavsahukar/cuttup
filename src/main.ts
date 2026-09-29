@@ -32,7 +32,7 @@ async function boot() {
   loadingEl?.remove();
 
   const pmrem = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
-  const input = new Input(st.bindings);
+  const input = new Input(st.bindings, st.padBindings);
   const audio = new AudioEngine();
   audio.volumes = st.volumes;
   audio.applyVolumes();
@@ -69,7 +69,7 @@ async function boot() {
     audio.resume();
     game = new Game(renderer, audio, input, st, mapId, vehicleId, pmrem);
     game.onPopup = (p) => ui.popup(p);
-    game.onCrash = () => { ui.show('crashui'); flashT = 0.6; };
+    game.onCrash = (msg) => { ui.crashMessage(msg); ui.show('crashui'); flashT = 0.6; };
     game.resize(innerWidth, innerHeight);
     input.clearPressed();
     ui.controlsHint();
@@ -106,18 +106,20 @@ async function boot() {
     toMenu: () => { toMenuScene(); preview.show(st.vehicle); ui.show('menu'); },
     settingsChanged: () => {
       audio.volumes = st.volumes; audio.applyVolumes();
-      input.bindings = st.bindings;
+      input.bindings = st.bindings; input.pad = st.padBindings;
       applyDisplay();
     },
     click: () => { audio.resume(); audio.click(); },
   });
   ui.captureKey = (a, i) => { input.captureCb = (code) => ui.keyCaptured(a, i, code); };
+  ui.capturePad = (a) => input.capturePad((code) => ui.padCaptured(a, code));
+  ui.cancelCapture = () => { input.captureCb = null; input.padCaptureCb = null; };
   ui.show('menu');
   applyDisplay();
   addEventListener('pointerdown', () => audio.resume());
   addEventListener('keydown', (e) => {
     audio.resume();
-    if (mode === 'game' || input.captureCb) return;
+    if (mode === 'game' || input.captureCb || input.padCaptureCb || input.menuBlock > 0) return;
     if (e.code === 'ArrowDown' || e.code === 'ArrowRight' || e.code === 'KeyS') { ui.nav(1); e.preventDefault(); }
     else if (e.code === 'ArrowUp' || e.code === 'ArrowLeft' || e.code === 'KeyW') { ui.nav(-1); e.preventDefault(); }
     else if (e.code === 'Enter') { ui.activate(); e.preventDefault(); }
@@ -129,8 +131,9 @@ async function boot() {
   // gamepad menu navigation
   let padPrev: boolean[] = [];
   const pollPadMenu = () => {
-    const p = navigator.getGamepads?.()[0];
+    const p = [...(navigator.getGamepads?.() ?? [])].find((g) => g && g.connected);
     if (!p) return;
+    if (input.padCaptureCb || input.menuBlock > 0) { padPrev = p.buttons.map((x) => x.pressed); return; }
     const b = p.buttons.map((x) => x.pressed);
     const edge = (i: number) => b[i] && !padPrev[i];
     if (edge(12) || edge(14)) ui.nav(-1);
@@ -158,6 +161,7 @@ async function boot() {
       else {
         const alive = game.update(dt);
         const ph = game.player.phys;
+        ui.bikeHud(game.player.bike, ph.absOn, ph.tcOn, ph.awOn, ph.tyreTemp, ph.tyreWear);
         ui.hud(ph.v, ph.gear, ph.rpm / game.spec.redline, game.scoring.score, game.scoring.multiplier, Math.max(0, game.scoring.comboTimer / game.scoring.COMBO_TIME), game.scoring.distance, game.state === 'countdown' ? game.countdown : 0, st.units, game.player.topSpeed);
         if (!alive) endGame();
       }

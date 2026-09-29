@@ -8,7 +8,7 @@ import type { VehicleModel } from '../vehicles/ModelKit';
 import { paint, MAT } from '../vehicles/Materials';
 import { clamp } from '../core/math';
 
-export type CrashKind = 'car' | 'headon' | 'barrier' | 'tree';
+export type CrashKind = 'car' | 'headon' | 'barrier' | 'tree' | 'lowside' | 'highside' | 'looped' | 'endo' | 'tipover';
 
 interface Wreck { body: RigidBody; s: number; d: number; L: number; W: number; car?: TrafficCar }
 
@@ -77,6 +77,25 @@ export class CrashScene {
       pb.vel.multiplyScalar(0.8);
       pb.angVel.set(0, (Math.random() - 0.5) * 3 * sev, 0);
     }
+    // rider falls: how the bike goes down depends on how it fell
+    if (!hit && (kind === 'lowside' || kind === 'highside' || kind === 'looped' || kind === 'endo' || kind === 'tipover')) {
+      const lean = Math.sign(player.phys.lean) || 1;
+      pb.vel.copy(player.worldVel).multiplyScalar(kind === 'tipover' ? 0.3 : 0.9);
+      pb.angVel.set(0, 0, 0);
+      if (kind === 'lowside') { pb.angVel.addScaledVector(fwd, lean * 3.2); pb.angVel.y = lean * 1.2; pb.vel.y += 0.6; }
+      else if (kind === 'highside') { pb.angVel.addScaledVector(fwd, -lean * 5); pb.vel.y += 3.5 + sev * 2; pb.vel.addScaledVector(side, -lean * 2.5); }
+      else if (kind === 'looped') { pb.angVel.addScaledVector(side, -3.5); pb.vel.y += 1.5; pb.vel.multiplyScalar(0.6); }
+      else if (kind === 'endo') { pb.angVel.addScaledVector(side, 4.5); pb.vel.y += 2.5; }
+      else { pb.angVel.addScaledVector(fwd, lean * 1.5); }
+      pb.restitution = 0.25;
+      this.wrecks.push({ body: pb, s: player.phys.s, d: player.phys.d, L: spec.dims.length, W: spec.dims.width });
+      this.ejectRider(m, player, kind === 'tipover' ? 0.3 : sev);
+      const bv0 = pb.vel.clone().multiplyScalar(0.6);
+      this.particles.spark(contact, bv0, kind === 'tipover' ? 12 : Math.round(80 * sev + 30), 9);
+      this.particles.debris(contact, bv0, Math.round(20 * sev + 6), spec.color, false, 0.2);
+      this.focus.copy(pb.pos);
+      return;
+    }
     // tumble / roll scales with speed; tall vehicles and bikes roll easier
     const rollK = spec.kind === 'bike' ? 1.6 : spec.cgHeight > 0.6 ? 1.3 : 0.9;
     const big = impactSpeed > 18;
@@ -96,19 +115,7 @@ export class CrashScene {
       if (sev > 0.9) this.detachWheel(m, pb.vel, sev);
       if (sev > 0.8) this.detachPanel(m, 'bumper', pc, pb.vel, sev);
     } else if (m.bike?.rider) {
-      // rider ejected: ragdoll-style flailing tumble
-      const r = m.bike.rider;
-      r.root.updateMatrixWorld(true);
-      const wp = new THREE.Vector3(), wq = new THREE.Quaternion();
-      r.root.getWorldPosition(wp); r.root.getWorldQuaternion(wq);
-      this.scene.add(r.root);
-      r.root.position.copy(wp); r.root.quaternion.copy(wq);
-      const rb = new RigidBody(r.root, new THREE.Vector3(0.25, 0.45, 0.25), 80, new THREE.Vector3(0, 0.35, 0));
-      rb.vel.copy(player.worldVel).multiplyScalar(0.85).add(new THREE.Vector3(0, 4 + sev * 5, 0));
-      rb.angVel.set((Math.random() - 0.5) * 8 * sev, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 8 * sev);
-      rb.restitution = 0.35; rb.friction = 0.5;
-      this.riderBody = rb;
-      this.rider = m.bike;
+      this.ejectRider(m, player, sev);
       if (sev > 0.4) this.detachWheel(m, pb.vel, sev);
     }
 
@@ -120,6 +127,22 @@ export class CrashScene {
     this.particles.debris(contact.clone().add(new THREE.Vector3(0, 0.8, 0)), bv, Math.round(60 * sev + 15), 0xffffff, true, 0.1);
     if (hit) this.particles.debris(contact, bv, Math.round(25 * sev), hit.model.color, false, 0.2);
     this.focus.copy(pb.pos);
+  }
+
+  private ejectRider(m: VehicleModel, player: Player, sev: number) {
+    if (!m.bike?.rider) return;
+    const r = m.bike.rider;
+    r.root.updateMatrixWorld(true);
+    const wp = new THREE.Vector3(), wq = new THREE.Quaternion();
+    r.root.getWorldPosition(wp); r.root.getWorldQuaternion(wq);
+    this.scene.add(r.root);
+    r.root.position.copy(wp); r.root.quaternion.copy(wq);
+    const rb = new RigidBody(r.root, new THREE.Vector3(0.25, 0.45, 0.25), 80, new THREE.Vector3(0, 0.35, 0));
+    rb.vel.copy(player.worldVel).multiplyScalar(0.85).add(new THREE.Vector3(0, 4 + sev * 5, 0));
+    rb.angVel.set((Math.random() - 0.5) * 8 * sev, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 8 * sev);
+    rb.restitution = 0.35; rb.friction = 0.5;
+    this.riderBody = rb;
+    this.rider = m.bike;
   }
 
   private carWorldVel(c: TrafficCar) {

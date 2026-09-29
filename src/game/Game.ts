@@ -5,6 +5,7 @@ import { Environment } from '../world/Environment';
 import { getMap, makeLayout, type Layout, type MapSpec } from '../data/maps';
 import { getVehicle, type VehicleSpec } from '../data/vehicles';
 import { Player } from './Player';
+import type { Controls } from '../physics/VehiclePhysics';
 import { Traffic, type TrafficCar, type PlayerProxy } from '../traffic/Traffic';
 import { Particles } from './Particles';
 import { CrashScene, type CrashKind } from './Crash';
@@ -15,13 +16,14 @@ import type { AudioEngine } from '../audio/AudioEngine';
 import { QUALITY, type Settings } from '../storage/Save';
 import { clamp } from '../core/math';
 import { Police } from '../traffic/Police';
+import { randomCrashMessage } from '../data/crashMessages';
 import { timeSetting } from '../world/TimeOfDay';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
-export interface RunResult { score: number; distance: number; topSpeed: number; nearMisses: number; cutUps: number; time: number; crashKind: CrashKind }
+export interface RunResult { score: number; distance: number; topSpeed: number; nearMisses: number; cutUps: number; time: number; crashKind: CrashKind; message: string }
 
 const fr: Frame = { x: 0, y: 0, z: 0, heading: 0, k: 0, grade: 0 };
 const PHYS_DT = 1 / 240;
@@ -80,6 +82,7 @@ export class Game {
     this.scene.add(this.player.model.root);
     const startLane = this.map.road === 'highway' ? 2 : 0;
     this.player.phys.reset(0, this.layout.laneCenter(startLane), 22);
+    this.player.phys.setAids({ ...settings.aids, manual: settings.ridingStyle === 'manual' });
 
     this.traffic = new Traffic(this.path, this.map, this.layout, settings.difficulty, q.drawDist);
     this.traffic.night = night;
@@ -146,22 +149,29 @@ export class Game {
       if (this.countdown <= 0) this.state = 'driving';
     }
     if (this.state === 'driving' || this.state === 'countdown') {
-      const c = this.state === 'countdown'
+      // bikes: holding the (keyboard) brake while accelerating pulls back for a wheelie instead of braking
+      const bike = p.bike;
+      const keyPull = bike && input.throttle > 0.5 && input.brakeKey > 0.5;
+      const c: Controls = this.state === 'countdown'
         ? { throttle: 0.35, brake: 0, steer: 0, handbrake: false }
-        : { throttle: input.throttle, brake: input.brake, steer: input.steer, handbrake: input.handbrake };
+        : {
+          throttle: input.throttle, brake: keyPull ? input.brakePad : input.brake, frontBrake: input.frontBrake, steer: input.steer, handbrake: input.handbrake,
+          hang: input.hang, pull: bike ? Math.max(input.wheelie, keyPull ? 1 : 0) : 0,
+        };
       this.acc += dt;
       let sPrev = ph.s;
       let ds = 0;
       while (this.acc >= PHYS_DT) {
         this.acc -= PHYS_DT;
         p.step(PHYS_DT, c);
+        if (ph.fall && this.state === 'driving') { this.startCrash(ph.fall, Math.max(8, ph.speed), null); break; }
         this.edges();
         ds += ph.s - sPrev;
         sPrev = ph.s;
       }
       this.sGuess = ph.s;
       this.proxy.s = ph.s; this.proxy.d = ph.d; this.proxy.v = ph.v;
-      if (this.state === 'driving') this.scoring.update(dt, ds, ph.v);
+      if (this.state === 'driving') { this.scoring.update(dt, ds, ph.v); if (p.bike) this.scoring.wheelie(dt, ph.wheelieT, ph.wheelie); }
       this.collide();
       this.nearMisses();
       this.horn(dt);
@@ -338,14 +348,15 @@ export class Game {
     this.rig.addShake(1.5);
     this.audio.stopEngine();
     this.audio.crash(clamp(impact / 30, 0.4, 1.5));
-    this.onCrash?.();
+    const message = randomCrashMessage();
+    this.onCrash?.(message);
     this.result = {
       score: Math.round(this.scoring.score), distance: this.scoring.distance, topSpeed: this.player.topSpeed,
-      nearMisses: this.scoring.nearMisses, cutUps: this.scoring.cutUps, time: this.scoring.time, crashKind: kind,
+      nearMisses: this.scoring.nearMisses, cutUps: this.scoring.cutUps, time: this.scoring.time, crashKind: kind, message,
     };
     void ph;
   }
-  onCrash: (() => void) | null = null;
+  onCrash: ((message: string) => void) | null = null;
 
   finish() { this.state = 'done'; }
 

@@ -46,7 +46,16 @@ h2 { margin: 0 0 14px; font-size: 13px; letter-spacing: 0.35em; color: var(--dim
 .row .opts button { padding: 6px 12px; font-size: 12px; }
 .row .opts button.sel { border-color: var(--accent2); background: rgba(45,226,230,0.18); }
 input[type=range] { width: 260px; accent-color: var(--accent); }
-.binds { display: grid; grid-template-columns: 200px 1fr 1fr; gap: 6px 10px; align-items: center; font-size: 13px; }
+.bikehud[hidden] { display: none; }
+.bikehud { position: absolute; right: 40px; bottom: 150px; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; font-size: 12px; letter-spacing: 0.15em; }
+.bikehud .lights { display: flex; gap: 8px; }
+.bikehud .lights span { padding: 3px 8px; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: rgba(255,255,255,0.3); }
+.bikehud .lights span.on { color: #111; background: #ffc233; border-color: #ffc233; }
+.bikehud .tyre { display: flex; gap: 8px; align-items: center; color: var(--dim); }
+.bikehud .bar { width: 110px; height: 6px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; }
+.bikehud .bar i { display: block; height: 100%; }
+.binds { display: grid; grid-template-columns: 230px 1fr 1fr 1.3fr; gap: 6px 10px; align-items: center; font-size: 13px; }
+.binds .bh { font-size: 11px; letter-spacing: 0.12em; opacity: 0.6; text-transform: uppercase; }
 .binds button { text-transform: none; font-size: 12px; padding: 6px 10px; }
 .binds button.wait { border-color: var(--accent); animation: pulse 0.8s infinite; }
 @keyframes pulse { 50% { opacity: 0.5; } }
@@ -73,6 +82,9 @@ input[type=range] { width: 260px; accent-color: var(--accent); }
 #hud .ctrl { position: absolute; left: 30px; top: 22px; font-size: 11px; color: var(--dim); letter-spacing: 0.1em; line-height: 1.6; }
 #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
 #crashui { }
+#crashui .shame { position: absolute; top: calc(12% + 84px); left: 0; right: 0; margin: 0 auto; width: min(880px, 88vw); text-align: center; font-size: 26px; font-weight: 700; line-height: 1.3; color: #f4f4f4; text-shadow: 0 2px 18px #000, 0 0 3px #000; animation: shame 5.5s ease-out forwards; }
+@keyframes shame { 0% { opacity: 0; } 12% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; } }
+.shame.small { position: static; transform: none; width: auto; text-align: left; font-size: 15px; color: #ff9aa2; margin: 6px 0 14px; text-shadow: none; animation: none; font-style: italic; }
 #crashui .skip { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: var(--dim); letter-spacing: 0.3em; font-size: 12px; }
 #crashui .wreck { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); font-size: 64px; font-weight: 900; font-style: italic; color: var(--accent); letter-spacing: 0.05em; text-shadow: 0 4px 30px rgba(0,0,0,0.8); animation: pop 5s ease-out forwards; }
 .letterbox::before, .letterbox::after { content: ''; position: fixed; left: 0; right: 0; height: 9vh; background: #000; }

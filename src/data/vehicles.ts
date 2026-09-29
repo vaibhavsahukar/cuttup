@@ -38,6 +38,8 @@ export interface VehicleSpec {
   pitchFactor: number; // visual pitch per g (rad)
   brakeG: number; // max braking deceleration in g (before grip)
   downforce: number; // N per (m/s)^2
+  /** bikes: stock rider electronics, the highest level each aid can be set to (0 = not fitted) */
+  electronics?: { abs: number; tc: number; aw: number };
   steerLock: number; // rad at low speed
   steerSpeed: number; // rad/s steering rate
   highSpeedSteer: number; // fraction of lock kept at 60 m/s
@@ -56,19 +58,19 @@ const base = {
 
 export const VEHICLES: VehicleSpec[] = [
   // ---------------- MOTORCYCLES ----------------
-  { ...base, id: 'cbr650', name: 'Honder CCR650R', kind: 'bike', model: 'cbr650', color: 0xc8141c,
+  { ...base, id: 'cbr650', name: 'Honder CCR650R', kind: 'bike', model: 'cbr650', color: 0xc8141c, electronics: { abs: 2, tc: 1, aw: 0 },
     hp: 94, massKg: 208 + 75, drive: 'RWD', zeroSixty: 3.6, topSpeedMph: 140,
     character: 'Inline four with a broad midrange, neutral and easy to ride',
     gears: 6, redline: 12500, idleRpm: 1400, torquePeak: 0.76, torqueFlat: 0.45,
-    tireMu: 1.18, frontGrip: 1.04, powerOversteer: 0.25, cgHeight: 0.62, wheelbase: 1.37, frontWeight: 0.5, track: 0.2,
+    tireMu: 1.18, frontGrip: 1.04, powerOversteer: 0.25, cgHeight: 0.74, wheelbase: 1.37, frontWeight: 0.5, track: 0.2,
     rollFactor: 0, pitchFactor: 0.045, brakeG: 1.15, downforce: 0.02, steerLock: 0.5, steerSpeed: 3.9, highSpeedSteer: 0.2,
     stability: 0.92, yawInertia: 0.85,
     dims: { length: 2.03, width: 0.69, height: 1.13 }, engine: { cylinders: 4, tone: 1.35, roughness: 0.15 } },
-  { ...base, id: 'r6', name: 'Yamiha R6', kind: 'bike', model: 'r6', color: 0x1f4fbf,
+  { ...base, id: 'r6', name: 'Yamiha R6', kind: 'bike', model: 'r6', color: 0x1f4fbf, electronics: { abs: 2, tc: 3, aw: 3 },
     hp: 118, massKg: 190 + 75, drive: 'RWD', zeroSixty: 3.1, topSpeedMph: 160,
     character: 'Screaming 16k rpm inline four, sharp and light, lives at the top of the rev range',
     gears: 6, redline: 16000, idleRpm: 1400, torquePeak: 0.85, torqueFlat: 0.3,
-    tireMu: 1.18, frontGrip: 1.04, powerOversteer: 0.25, cgHeight: 0.62, wheelbase: 1.37, frontWeight: 0.5, track: 0.2,
+    tireMu: 1.18, frontGrip: 1.04, powerOversteer: 0.25, cgHeight: 0.74, wheelbase: 1.37, frontWeight: 0.5, track: 0.2,
     rollFactor: 0, pitchFactor: 0.045, brakeG: 1.15, downforce: 0.02, steerLock: 0.5, steerSpeed: 4.2, highSpeedSteer: 0.2,
     stability: 0.92, yawInertia: 0.85,
     dims: { length: 2.04, width: 0.7, height: 1.15 }, engine: { cylinders: 4, tone: 1.6, roughness: 0.15 } },

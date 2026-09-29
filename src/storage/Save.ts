@@ -1,5 +1,5 @@
 import type { TimeChoice } from '../world/TimeOfDay';
-import { DEFAULT_BINDINGS, type Bindings } from '../input/Input';
+import { DEFAULT_BINDINGS, DEFAULT_PAD, type Bindings, type PadBindings } from '../input/Input';
 
 export type QualityName = 'low' | 'medium' | 'high' | 'ultra';
 export interface Settings {
@@ -12,6 +12,10 @@ export interface Settings {
   difficulty: number; // 0 easy .. 3 insane
   timeOfDay: TimeChoice;
   bindings: Bindings;
+  padBindings: PadBindings;
+  /** bike rider aids: abs 0..2, tc 0..3, aw 0..3 (0 = off), eb 0..2 engine braking low / medium / high */
+  aids: { abs: number; tc: number; aw: number; eb: number };
+  ridingStyle: 'assisted' | 'manual';
   vehicle: string;
   map: string;
 }
@@ -29,7 +33,8 @@ const defaults = (): SaveData => ({
   settings: {
     quality: 'high', resolution: 'native', fullscreen: false,
     volumes: { master: 0.8, engine: 0.8, sfx: 0.8 }, units: 'mph', camera: 'chase', difficulty: 1, timeOfDay: 'auto',
-    bindings: structuredClone(DEFAULT_BINDINGS), vehicle: 'zr1', map: 'city',
+    bindings: structuredClone(DEFAULT_BINDINGS), padBindings: structuredClone(DEFAULT_PAD),
+    aids: { abs: 2, tc: 2, aw: 1, eb: 1 }, ridingStyle: 'assisted', vehicle: 'zr1', map: 'city',
   },
   leaderboard: {},
 });
@@ -51,7 +56,15 @@ export class Save {
       try {
         const p = JSON.parse(raw) as Partial<SaveData>;
         const d = defaults();
-        this.data = { settings: { ...d.settings, ...(p.settings ?? {}), bindings: { ...d.settings.bindings, ...(p.settings?.bindings ?? {}) } }, leaderboard: p.leaderboard ?? {} };
+        this.data = {
+          settings: {
+            ...d.settings, ...(p.settings ?? {}),
+            bindings: { ...d.settings.bindings, ...(p.settings?.bindings ?? {}) },
+            padBindings: { ...d.settings.padBindings, ...(p.settings?.padBindings ?? {}) },
+            aids: { ...d.settings.aids, ...(p.settings?.aids ?? {}) },
+          },
+          leaderboard: p.leaderboard ?? {},
+        };
       } catch { /* corrupt save -> defaults */ }
     }
   }

@@ -51,6 +51,19 @@ export class Scoring {
     this.onPopup?.({ text: label, sub: `+${Math.round(pts * this.multiplier + (cut ? 500 * this.multiplier : 0))}  x${this.multiplier.toFixed(1)}`, color: cut ? '#ff4fd8' : oncoming ? '#ffb020' : '#4dff88', big: cut || close > 0.7 });
   }
 
+  private wheelieBest = 0;
+  /** bikes: points for time on the back wheel, a popup every couple of seconds */
+  wheelie(dt: number, t: number, pitch: number) {
+    if (t <= 0) {
+      if (this.wheelieBest > 1.5) this.onPopup?.({ text: 'WHEELIE', sub: `${this.wheelieBest.toFixed(1)}s`, color: '#ffd23f' });
+      this.wheelieBest = 0;
+      return;
+    }
+    this.wheelieBest = t;
+    this.score += dt * (40 + 200 * Math.min(1, pitch / 0.6)) * this.multiplier;
+    if (Math.floor(t / 3) !== Math.floor((t - dt) / 3)) { this.comboTimer = this.COMBO_TIME; this.onPopup?.({ text: 'WHEELIE', sub: `${Math.floor(t)}s  x${this.multiplier.toFixed(1)}`, color: '#ffd23f' }); }
+  }
+
   bump() {
     if (this.multiplier > 1) this.onPopup?.({ text: 'BUMP - COMBO LOST', color: '#f66' });
     this.multiplier = 1; this.comboTimer = 0;
