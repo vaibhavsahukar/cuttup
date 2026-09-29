@@ -272,6 +272,12 @@ const PROFILES: Record<string, { centre: [number, number][]; belt: [number, numb
     centre: [[0, 0.74], [0.03, 0.98], [0.1, 1.01], [0.18, 1.04], [0.3, 1.3], [0.42, 1.43], [0.54, 1.43], [0.64, 1.28], [0.73, 1.0], [0.84, 0.92], [0.95, 0.8], [1, 0.64]],
     belt: [[0, 0.86], [0.15, 0.98], [0.5, 0.97], [0.75, 0.9], [1, 0.76]],
   },
+  // C63 (W205): long bonnet, upright grille nose, cabin set back, distinct boot lid with a short rear window
+  c63: {
+    centre: [[0, 0.8], [0.03, 0.95], [0.12, 0.99], [0.22, 1.0], [0.3, 1.24], [0.37, 1.38], [0.42, 1.42], [0.54, 1.42], [0.6, 1.36], [0.68, 1.06], [0.74, 1.01], [0.86, 0.98], [0.95, 0.92], [0.985, 0.84], [1, 0.7]],
+    belt: [[0, 0.88], [0.15, 0.97], [0.5, 0.98], [0.75, 0.97], [1, 0.84]],
+    roof: 0.72,
+  },
   // Huracán: very low wedge, flat engine deck, cabin well forward of the rear axle, long raked screen, low beak
   huracan: {
     centre: [[0, 0.86], [0.05, 0.96], [0.3, 1.0], [0.4, 1.07], [0.47, 1.13], [0.56, 1.11], [0.7, 0.86], [0.8, 0.75], [0.93, 0.64], [1, 0.5]],
@@ -387,19 +393,27 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
   c63(c) {
     const { L, ground, box } = c;
     const F = L / 2, R = -L / 2;
-    box('dark', 0, c.noseH - 0.17, F + 0.01, 0.7, 0.3, 0.05);
-    for (let k = -6; k <= 6; k++) box('chrome', k * 0.05, c.noseH - 0.17, F + 0.03, 0.012, 0.28, 0.03);
-    box('chrome', 0, c.noseH - 0.17, F + 0.04, 0.16, 0.16, 0.02); // star badge
+    // Panamericana grille: dark, vertical chrome bars, big star, sitting upright in the nose
+    const gy = c.noseH - 0.2;
+    box('dark', 0, gy, F + 0.01, 0.78, 0.28, 0.05);
+    for (let k = -7; k <= 7; k++) box('chrome', k * 0.05, gy, F + 0.03, 0.014, 0.26, 0.03);
+    box('chrome', 0, gy, F + 0.045, 0.17, 0.17, 0.02); // star badge
+    box('chrome', 0, gy + 0.17, F + 0.02, 0.86, 0.03, 0.04); // upper chrome edge
     for (const sx of [1, -1]) {
-      c.lamp(sx, F - 0.05, F - 0.42, 0.5, 0.93, 0.75, 0.98);
-      box('dark', sx * c.noseW * 0.72, ground + 0.16, F - 0.02, c.noseW * 0.44, 0.2, 0.06);
-      box('tail', sx * c.tailW * 0.72, c.tailH - 0.09, R + 0.004, c.tailW * 0.5, 0.11, 0.05);
-      for (const dx of [0.62, 0.8]) box('chrome', sx * c.tailW * dx, ground + 0.15, R - 0.01, 0.1, 0.1, 0.08);
+      c.lamp(sx, F - 0.05, F - 0.46, 0.5, 0.93, 0.72, 0.98);
+      box('dark', sx * c.noseW * 0.74, ground + 0.17, F - 0.02, c.noseW * 0.42, 0.22, 0.06); // big corner intakes
+      box('tail', sx * c.tailW * 0.74, c.tailH - 0.06, R + 0.004, c.tailW * 0.5, 0.09, 0.05);
+      for (const dx of [0.6, 0.82]) box('chrome', sx * c.tailW * dx, ground + 0.15, R - 0.01, 0.1, 0.1, 0.09); // quad exhausts
       box('carbon', sx * (c.hwAt(0) - 0.02), ground + 0.06, 0, 0.05, 0.08, L * 0.4);
+      const zf = F - 1.25;
+      box('dark', sx * (c.hwAt(zf) + 0.004), c.shAt(zf) - 0.2, zf, 0.02, 0.09, 0.26); // fender gill
     }
-    box('dark', 0, ground + 0.16, F - 0.02, c.noseW * 0.7, 0.14, 0.06);
-    box('carbon', 0, c.deckAt(R + 0.12) + 0.02, R + 0.12, c.tailW * 1.8, 0.03, 0.1);
-    box('carbon', 0, ground + 0.08, R + 0.05, c.tailW * 1.2, 0.12, 0.12);
+    box('dark', 0, ground + 0.16, F - 0.02, c.noseW * 0.7, 0.14, 0.06); // lower intake
+    box('chrome', 0, ground + 0.24, F + 0.005, c.noseW * 0.7, 0.025, 0.03); // A-wing bar
+    box('carbon', 0, ground + 0.03, F - 0.09, c.noseW * 1.8, 0.03, 0.2); // splitter
+    box('paint', 0, c.deckAt(R + 0.16) + 0.02, R + 0.16, c.tailW * 1.7, 0.04, 0.14); // boot lip spoiler
+    box('carbon', 0, ground + 0.09, R + 0.05, c.tailW * 1.3, 0.13, 0.12); // diffuser
+    box('dark', 0, c.tailH - 0.06, R + 0.012, c.tailW * 1.8, 0.05, 0.04); // lamp bar between the tail lamps
   },
   // Honda Civic Type R (FL5): tall rear wing, triple centre exhaust, bonnet scoop,
   // honeycomb grille and big corner intakes, red accents.
