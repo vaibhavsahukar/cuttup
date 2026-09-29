@@ -6,7 +6,7 @@ const paintCache = new Map<number, THREE.MeshPhysicalMaterial>();
 export function paint(color: number) {
   let m = paintCache.get(color);
   if (!m) {
-    m = new THREE.MeshPhysicalMaterial({ color, metalness: 0.45, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.12, envMapIntensity: 0.8 });
+    m = new THREE.MeshPhysicalMaterial({ color, metalness: 0.3, roughness: 0.55, clearcoat: 0.2, clearcoatRoughness: 0.4, envMapIntensity: 0.55 });
     paintCache.set(color, m);
   }
   return m;
@@ -16,17 +16,17 @@ const liteCache = new Map<number, THREE.MeshStandardMaterial>();
 /** cheap paint for traffic (no clear coat layer) */
 export function paintLite(color: number) {
   let m = liteCache.get(color);
-  if (!m) { m = new THREE.MeshStandardMaterial({ color, metalness: 0.45, roughness: 0.35, envMapIntensity: 0.8 }); liteCache.set(color, m); }
+  if (!m) { m = new THREE.MeshStandardMaterial({ color, metalness: 0.3, roughness: 0.55, envMapIntensity: 0.55 }); liteCache.set(color, m); }
   return m;
 }
 
 export const MAT = {
-  glass: new THREE.MeshPhysicalMaterial({ color: 0x0b1620, metalness: 0.2, roughness: 0.02, transparent: true, opacity: 0.9, envMapIntensity: 0.9 }),
-  glassLite: new THREE.MeshStandardMaterial({ color: 0x0c1216, metalness: 0.3, roughness: 0.1, envMapIntensity: 0.8 }),
-  clearGlass: new THREE.MeshStandardMaterial({ color: 0x9fb4c0, metalness: 0.2, roughness: 0.02, transparent: true, opacity: 0.35 }),
+  glass: new THREE.MeshPhysicalMaterial({ color: 0x0b1620, metalness: 0.1, roughness: 0.3, transparent: true, opacity: 0.92, envMapIntensity: 0.45 }),
+  glassLite: new THREE.MeshStandardMaterial({ color: 0x0c1216, metalness: 0.1, roughness: 0.35, envMapIntensity: 0.45 }),
+  clearGlass: new THREE.MeshStandardMaterial({ color: 0x9fb4c0, metalness: 0.1, roughness: 0.3, transparent: true, opacity: 0.35, envMapIntensity: 0.5 }),
   trim: new THREE.MeshStandardMaterial({ color: 0x121314, metalness: 0.1, roughness: 0.75 }),
   carbon: new THREE.MeshStandardMaterial({ color: 0x1a1b1d, metalness: 0.4, roughness: 0.35 }),
-  chrome: new THREE.MeshStandardMaterial({ color: 0xd9dde0, metalness: 1, roughness: 0.15 }),
+  chrome: new THREE.MeshStandardMaterial({ color: 0xc9cdd0, metalness: 0.9, roughness: 0.35, envMapIntensity: 0.7 }),
   rim: new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.9, roughness: 0.3 }),
   darkRim: new THREE.MeshStandardMaterial({ color: 0x2a2c2f, metalness: 0.8, roughness: 0.35 }),
   tire: new THREE.MeshStandardMaterial({ color: 0x151515, metalness: 0, roughness: 0.92 }),

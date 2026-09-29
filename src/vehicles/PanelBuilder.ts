@@ -232,7 +232,7 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
     g = toCreasedNormals(g, Math.PI / 5);
     const cg = new THREE.Float32BufferAttribute(cols, 3);
     g.setAttribute('color', cg);
-    body = new THREE.Mesh(g, (liteBody ??= new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.4, roughness: 0.4, envMapIntensity: 0.9 })));
+    body = new THREE.Mesh(g, (liteBody ??= new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.3, roughness: 0.55, envMapIntensity: 0.55 })));
     body.name = 'paint';
     chassis.add(body);
   }
