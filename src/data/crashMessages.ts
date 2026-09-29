@@ -51,7 +51,7 @@ hit|You just bought somebody 6 months of physical therapy, and they didn't even 
 hit|Congrats, you made the score board and ruined a man who was just picking up milk
 hit|Sorry, was that a bad time? Somebody was on the phone telling their mum they'd be there soon
 hit|They said reckless driving is a growing problem. You are the problem
-hit|You are one bad decision away from being the worst thing that ever happened to a stranger
+hit|Now imagine if that was in real life
 headon|Head-on. You did not just risk your own life, you brought a stranger along for the ride
 headon|Wrong lane, wrong day. Oncoming traffic has families too
 headon|You picked the wrong side of the road, and somebody else paid for the ticket
