@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { getVehicle } from '../data/vehicles';
-import { buildPlayerModel } from '../vehicles/Factory';
+import { buildPlayerModel, buildViewerModel } from '../vehicles/Factory';
 import type { VehicleModel } from '../vehicles/ModelKit';
 
 /** Garage turntable used behind every menu screen. */
@@ -67,14 +67,30 @@ export class PreviewStage {
     for (const b of m.brake) b.material = (b.material as THREE.Material);
   }
 
+  /** show any model of the catalog ('v:<vehicle>', 't:<traffic>', 'c:<cop>') */
+  showModel(key: string) {
+    let m = this.models.get(key);
+    if (!m) {
+      m = buildViewerModel(key, getVehicle);
+      m.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+      m.root.position.y = 0.12;
+      this.models.set(key, m);
+    }
+    if (this.current) this.table.remove(this.current.root);
+    this.table.add(m.root);
+    this.current = m;
+  }
+
   update(dt: number, w: number, h: number) {
     this.t += dt;
     this.idle += dt;
     if (this.dragX === null && this.idle > 2.5) this.table.rotation.y += dt * 0.35;
     this.camera.aspect = w / h;
     const bike = this.current && this.current.bike;
-    const dist = bike ? 7 : 11.5;
-    this.camera.position.set(Math.sin(0.5) * dist + this.offsetX, bike ? 2.2 : 3.2, Math.cos(0.5) * dist);
+    // longer vehicles (vans, trucks) stand further back
+    const len = this.current?.length ?? 4.5;
+    const dist = bike ? 7 : Math.max(11.5, len * 2.5 + 0.5);
+    this.camera.position.set(Math.sin(0.5) * dist + this.offsetX, (bike ? 2.2 : 3.2) * (dist / 11.5 > 1 ? dist / 11.5 : 1), Math.cos(0.5) * dist);
     this.camera.lookAt(this.offsetX * 0.9, bike ? 0.8 : 0.7, 0);
     this.camera.updateProjectionMatrix();
   }

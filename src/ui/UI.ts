@@ -1,5 +1,6 @@
 import { VEHICLES, getVehicle, statBars } from '../data/vehicles';
 import { MAPS, getMap } from '../data/maps';
+import { modelCatalog } from '../data/modelCatalog';
 import { TIME_CHOICES, type TimeChoice } from '../world/TimeOfDay';
 import { ACTIONS, DEFAULT_BINDINGS, DEFAULT_PAD, fmtPad, type Action } from '../input/Input';
 import type { Save, RunEntry, QualityName } from '../storage/Save';
@@ -10,10 +11,10 @@ import { MPH, KPH } from '../core/math';
 const $ = <T extends HTMLElement = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector(sel) as T;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
-export type ScreenId = 'menu' | 'garage' | 'maps' | 'settings' | 'hud' | 'pause' | 'results' | 'crashui';
+export type ScreenId = 'menu' | 'garage' | 'models' | 'maps' | 'settings' | 'hud' | 'pause' | 'results' | 'crashui';
 
 export interface UIHandlers {
-  play(): void; garage(): void; maps(): void; settings(): void; quit(): void;
+  play(): void; garage(): void; models(): void; previewModel(key: string): void; maps(): void; settings(): void; quit(): void;
   selectVehicle(id: string): void; previewVehicle(id: string): void;
   selectMap(id: string): void; startMap(id: string): void;
   back(): void; resume(): void; restart(): void; toMenu(): void;
@@ -42,6 +43,7 @@ export class UI {
           <button data-a="play" class="primary">Play</button>
           <button data-a="garage">Vehicle Select</button>
           <button data-a="maps">Map Select</button>
+          <button data-a="models">Model Viewer</button>
           <button data-a="settings">Settings</button>
           <button data-a="quit">Quit</button>
         </div>
@@ -51,6 +53,11 @@ export class UI {
         <div class="list panel"></div>
         <div class="info panel"></div>
         <div class="actions"><button data-a="back">Back</button><button data-a="choose" class="primary">Select vehicle</button></div>
+      </div>
+      <div id="models" class="screen">
+        <div class="list panel"></div>
+        <div class="info panel"></div>
+        <div class="actions"><button data-a="prev">Previous</button><button data-a="next">Next</button><button data-a="back" class="primary">Back</button></div>
       </div>
       <div id="maps" class="screen"><div class="cards"></div>
         <div class="actions"><button data-a="back">Back</button><button data-a="go" class="primary">Start run</button></div></div>
@@ -79,13 +86,23 @@ export class UI {
       const a = (e.target as HTMLElement).dataset.a;
       if (!a) return;
       this.h.click();
-      if (a === 'play') this.h.play(); else if (a === 'garage') this.h.garage(); else if (a === 'maps') this.h.maps();
+      if (a === 'play') this.h.play(); else if (a === 'garage') this.h.garage(); else if (a === 'maps') this.h.maps(); else if (a === 'models') this.h.models();
       else if (a === 'settings') { this.settingsReturn = 'menu'; this.h.settings(); } else if (a === 'quit') this.h.quit();
     });
     $('#garage .actions').addEventListener('click', (e) => {
       const a = (e.target as HTMLElement).dataset.a;
       this.h.click();
       if (a === 'back') this.h.back(); else if (a === 'choose') this.h.selectVehicle(this.previewId);
+    });
+    $('#models .actions').addEventListener('click', (e) => {
+      const a = (e.target as HTMLElement).dataset.a;
+      this.h.click();
+      if (a === 'back') this.h.back();
+      else if (a === 'next' || a === 'prev') {
+        const cat = modelCatalog();
+        const i = cat.findIndex((m) => m.key === this.modelKey);
+        this.previewModel(cat[(i + (a === 'next' ? 1 : cat.length - 1)) % cat.length].key);
+      }
     });
     $('#maps .actions').addEventListener('click', (e) => {
       const a = (e.target as HTMLElement).dataset.a;
@@ -108,6 +125,7 @@ export class UI {
     document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('on', s.id === id || extra.includes(s.id as ScreenId)));
     if (id === 'garage') this.buildGarage();
     if (id === 'maps') this.buildMaps();
+    if (id === 'models') this.buildModels();
     if (id === 'settings') this.buildSettings();
     if (id === 'menu') $('#menuHint').textContent = `${getVehicle(this.save.data.settings.vehicle).name}  ·  ${getMap(this.save.data.settings.map).name}   —   Arrow keys / D-pad + Enter / (A) to navigate`;
     this.focusIdx = -1; // no highlight until keyboard / pad navigation starts
@@ -146,6 +164,31 @@ export class UI {
         <div><b>TOP SPEED</b>${v.topSpeedMph} mph${v.limited ? ' (lim.)' : ''}</div><div><b>BEST (${esc(getMap(this.save.data.settings.map).name)})</b>${this.save.best(this.save.data.settings.map, v.id).toLocaleString()}</div>
       </div>`;
     this.h.previewVehicle(id);
+  }
+
+  // ---------------- model viewer ----------------
+  private modelKey = '';
+  private buildModels() {
+    const cat = modelCatalog();
+    const groups = ['Motorcycles', 'Cars', 'Traffic', 'Police'] as const;
+    const list = $('#models .list');
+    list.innerHTML = `<h2>Model Viewer</h2>` + groups.map((g) => `<div class="grp">${g.toUpperCase()}</div>` + cat.filter((m) => m.group === g).map((m) => `<button data-m="${m.key}">${esc(m.label)}</button>`).join('')).join('');
+    list.onclick = (e) => {
+      const k = (e.target as HTMLElement).dataset.m;
+      if (!k) return;
+      this.h.click();
+      this.previewModel(k);
+    };
+    this.previewModel(this.modelKey || cat[0].key);
+  }
+  previewModel(key: string) {
+    this.modelKey = key;
+    const cat = modelCatalog();
+    const m = cat.find((x) => x.key === key) ?? cat[0];
+    document.querySelectorAll('#models .list button').forEach((b) => b.classList.toggle('sel', (b as HTMLElement).dataset.m === m.key));
+    const i = cat.indexOf(m);
+    $('#models .info').innerHTML = `<div class="name">${esc(m.label)}</div><div class="char">${esc(m.note)}</div><div class="specs"><div><b>CATEGORY</b>${m.group}</div><div><b>MODEL</b>${i + 1} of ${cat.length}</div></div><div class="char" style="margin-top:14px">Drag to rotate the model.</div>`;
+    this.h.previewModel(m.key);
   }
 
   // ---------------- maps ----------------

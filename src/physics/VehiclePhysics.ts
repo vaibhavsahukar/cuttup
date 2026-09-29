@@ -310,11 +310,14 @@ export class VehiclePhysics {
       const hangT = A.manual ? clamp(c.hang ?? 0, -1, 1) : clamp(this.lean / 0.6, -1, 1) * 0.7;
       this.hang += clamp(hangT - this.hang, -3 * dt, 3 * dt);
       // the bike's own lean is capped by ground clearance; hanging off to the inside adds to it
-      const maxLean = 0.9 + Math.max(0, this.hang * Math.sign(c.steer || this.lean)) * 0.14;
+      // gyroscopic stiffness: the faster the wheels spin the harder the bike is to lay over, so the usable
+      // lean shrinks with speed (~52 deg when slow, ~39 deg at 60 mph, ~22 deg at 120 mph) and lean-in gets slower
+      const speedCap = lerp(0.9, 0.38, clamp((av - 8) / 45, 0, 1));
+      const maxLean = speedCap + Math.max(0, this.hang * Math.sign(c.steer || this.lean)) * 0.14;
       let leanTarget = clamp(A.manual ? c.steer * 1.05 : Math.atan((c.steer * Math.min(ayGrip, ayLock)) / G), -maxLean, maxLean);
       // assisted: the bike never leans much past what the turn is actually holding (runs wide instead of falling)
       if (!A.manual && av > 3) leanTarget = clamp(leanTarget, this.leanEq - 0.35, this.leanEq + 0.35);
-      const rate = sp.steerSpeed * 1.15 * clamp(0.45 + av / 25, 0.45, 1);
+      const rate = sp.steerSpeed * 1.15 * clamp(0.45 + av / 25, 0.45, 1) * lerp(1, 0.55, clamp((av - 25) / 45, 0, 1));
       this.lean += clamp(leanTarget - this.lean, -rate * dt, rate * dt);
       this.bikeLean = this.lean - this.hang * 0.14;
       target = av > 3 ? (this.L * G * Math.tan(this.lean)) / Math.max(9, v * v) + this.lean * 0.04 : c.steer * sp.steerLock;

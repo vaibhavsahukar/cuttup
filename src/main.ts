@@ -90,6 +90,8 @@ async function boot() {
   const ui: UI = new UI(save, {
     play: () => startGame(st.map, st.vehicle),
     garage: () => { toMenuScene(); preview.show(st.vehicle); ui.show('garage'); },
+    models: () => { toMenuScene(); ui.show('models'); },
+    previewModel: (key) => preview.showModel(key),
     maps: () => { toMenuScene(); ui.show('maps'); },
     settings: () => ui.show('settings'),
     quit: () => { if (window.native) window.native.quit(); else ui.show('menu'); },
@@ -170,7 +172,7 @@ async function boot() {
     if (flashT > 0) { flashT = Math.max(0, flashT - dt * 3); ui.flash(flashT); }
     if (game && mode !== 'menu') game.render();
     else {
-      preview.offsetX = ui.current === 'garage' ? 0 : ui.current === 'menu' ? -2.2 : 0;
+      preview.offsetX = ui.current === 'garage' || ui.current === 'models' ? 0 : ui.current === 'menu' ? -2.2 : 0;
       preview.update(dt, innerWidth, innerHeight);
       renderer.render(preview.scene, preview.camera);
     }

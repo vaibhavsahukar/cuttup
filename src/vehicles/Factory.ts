@@ -30,6 +30,14 @@ export const TRAFFIC_TYPES = Object.keys(TRAFFIC_SHAPES) as TrafficType[];
 /** traffic paint colours (real-world popular car colours) */
 export const TRAFFIC_COLORS = [0xe8e8e8, 0x1b1c1e, 0x8f9499, 0x5a6068, 0x9b1b1f, 0x1f3e7a, 0x2c4a33, 0xc9bfa8, 0x6d2a1c, 0xd6d0c4, 0x2f6fa8, 0x3d434b];
 
+/** full-quality model for any key of the Model Viewer ('v:<vehicle>', 't:<traffic type>', 'c:<cop>') */
+export function buildViewerModel(key: string, drivable: (id: string) => VehicleSpec): VehicleModel {
+  const [kind, id] = key.split(':');
+  if (kind === 'v') return buildPlayerModel(drivable(id), true);
+  if (kind === 't') return build(TRAFFIC_SHAPES[id as TrafficType], id === 'boxtruck' ? 0xeeeeee : 0x8f9499, false, true);
+  return build(id, id === 'cop_charger' ? 0x16181b : 0x2a2d31, false, true);
+}
+
 export function buildTrafficModel(type: TrafficType, color = 0xffffff, _shadows = false): VehicleModel {
   const m = build(TRAFFIC_SHAPES[type], type === 'boxtruck' ? 0xeeeeee : color, true, false);
   return m;

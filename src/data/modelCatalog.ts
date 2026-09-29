@@ -1,0 +1,26 @@
+import { VEHICLES } from './vehicles';
+
+/** Every vehicle model in the game, for the Model Viewer (drivable, traffic and police). */
+export interface ModelEntry { key: string; label: string; group: 'Motorcycles' | 'Cars' | 'Traffic' | 'Police'; note: string }
+
+export const TRAFFIC_LABELS: Record<string, [string, string]> = {
+  sedan: ['Sedan', 'Everyday family saloon'],
+  hatch: ['Hatchback', 'Compact city hatch'],
+  suv: ['SUV', 'Large luxury SUV'],
+  crossover: ['Crossover', 'Mid size crossover'],
+  pickup: ['Pickup truck', 'Full size pickup with open bed'],
+  van: ['Van', 'Delivery van'],
+  boxtruck: ['Box truck', 'Heavy cargo truck'],
+  tesla: ['Tesler (traffic)', 'The Tesler as it appears in traffic'],
+  civic: ['Honder Civiz (traffic)', 'The Honder Civiz as it appears in traffic'],
+};
+
+export function modelCatalog(): ModelEntry[] {
+  const list: ModelEntry[] = [];
+  for (const v of VEHICLES.filter((x) => x.kind === 'bike')) list.push({ key: `v:${v.id}`, label: v.name, group: 'Motorcycles', note: v.character });
+  for (const v of VEHICLES.filter((x) => x.kind === 'car')) list.push({ key: `v:${v.id}`, label: v.name, group: 'Cars', note: v.character });
+  for (const [id, [label, note]] of Object.entries(TRAFFIC_LABELS)) list.push({ key: `t:${id}`, label, group: 'Traffic', note });
+  list.push({ key: 'c:cop_basic', label: 'Police cruiser', group: 'Police', note: 'Standard patrol car, appears from 15,000 points' });
+  list.push({ key: 'c:cop_charger', label: 'Police interceptor', group: 'Police', note: 'Faster muscle car unit, appears from 50,000 points' });
+  return list;
+}
