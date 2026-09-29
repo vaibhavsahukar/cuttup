@@ -15,6 +15,8 @@ import type { Shape } from './ShapeBuilder';
 type Tag = 'paint' | 'glass' | 'dark' | 'head' | 'tail' | 'chrome' | 'carbon';
 interface Section { z: number; pts: [number, number, Tag][] } // pts go around the section (x, y); tag = material of the segment to the next point
 
+let liteBody: THREE.MeshStandardMaterial | undefined;
+
 const smooth = (a: number[], r: number) => a.map((_, i) => { let s = 0, n = 0; for (let d = -r; d <= r; d++) { const j = i + d; if (j < 0 || j >= a.length) continue; const w = r + 1 - Math.abs(d); s += a[j] * w; n += w; } return s / n; });
 
 /** loft consecutive sections (same point count) into per-tag triangle lists */
@@ -59,7 +61,18 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   // cabin: where the centre line rises clearly above the shoulder
   const cab: number[] = [];
   for (let i = 0; i < nz; i++) if (centre[i] > shoulder[i] + 0.14) cab.push(i);
+  // trucks: only the frontmost run is the cabin (the bed / cargo box behind it is solid body)
+  if (sh.id === 't_pickup' || sh.id === 't_boxtruck') {
+    let k = cab.length - 1;
+    while (k > 0 && cab[k - 1] === cab[k] - 1) k--;
+    cab.splice(0, k);
+  }
   const c0 = cab.length ? cab[0] : Math.floor(nz * 0.35), c1 = cab.length ? cab[cab.length - 1] : Math.floor(nz * 0.75);
+  // box truck: the cargo box is a flat-topped, straight-sided block
+  if (sh.id === 't_boxtruck') {
+    const top = Math.max(...centre.slice(0, c0)) * 0.97;
+    for (let i = 0; i < c0 - 1; i++) { centre[i] = top; shoulder[i] = top - 0.03; }
+  }
   // roof half-width: outermost point still near the roof height
   const roofHalf = Array.from({ length: nz }, (_, i) => {
     let u = 0.2;
@@ -105,7 +118,7 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
 
   // ---- cabin (greenhouse) ----
   const cabSecs: Section[] = [];
-  const roofTag: Tag = sh.id === 'zr1' ? 'carbon' : 'paint'; // ZR1 carbon roof panel
+  const roofTag: Tag = ROOF[sh.id] ?? 'paint'; // carbon roofs, Tesla glass roof
   const zc0 = zAt(c0), zc1 = zAt(c1);
   const M = 30;
   for (let q = 0; q < M; q++) {
@@ -155,12 +168,21 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   const idx = (z: number) => Math.min(nz - 1, Math.max(0, Math.round(((z - z0) / L) * nz - 0.5)));
   const design = DESIGNS[sh.id];
   if (design) {
-    design({
+    const ctx: DesignCtx = {
       L, ground, noseW, tailW, noseH, tailH, cabFront: zc1, cabRear: zc0, box, plate,
       hwAt: (z) => hw[idx(z)] * 0.985, shAt: (z) => shoulder[idx(z)],
       deckAt: (z) => { const i = idx(z); return i >= c0 && i <= c1 ? shoulder[i] + 0.01 : Math.max(centre[i] * 0.98, shoulder[i] - 0.02); },
       topAt: (z) => centre[idx(z)],
-    });
+      onTop: (x, z, lift = 0.035) => {
+        const f = Math.min(1, Math.abs(x) / ctx.hwAt(z));
+        return [x, ctx.deckAt(z) + (ctx.shAt(z) - ctx.deckAt(z)) * f * f + lift, z];
+      },
+      lamp: (sx, zf, zb, inF, outF, inB, outB, t = 0.06) => {
+        const wf = ctx.hwAt(zf), wb = ctx.hwAt(zb);
+        plate('head', [ctx.onTop(sx * wf * outF, zf), ctx.onTop(sx * wf * inF, zf - 0.04), ctx.onTop(sx * wb * inB, zb), ctx.onTop(sx * wb * outB, zb - 0.04)], t);
+      },
+    };
+    design(ctx);
   } else {
   // front: lower grille / splitter, headlamps high on the outer corners
   box('dark', 0, ground + 0.13, L / 2 - 0.03, noseW * 1.2, 0.16, 0.06);
@@ -184,7 +206,28 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   const matFor = (tag: Tag): THREE.Material => tag === 'paint' ? (lite ? paintLite(color) : paint(color)) : tag === 'glass' ? (lite ? MAT.glassLite : MAT.glass) : tag === 'head' ? MAT.head : tag === 'tail' ? MAT.tailOff : tag === 'chrome' ? MAT.chrome : tag === 'carbon' ? MAT.carbon : MAT.trim;
   let body: THREE.Mesh | undefined;
   const brake: THREE.Mesh[] = [], heads: THREE.Mesh[] = [];
+  if (lite) {
+    // traffic / cops: everything but the lamps in one vertex-coloured mesh, so the instancer can
+    // draw it in one call and tint the paint per car (dark parts barely change under the tint)
+    const TONE: Partial<Record<Tag, number>> = { glass: 0x0b1620, dark: 0x121314, carbon: 0x1a1b1d, chrome: 0xb8bcc0 };
+    const pos: number[] = [], cols: number[] = [], cc = new THREE.Color();
+    for (const [tag, arr] of out) {
+      if (tag === 'head' || tag === 'tail') continue;
+      cc.setHex(tag === 'paint' ? color : TONE[tag]!);
+      pos.push(...arr);
+      for (let k = 0; k < arr.length; k += 3) cols.push(cc.r, cc.g, cc.b);
+    }
+    let g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g = toCreasedNormals(g, Math.PI / 5);
+    const cg = new THREE.Float32BufferAttribute(cols, 3);
+    g.setAttribute('color', cg);
+    body = new THREE.Mesh(g, (liteBody ??= new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.4, roughness: 0.4, envMapIntensity: 0.9 })));
+    body.name = 'paint';
+    chassis.add(body);
+  }
   for (const [tag, arr] of out) {
+    if (lite && tag !== 'head' && tag !== 'tail') continue;
     let g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
     g = toCreasedNormals(g, Math.PI / 5); // sharp panel edges, smooth along the length
@@ -212,12 +255,18 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   };
 }
 
+const ROOF: Record<string, Tag> = { zr1: 'carbon', m4: 'carbon', tesla: 'glass' };
+
 /** what a hand-made design gets: body measurements along z plus the part tools */
 interface DesignCtx {
   L: number; ground: number; noseW: number; tailW: number; noseH: number; tailH: number; cabFront: number; cabRear: number;
   hwAt(z: number): number; shAt(z: number): number; deckAt(z: number): number; topAt(z: number): number;
   box(tag: Tag, x: number, y: number, z: number, w: number, h: number, d: number): void;
   plate(tag: Tag, top: [number, number, number][], t: number): void;
+  /** a point resting on the body top at (x, z) */
+  onTop(x: number, z: number, lift?: number): [number, number, number];
+  /** a headlamp plate on the fender top between zf (front) and zb (back); in/out are fractions of the half width */
+  lamp(sx: number, zf: number, zb: number, inF: number, outF: number, inB: number, outB: number, t?: number): void;
 }
 
 /** signature details per car (these replace the generic lamps and grille) */
@@ -227,11 +276,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
   zr1(c) {
     const { L, ground, box, plate } = c;
     const F = L / 2, R = -L / 2;
-    // a point resting on the body top at (x, z)
-    const onTop = (x: number, z: number, lift = 0.035): [number, number, number] => {
-      const f = Math.min(1, Math.abs(x) / c.hwAt(z));
-      return [x, c.deckAt(z) + (c.shAt(z) - c.deckAt(z)) * f * f + lift, z];
-    };
+    const onTop = c.onTop;
     const wR = c.deckAt(R + 0.2) + 0.08; // rear deck height under the wing
     for (const sx of [1, -1]) {
       // headlamp: a thin wedge swept back along the fender
@@ -265,5 +310,111 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     box('carbon', 0, ground + 0.08, R + 0.05, c.tailW * 1.7, 0.14, 0.12);
     for (const x of [-0.21, -0.07, 0.07, 0.21]) box('chrome', x, ground + 0.15, R - 0.01, 0.09, 0.09, 0.08);
     box('carbon', 0, wR + 0.34, R + 0.16, c.tailW * 1.96, 0.03, 0.28);
+  },
+  // BMW M4 (G82): tall vertical kidney grilles, angular headlamps, big corner intakes,
+  // carbon roof, boot lip, L-shaped tail lamps, quad exhausts in two pairs.
+  m4(c) {
+    const { L, ground, box } = c;
+    const F = L / 2, R = -L / 2;
+    for (const sx of [1, -1]) {
+      box('chrome', sx * 0.17, c.noseH - 0.2, F + 0.005, 0.3, 0.44, 0.05); // kidney surround
+      box('dark', sx * 0.17, c.noseH - 0.2, F + 0.02, 0.24, 0.38, 0.05);
+      c.lamp(sx, F - 0.06, F - 0.38, 0.42, 0.9, 0.7, 0.97);
+      box('dark', sx * c.noseW * 0.78, ground + 0.16, F - 0.02, c.noseW * 0.34, 0.2, 0.06);
+      box('tail', sx * c.tailW * 0.7, c.tailH - 0.08, R + 0.004, c.tailW * 0.5, 0.09, 0.05);
+      box('tail', sx * c.tailW * 0.9, c.tailH - 0.15, R + 0.004, c.tailW * 0.14, 0.12, 0.05);
+      for (const dx of [0.33, 0.45]) box('chrome', sx * c.tailW * dx * 2.1 / 2, ground + 0.14, R - 0.01, 0.1, 0.1, 0.08);
+      box('carbon', sx * (c.hwAt(0) - 0.02), ground + 0.06, 0, 0.06, 0.08, L * 0.4);
+      const zf = F - 1.15;
+      box('dark', sx * (c.hwAt(zf) + 0.004), c.shAt(zf) - 0.2, zf, 0.02, 0.1, 0.2); // fender gill
+    }
+    box('carbon', 0, ground + 0.03, F - 0.08, c.noseW * 1.8, 0.035, 0.2);
+    box('carbon', 0, c.deckAt(R + 0.12) + 0.02, R + 0.12, c.tailW * 1.8, 0.03, 0.12); // boot lip
+    box('carbon', 0, ground + 0.08, R + 0.05, c.tailW * 1.4, 0.12, 0.12);
+    const zh = F - 0.75;
+    for (const sx of [1, -1]) box('paint', sx * c.hwAt(zh) * 0.3, c.deckAt(zh) + 0.015, zh, 0.12, 0.03, 0.8); // bonnet power bulges
+  },
+  // Lamborghini Huracán: slim Y headlamps, wide three-part mouth, hexagon side intakes,
+  // louvred engine cover, Y tail lamps, twin exhausts in the diffuser.
+  huracan(c) {
+    const { L, ground, box } = c;
+    const F = L / 2, R = -L / 2;
+    for (const sx of [1, -1]) {
+      c.lamp(sx, F - 0.12, F - 0.55, 0.45, 0.92, 0.82, 0.98, 0.05);
+      box('dark', sx * c.noseW * 0.72, ground + 0.13, F - 0.02, c.noseW * 0.5, 0.14, 0.06);
+      const zs = -0.55;
+      box('dark', sx * (c.hwAt(zs) + 0.004), c.shAt(zs) - 0.14, zs, 0.02, 0.2, 0.55); // side intake
+      box('dark', sx * (c.hwAt(zs) + 0.006), c.shAt(zs) - 0.02, zs + 0.2, 0.02, 0.06, 0.3);
+      box('tail', sx * c.tailW * 0.6, c.tailH - 0.05, R + 0.004, c.tailW * 0.8, 0.045, 0.05);
+      box('tail', sx * c.tailW * 0.9, c.tailH - 0.11, R + 0.004, c.tailW * 0.2, 0.08, 0.05);
+      box('chrome', sx * 0.2, ground + 0.16, R - 0.01, 0.11, 0.09, 0.08);
+      box('carbon', sx * (c.hwAt(0) - 0.02), ground + 0.05, 0, 0.06, 0.07, L * 0.4);
+    }
+    box('dark', 0, ground + 0.12, F - 0.02, c.noseW * 0.5, 0.1, 0.06);
+    box('carbon', 0, ground + 0.02, F - 0.1, c.noseW * 1.9, 0.03, 0.22);
+    box('dark', 0, c.tailH - 0.2, R + 0.01, c.tailW * 2.1, 0.22, 0.04); // rear mesh
+    box('carbon', 0, ground + 0.07, R + 0.05, c.tailW * 1.8, 0.12, 0.12);
+    // engine cover louvres behind the cabin
+    const ze = c.cabRear - 0.25;
+    for (let k = 0; k < 4; k++) box('dark', 0, c.deckAt(ze - k * 0.12) + 0.012, ze - k * 0.12, c.hwAt(ze) * 0.8, 0.012, 0.05);
+  },
+  // Mercedes-AMG C63 (W205): Panamericana grille with vertical chrome slats, wide headlamps,
+  // big lower intakes, bonnet power domes, boot lip, quad round exhausts.
+  c63(c) {
+    const { L, ground, box } = c;
+    const F = L / 2, R = -L / 2;
+    box('dark', 0, c.noseH - 0.17, F + 0.01, 0.7, 0.3, 0.05);
+    for (let k = -6; k <= 6; k++) box('chrome', k * 0.05, c.noseH - 0.17, F + 0.03, 0.012, 0.28, 0.03);
+    box('chrome', 0, c.noseH - 0.17, F + 0.04, 0.16, 0.16, 0.02); // star badge
+    for (const sx of [1, -1]) {
+      c.lamp(sx, F - 0.05, F - 0.42, 0.5, 0.93, 0.75, 0.98);
+      box('dark', sx * c.noseW * 0.72, ground + 0.16, F - 0.02, c.noseW * 0.44, 0.2, 0.06);
+      box('tail', sx * c.tailW * 0.72, c.tailH - 0.09, R + 0.004, c.tailW * 0.5, 0.11, 0.05);
+      for (const dx of [0.62, 0.8]) box('chrome', sx * c.tailW * dx, ground + 0.15, R - 0.01, 0.1, 0.1, 0.08);
+      box('carbon', sx * (c.hwAt(0) - 0.02), ground + 0.06, 0, 0.05, 0.08, L * 0.4);
+    }
+    box('dark', 0, ground + 0.16, F - 0.02, c.noseW * 0.7, 0.14, 0.06);
+    box('carbon', 0, c.deckAt(R + 0.12) + 0.02, R + 0.12, c.tailW * 1.8, 0.03, 0.1);
+    box('carbon', 0, ground + 0.08, R + 0.05, c.tailW * 1.2, 0.12, 0.12);
+    const zh = F - 0.8;
+    for (const sx of [1, -1]) box('paint', sx * c.hwAt(zh) * 0.28, c.deckAt(zh) + 0.015, zh, 0.14, 0.03, 0.9);
+  },
+  // Honda Civic Type R (FL5): tall rear wing, triple centre exhaust, bonnet scoop,
+  // honeycomb grille and big corner intakes, red accents.
+  civic(c) {
+    const { L, ground, box } = c;
+    const F = L / 2, R = -L / 2;
+    const wR = c.deckAt(R + 0.25) + 0.05;
+    for (const sx of [1, -1]) {
+      c.lamp(sx, F - 0.08, F - 0.45, 0.45, 0.92, 0.78, 0.98);
+      box('dark', sx * c.noseW * 0.76, ground + 0.16, F - 0.02, c.noseW * 0.38, 0.2, 0.06);
+      box('tail', sx * c.tailW * 0.72, c.tailH - 0.06, R + 0.004, c.tailW * 0.55, 0.08, 0.05);
+      box('carbon', sx * c.tailW * 0.55, wR + 0.12, R + 0.25, 0.04, 0.24, 0.12); // wing uprights
+      box('carbon', sx * (c.hwAt(0) - 0.02), ground + 0.06, 0, 0.06, 0.08, L * 0.4);
+      box('tail', sx * (c.hwAt(0) + 0.01), ground + 0.1, 0.4, 0.01, 0.015, 0.6); // red skirt stripe
+    }
+    box('dark', 0, c.noseH - 0.2, F + 0.005, c.noseW * 0.8, 0.18, 0.05); // honeycomb grille
+    box('dark', 0, ground + 0.15, F - 0.02, c.noseW * 0.7, 0.14, 0.06);
+    box('tail', 0, ground + 0.03, F - 0.06, c.noseW * 1.7, 0.02, 0.1); // red lip line
+    box('carbon', 0, wR + 0.25, R + 0.22, c.tailW * 1.95, 0.03, 0.26);
+    box('carbon', 0, ground + 0.1, R + 0.05, c.tailW * 1.3, 0.14, 0.12);
+    for (const [x, r] of [[-0.12, 0.08], [0, 0.06], [0.12, 0.08]]) box('chrome', x, ground + 0.16, R - 0.01, r, r, 0.08);
+    const zh = F - 0.55;
+    box('dark', 0, c.deckAt(zh) + 0.03, zh, 0.32, 0.05, 0.25); // bonnet scoop
+  },
+  // Tesla Model 3: smooth grille-less nose, slim teardrop headlamps, small lower intake,
+  // glass roof, wraparound tail lamps, no exhaust.
+  tesla(c) {
+    const { L, ground, box } = c;
+    const F = L / 2, R = -L / 2;
+    for (const sx of [1, -1]) {
+      c.lamp(sx, F - 0.1, F - 0.4, 0.5, 0.9, 0.78, 0.97, 0.05);
+      box('tail', sx * c.tailW * 0.72, c.tailH - 0.05, R + 0.004, c.tailW * 0.52, 0.09, 0.05);
+      box('dark', sx * (c.hwAt(0) - 0.02), ground + 0.06, 0, 0.04, 0.06, L * 0.4);
+    }
+    box('dark', 0, ground + 0.12, F - 0.02, c.noseW * 0.9, 0.08, 0.06);
+    box('chrome', 0, c.noseH - 0.12, F + 0.005, 0.1, 0.05, 0.02); // badge
+    box('dark', 0, ground + 0.08, R + 0.04, c.tailW * 1.6, 0.1, 0.08);
+    box('paint', 0, c.deckAt(R + 0.1) + 0.012, R + 0.1, c.tailW * 1.6, 0.02, 0.08); // lip
   },
 };

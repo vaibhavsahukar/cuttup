@@ -11,10 +11,24 @@ export class PreviewStage {
   private models = new Map<string, VehicleModel>();
   private current?: VehicleModel;
   private t = 0;
+  private dragX: number | null = null;
+  private idle = 0; // seconds since the last drag; auto spin resumes after a pause
   offsetX = 0; // shift the car left/right to make room for panels
 
   constructor(pmrem: THREE.Texture) {
     const s = this.scene;
+    // drag with the mouse (or a finger) to turn the car; ignore drags that start on menu controls
+    addEventListener('pointerdown', (e) => {
+      if ((e.target as HTMLElement).closest?.('button, input, select, a, .panel, .card')) return;
+      this.dragX = e.clientX;
+    });
+    addEventListener('pointermove', (e) => {
+      if (this.dragX === null) return;
+      this.table.rotation.y += (e.clientX - this.dragX) * 0.01;
+      this.dragX = e.clientX;
+      this.idle = 0;
+    });
+    addEventListener('pointerup', () => { this.dragX = null; });
     s.background = new THREE.Color(0x07080c);
     s.fog = new THREE.Fog(0x07080c, 14, 34);
     s.environment = pmrem;
@@ -55,7 +69,8 @@ export class PreviewStage {
 
   update(dt: number, w: number, h: number) {
     this.t += dt;
-    this.table.rotation.y += dt * 0.35;
+    this.idle += dt;
+    if (this.dragX === null && this.idle > 2.5) this.table.rotation.y += dt * 0.35;
     this.camera.aspect = w / h;
     const bike = this.current && this.current.bike;
     const dist = bike ? 7 : 11.5;
