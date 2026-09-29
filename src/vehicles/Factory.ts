@@ -1,13 +1,18 @@
 import type { VehicleSpec } from '../data/vehicles';
 import type { VehicleModel } from './ModelKit';
 import { buildFromShape, getShape } from './ShapeBuilder';
+import { buildPanelCar } from './PanelBuilder';
+
+/** vehicles already remade as hand-designed panel cars */
+const PANEL = new Set(['zr1']);
 
 /**
  * Every vehicle is modelled by the game itself (ShapeBuilder) from measurements taken off the
  * reference models the user supplied (src/data/shapes/*.json). Nothing is loaded at runtime.
  */
 export function buildPlayerModel(spec: VehicleSpec, shadows = true): VehicleModel {
-  return buildFromShape(getShape(spec.model)!, spec.color, false, shadows);
+  const sh = getShape(spec.model)!;
+  return PANEL.has(spec.model) ? buildPanelCar(sh, spec.color, false, shadows) : buildFromShape(sh, spec.color, false, shadows);
 }
 
 /** Traffic types -> measured shape ids. */

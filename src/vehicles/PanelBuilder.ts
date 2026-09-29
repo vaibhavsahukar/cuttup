@@ -12,7 +12,7 @@ import type { Shape } from './ShapeBuilder';
  *  - cabin: a separate tapered greenhouse (windscreen, side windows, rear glass; painted roof),
  *  - bumpers, grille and lamps as flat panels on the body faces.
  */
-type Tag = 'paint' | 'glass' | 'dark' | 'head' | 'tail';
+type Tag = 'paint' | 'glass' | 'dark' | 'head' | 'tail' | 'chrome' | 'carbon';
 interface Section { z: number; pts: [number, number, Tag][] } // pts go around the section (x, y); tag = material of the segment to the next point
 
 const smooth = (a: number[], r: number) => a.map((_, i) => { let s = 0, n = 0; for (let d = -r; d <= r; d++) { const j = i + d; if (j < 0 || j >= a.length) continue; const w = r + 1 - Math.abs(d); s += a[j] * w; n += w; } return s / n; });
@@ -105,6 +105,7 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
 
   // ---- cabin (greenhouse) ----
   const cabSecs: Section[] = [];
+  const roofTag: Tag = sh.id === 'zr1' ? 'carbon' : 'paint'; // ZR1 carbon roof panel
   const zc0 = zAt(c0), zc1 = zAt(c1);
   const M = 30;
   for (let q = 0; q < M; q++) {
@@ -117,7 +118,7 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
     // side window band sits between the belt and the roof edge; the roof skin is paint
     const winTop = base + (top - base) * 0.86;
     const pts: [number, number, Tag][] = [
-      [-bw, base, 'glass'], [-(bw + (rw - bw) * 0.86), winTop, 'paint'], [-rw, top - 0.005, 'paint'], [0, top, 'paint'],
+      [-bw, base, 'glass'], [-(bw + (rw - bw) * 0.86), winTop, 'paint'], [-rw, top - 0.005, roofTag], [0, top, roofTag],
       [rw, top - 0.005, 'paint'], [bw + (rw - bw) * 0.86, winTop, 'glass'], [bw, base, 'dark'],
     ];
     cabSecs.push({ z, pts });
@@ -140,6 +141,25 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   const noseI = nz - 2, tailI = 1;
   const noseW = hw[noseI] * 0.82 * (0.82 + 0.18 * Math.sqrt(0.02 / 0.35)), tailW = hw[tailI] * 0.82;
   const noseH = Math.max(0.35, Math.min(centre[noseI], shoulder[noseI])), tailH = Math.max(0.4, Math.min(centre[tailI], shoulder[tailI]));
+  /** a flat plate: top polygon (convex, x y z points) extruded t metres downward */
+  const plate = (tag: Tag, top: [number, number, number][], t: number) => {
+    let a = out.get(tag); if (!a) out.set(tag, (a = []));
+    const n = top.length, bot = top.map(([x, y, z]) => [x, y - t, z]);
+    // faces are emitted in both windings so the point order doesn't matter
+    const tri = (p: number[], q: number[], r: number[]) => a!.push(...p, ...q, ...r, ...p, ...r, ...q);
+    for (let k = 1; k < n - 1; k++) { tri(top[0], top[k + 1], top[k]); tri(bot[0], bot[k], bot[k + 1]); }
+    for (let k = 0; k < n; k++) { const k2 = (k + 1) % n; tri(top[k], top[k2], bot[k]); tri(bot[k], top[k2], bot[k2]); }
+  };
+  const idx = (z: number) => Math.min(nz - 1, Math.max(0, Math.round(((z - z0) / L) * nz - 0.5)));
+  const design = DESIGNS[sh.id];
+  if (design) {
+    design({
+      L, ground, noseW, tailW, noseH, tailH, cabFront: zc1, cabRear: zc0, box, plate,
+      hwAt: (z) => hw[idx(z)] * 0.985, shAt: (z) => shoulder[idx(z)],
+      deckAt: (z) => { const i = idx(z); return i >= c0 && i <= c1 ? shoulder[i] + 0.01 : Math.max(centre[i] * 0.98, shoulder[i] - 0.02); },
+      topAt: (z) => centre[idx(z)],
+    });
+  } else {
   // front: lower grille / splitter, headlamps high on the outer corners
   box('dark', 0, ground + 0.13, L / 2 - 0.03, noseW * 1.2, 0.16, 0.06);
   box('dark', 0, ground + 0.02, L / 2 - 0.08, noseW * 1.5, 0.04, 0.18);
@@ -149,6 +169,7 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
     box('tail', sx * tailW * 0.66, tailH - 0.1, -L / 2 + 0.005, tailW * 0.6, 0.1, 0.05);
   }
   box('dark', 0, ground + 0.1, -L / 2 + 0.03, tailW * 1.6, 0.14, 0.06);
+  }
   // side mirrors at the front of the cabin
   if (cabSecs.length) {
     const i = c0 + 2;
@@ -158,7 +179,7 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   // ---- meshes ----
   const root = new THREE.Group(), chassis = new THREE.Group();
   root.add(chassis);
-  const matFor = (tag: Tag): THREE.Material => tag === 'paint' ? (lite ? paintLite(color) : paint(color)) : tag === 'glass' ? (lite ? MAT.glassLite : MAT.glass) : tag === 'head' ? MAT.head : tag === 'tail' ? MAT.tailOff : MAT.trim;
+  const matFor = (tag: Tag): THREE.Material => tag === 'paint' ? (lite ? paintLite(color) : paint(color)) : tag === 'glass' ? (lite ? MAT.glassLite : MAT.glass) : tag === 'head' ? MAT.head : tag === 'tail' ? MAT.tailOff : tag === 'chrome' ? MAT.chrome : tag === 'carbon' ? MAT.carbon : MAT.trim;
   let body: THREE.Mesh | undefined;
   const brake: THREE.Mesh[] = [], heads: THREE.Mesh[] = [];
   for (const [tag, arr] of out) {
@@ -188,3 +209,59 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
     length: L, width: sh.width, height: H, color, lod: [],
   };
 }
+
+/** what a hand-made design gets: body measurements along z plus the part tools */
+interface DesignCtx {
+  L: number; ground: number; noseW: number; tailW: number; noseH: number; tailH: number; cabFront: number; cabRear: number;
+  hwAt(z: number): number; shAt(z: number): number; deckAt(z: number): number; topAt(z: number): number;
+  box(tag: Tag, x: number, y: number, z: number, w: number, h: number, d: number): void;
+  plate(tag: Tag, top: [number, number, number][], t: number): void;
+}
+
+/** signature details per car (these replace the generic lamps and grille) */
+const DESIGNS: Record<string, (c: DesignCtx) => void> = {
+  // Corvette C7 ZR1: swept slit headlamps, full-width mouth, raised hood with carbon vent,
+  // side scoops behind the doors, angular twin tail lamps, quad centre exhausts, big high wing.
+  zr1(c) {
+    const { L, ground, box, plate } = c;
+    const F = L / 2, R = -L / 2;
+    // a point resting on the body top at (x, z)
+    const onTop = (x: number, z: number, lift = 0.012): [number, number, number] => {
+      const f = Math.min(1, Math.abs(x) / c.hwAt(z));
+      return [x, c.deckAt(z) + (c.shAt(z) - c.deckAt(z)) * f * f + lift, z];
+    };
+    const wR = c.deckAt(R + 0.2) + 0.08; // rear deck height under the wing
+    for (const sx of [1, -1]) {
+      // headlamp: a thin wedge swept back along the fender
+      const w1 = c.hwAt(F - 0.1), w2 = c.hwAt(F - 0.5);
+      const p = [onTop(sx * w1 * 0.9, F - 0.08), onTop(sx * w1 * 0.55, F - 0.14), onTop(sx * w2 * 0.74, F - 0.46), onTop(sx * w2 * 0.96, F - 0.54)];
+      plate('head', sx > 0 ? p : [p[3], p[2], p[1], p[0]], 0.03);
+      // brake ducts either side of the mouth
+      box('dark', sx * c.noseW * 0.8, ground + 0.2, F - 0.03, c.noseW * 0.3, 0.17, 0.06);
+      // fender vent behind the front wheel, big scoop behind the door, side skirt
+      const zf = F - 1.3;
+      box('dark', sx * (c.hwAt(zf) + 0.004), c.shAt(zf) - 0.2, zf, 0.02, 0.13, 0.24);
+      const zs = -0.45;
+      box('dark', sx * (c.hwAt(zs) + 0.004), c.shAt(zs) - 0.17, zs, 0.02, 0.2, 0.5);
+      box('carbon', sx * (c.hwAt(0) - 0.02), ground + 0.06, 0, 0.06, 0.08, L * 0.42);
+      // tail lamps: two angular blocks per side in a dark band
+      box('tail', sx * c.tailW * 0.36, c.tailH - 0.07, R + 0.004, c.tailW * 0.36, 0.08, 0.05);
+      box('tail', sx * c.tailW * 0.82, c.tailH - 0.07, R + 0.004, c.tailW * 0.36, 0.08, 0.05);
+      // wing uprights and end plates
+      box('carbon', sx * c.tailW * 0.6, wR + 0.16, R + 0.2, 0.05, 0.32, 0.14);
+      box('carbon', sx * c.tailW * 0.98, wR + 0.36, R + 0.16, 0.02, 0.12, 0.3);
+    }
+    // full-width mouth, splitter
+    box('dark', 0, ground + 0.16, F - 0.02, c.noseW * 1.1, 0.22, 0.06);
+    box('carbon', 0, ground + 0.02, F - 0.1, c.noseW * 1.95, 0.035, 0.26);
+    // raised hood centre with the carbon vent window
+    const zh = F - 0.85;
+    box('paint', 0, c.deckAt(zh) + 0.015, zh, c.hwAt(zh) * 0.85, 0.06, 0.9);
+    box('carbon', 0, c.deckAt(zh) + 0.05, zh + 0.12, c.hwAt(zh) * 0.62, 0.012, 0.42);
+    // rear: dark lamp band, diffuser, quad centre exhausts, wing
+    box('dark', 0, c.tailH - 0.07, R + 0.012, c.tailW * 2.15, 0.13, 0.04);
+    box('carbon', 0, ground + 0.08, R + 0.05, c.tailW * 1.7, 0.14, 0.12);
+    for (const x of [-0.21, -0.07, 0.07, 0.21]) box('chrome', x, ground + 0.15, R - 0.01, 0.09, 0.09, 0.08);
+    box('carbon', 0, wR + 0.34, R + 0.16, c.tailW * 1.96, 0.03, 0.28);
+  },
+};
