@@ -129,6 +129,12 @@ export class Game {
       this.composer.addPass(this.bloom);
       this.composer.addPass(new OutputPass());
     }
+    // Warm up before the 3-2-1: compile every shader and upload every buffer now, in one pause before the countdown
+    // starts, instead of during the first frames of it (which is where the frame rate used to collapse).
+    this.rig.update(1 / 60, this.player, false, 0);
+    this.traffic.sync(0, 0);
+    this.renderer.compile(this.scene, this.camera);
+    for (let i = 0; i < 2; i++) this.render();
   }
 
   groundAt(p: THREE.Vector3) {
