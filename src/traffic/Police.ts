@@ -17,7 +17,7 @@ export function copsForScore(score: number) {
   return n;
 }
 
-interface Cop { car: TrafficCar; red: THREE.Mesh; blue: THREE.Mesh; skill: number; vMax: number; charger: boolean; moto: boolean; laneT: number; stuckT: number; slot: number }
+interface Cop { car: TrafficCar; red: THREE.Mesh; blue: THREE.Mesh; skill: number; vMax: number; charger: boolean; moto: boolean; dSm: number; laneT: number; stuckT: number; slot: number }
 /** where each cop in the pack aims relative to the player until it closes in (fans out instead of queueing in one line) */
 const SLOT_OFFSET = [0, -2.7, 2.7, -5.4, 5.4];
 /** how far a cop is behind the player (m) */
@@ -86,7 +86,7 @@ export class Police {
       panicT: 0, freezeT: 0, honkCd: 0, braking: false, wrecked: false, yaw: 0, passedSign: 0, nearMissed: true, alive: true, cop: true,
     };
     this.traffic.cars.push(car);
-    this.cops.push({ car, red, blue, skill: charger ? 0.95 + Math.random() * 0.05 : 0.85 + Math.random() * 0.15, vMax: vTop, charger, moto, laneT: 0, stuckT: 0, slot: this.cops.length });
+    this.cops.push({ car, red, blue, skill: charger ? 0.95 + Math.random() * 0.05 : 0.85 + Math.random() * 0.15, vMax: vTop, charger, moto, dSm: car.d, laneT: 0, stuckT: 0, slot: this.cops.length });
     this.onDispatch?.(this.cops.length, charger, moto);
   }
 
@@ -183,14 +183,19 @@ export class Police {
       if (here.g < need + 4) vT = Math.min(vT, here.v + Math.max(0, here.g - 5) * 0.8);
     }
     // actuate with skill-limited rates (this is where imperfect cops make mistakes)
-    const acc = clamp((vT - c.v) * 2.5, -11, (cop.charger ? 11 : cop.moto ? 9 : 7.5) * cop.skill);
+    let acc = clamp((vT - c.v) * 2.5, -11, (cop.charger ? 11 : cop.moto ? 9 : 7.5) * cop.skill);
+    // the pedals are eased on and off (a raw target flips every frame when a car ahead comes in and out of range)
+    if (acc > -6) acc = c.acc + (acc - c.acc) * (1 - Math.exp(-dt / (acc > c.acc ? 0.35 : 0.2)));
     c.acc = acc;
     c.v = Math.max(0, c.v + acc * dt);
     c.braking = acc < -1;
     c.s += c.v * dt;
     const latRate = (6 + 6 * cop.skill) * clamp(c.v / 20, 0.4, 1) * (cop.moto ? 1.3 : 1);
-    const dd = clamp(dT - c.d, -latRate * dt, latRate * dt);
-    c.yaw = Math.atan2(-dd / Math.max(dt, 1e-3), Math.max(3, c.v)) * 0.8;
+    // the aim point is low-passed so a line that flips between two open gaps becomes one smooth drift, not a wobble
+    cop.dSm += (dT - cop.dSm) * (1 - Math.exp(-dt * (toPlayer ? 9 : 4)));
+    const dd = clamp(cop.dSm - c.d, -latRate * dt, latRate * dt);
+    const yawT = Math.atan2(-dd / Math.max(dt, 1e-3), Math.max(3, c.v)) * 0.8;
+    c.yaw += (yawT - c.yaw) * (1 - Math.exp(-dt * 8));
     c.d += dd;
     c.lane = 0; c.targetLane = 0; c.lcT = 1;
   }

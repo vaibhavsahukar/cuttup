@@ -94,6 +94,51 @@ solo|You are officially the safest driver on the road now. Zero risk from the in
 solo|That was a really fast way to become a statistic
 solo|The world is a slightly safer place today. Thank you for your sacrifice
 solo|Congrats. The ambulance will not be needing the siren
+hit|Somebody's Sunday dinner just turned into a hospital vigil
+hit|You just ended a stranger's story mid sentence
+hit|Congratulations. Somebody's last text said "almost home"
+hit|That was a person, not a scoreboard multiplier
+hit|Well done. Somebody is about to miss their own birthday party, permanently
+hit|An entire neighbourhood will be quiet tonight because of you
+hit|You were in a hurry. They were in a car seat
+hit|Somebody's alarm clock will keep ringing tomorrow morning and nobody will answer
+hit|The other driver had a dog waiting at the window. It will wait a long time
+hit|Nice move. A stranger's last conversation was about what to cook tonight
+hit|Every second you saved just got billed to a family
+hit|You were not racing anybody. They never signed up for yours
+hit,city|Six lanes, one exit, and you chose to meet them head first
+hit,city|The skyline did not stop for a moment of silence, and neither did you
+hit,country|Wide open road and you still could not leave somebody alone
+hit,country|Beautiful day for a drive, terrible day for whoever you hit
+hit,forest|Somebody thought the quiet road was safe. You proved them wrong
+hit,forest|An empty road, a blind bend and a stranger who trusted it
+hit,car|Crumple zones are great. Nobody checked with you before using somebody else's
+headon|Nobody plans to meet a stranger head on at full speed. Somebody did it for you
+headon|The lane markings were a suggestion, apparently
+headon,city|Oncoming lanes are not a shortcut, they are a coffin with a fast lane
+headon,forest|A blind corner, a wrong lane and a family coming the other way
+solo|Congrats, you just won the world record for shortest victory lap
+solo|The road asked for a little respect. You gave it a crater
+solo|Your last words will be "hold my drink"
+solo|Everybody on the road just got a little safer
+solo|Zero rivals and you still lost
+solo|Somebody has to call your mother, and it is the police
+solo|That was bold, wrong and expensive
+solo|You just failed a driving test you never signed up for
+solo|Top speed reached, brain speed not found
+solo,barrier|You hit the barrier at full speed. The barrier is fine
+solo,barrier|The barrier has been here for years. It will outlast your car by decades
+solo,city|The city is not going to hold a parade, but the cleanup crew is already on its way
+solo,tree|The tree has been here for 80 years and will be here long after the tow truck leaves
+solo,tree|Trees are patient, and they do not swerve
+solo,rock|You lost a fight to a rock. A rock
+solo,rock|The rock did not even move
+solo,bike|Two wheels, zero margin, and a lesson for the road
+solo,bike|Your helmet did its best. Physics did better
+solo,car|Airbags deployed, dignity did not
+fall|Gravity is undefeated, even against a rider with a plan
+fall|You were leaning into a decision you could not take back
+fall|That was not a slide, that was an audition for the ambulance
 caught|Congratulations, you outran nobody. The officer would like a word
 caught|Nice run. The officer had a full tank, a siren and absolutely nothing better to do
 caught|You have the right to remain silent. Your driving already said plenty

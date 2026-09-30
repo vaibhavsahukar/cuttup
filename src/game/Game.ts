@@ -59,7 +59,9 @@ export class Game {
     this.chunks.lampMaterial.emissiveIntensity = 0.3 + 2.7 * n;
     if (this.chunks.buildingMaterial) this.chunks.buildingMaterial.emissiveIntensity = 0.25 + 0.6 * n;
     for (const l of this.lampLights) l.intensity = 160 * Math.max(0, n - 0.3) / 0.7;
-    if (this.player.headlight) this.player.headlight.intensity = (this.map.id === 'forest' ? 120 : 0) + 480 * n;
+    if (this.player.headlight) this.player.headlight.intensity = (this.map.id === 'forest' ? 220 : 0) + 950 * n;
+    // fewer cars on the road at night (new spawns; cars already out there drive on)
+    this.traffic.density = 1 - 0.4 * n;
     if (this.bloom) { this.bloom.strength = 0.12 + 0.18 * n; this.bloom.threshold = 3 - 1.2 * n; }
   }
 
@@ -109,6 +111,7 @@ export class Game {
     this.police.onWreck = (k) => { this.audio.crash(k * 0.6); this.onPopup?.({ text: 'COP DOWN', sub: 'another unit is coming', color: '#6cf' }); };
     this.police.onDispatch = (n, charger, moto) => this.onPopup?.({ text: charger ? 'INTERCEPTOR DISPATCHED' : n === 1 ? 'POLICE PURSUIT' : `${n} UNITS IN PURSUIT`, sub: charger ? 'Interceptor unit' : moto ? 'Motorcycle unit' : undefined, color: '#ff4040', big: true });
     this.scoring = new Scoring();
+    this.scoring.distK = this.map.road === 'backroad' ? 1.5 : 1;
     this.scoring.onPopup = (p) => this.onPopup?.(p);
     this.rig = new CameraRig(this.camera);
     this.rig.mode = settings.camera;

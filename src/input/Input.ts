@@ -131,7 +131,7 @@ export class Input {
         const ph = v('leanLeft') - v('leanRight');
         if (Math.abs(ph) > Math.abs(hang)) hang = ph;
         hb = hb || v('handbrake') > 0.5;
-        lb = lb || v('lookback') > 0.5;
+        lb = lb || v('lookback') > 0.5 || p.axes[3] > 0.6; // right stick pulled down looks behind
         const pLook = (v('lookRight') - v('lookLeft')) * Math.PI * 0.75;
         if (Math.abs(pLook) > Math.abs(look)) look = pLook;
         horn = horn || v('horn') > 0.5;

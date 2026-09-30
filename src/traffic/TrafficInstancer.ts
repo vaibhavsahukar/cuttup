@@ -12,7 +12,7 @@ interface TypeBatch { body: THREE.InstancedMesh; wheels?: THREE.InstancedMesh; h
 const CAP = 96;
 const TAIL_ON = new THREE.Color(3, 0.15, 0.12), TAIL_OFF = new THREE.Color(0.45, 0.03, 0.03);
 const SIG_ON = new THREE.Color(3, 1.6, 0.1), SIG_OFF = new THREE.Color(0.3, 0.16, 0.02);
-const HEAD = new THREE.Color(1.6, 1.6, 1.5);
+const HEAD = new THREE.Color(3.4, 3.3, 3.0);
 const lampMat = new THREE.MeshBasicMaterial({ toneMapped: false });
 const m4 = new THREE.Matrix4(), lm = new THREE.Matrix4(), col = new THREE.Color();
 
@@ -41,15 +41,25 @@ export class TrafficInstancer {
     const body = this.inst(model.body.geometry, model.body.material as THREE.Material, CAP, true);
     // wheels: merge the four wheel meshes into one geometry (keeps rubber / metal groups)
     let wheels: THREE.InstancedMesh | undefined;
-    const wg: THREE.BufferGeometry[] = [];
+    const wg: THREE.BufferGeometry[][] = [[], []]; // rubber and metal parts of all four wheels
     let wmat: THREE.Material | THREE.Material[] | undefined;
     for (const w of model.wheels) {
       const mesh = w.spin.children[0] as THREE.Mesh;
       mesh.updateMatrixWorld(true);
-      wg.push(mesh.geometry.clone().applyMatrix4(mesh.matrixWorld));
+      // a wheel has two material groups (rubber, metal). Merging whole wheels with one group each would give wheel
+      // number 3 and 4 material slots that do not exist, so the rear wheels were never drawn: merge per material.
+      const g0 = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
+      for (const gr of g0.groups) {
+        const part = new THREE.BufferGeometry();
+        for (const name of Object.keys(g0.attributes)) {
+          const a = g0.attributes[name];
+          part.setAttribute(name, new THREE.BufferAttribute(a.array.slice(gr.start * a.itemSize, (gr.start + gr.count) * a.itemSize) as Float32Array, a.itemSize));
+        }
+        wg[gr.materialIndex ?? 0].push(part);
+      }
       wmat = mesh.material;
     }
-    if (wg.length) wheels = this.inst(mergeGeometries(wg, true)!, wmat!, CAP, false);
+    if (wg[0].length) wheels = this.inst(mergeGeometries([mergeGeometries(wg[0])!, mergeGeometries(wg[1])!], true)!, wmat!, CAP, false);
     const lamp = (meshes: THREE.Mesh[]) => (meshes.length ? this.inst(meshes[0].geometry, lampMat, CAP, true) : undefined);
     const box = new THREE.BoxGeometry(0.08, 0.045, 0.03);
     return {

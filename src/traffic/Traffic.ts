@@ -133,6 +133,9 @@ export class Traffic {
     let type: TrafficType = pick(r, TRAFFIC_TYPES);
     if (driver === 'fast' && (type === 'boxtruck' || type === 'van')) type = 'sedan';
     if (!hw && type === 'boxtruck' && r() < 0.6) type = 'hatch';
+    // backroads are full of pickups; the countryside highway carries a lot of freight
+    if (!hw && driver !== 'fast' && r() < 0.4) type = 'pickup';
+    if (this.map.id === 'country' && driver !== 'fast' && r() < 0.22) type = 'boxtruck';
     if (hw && (type === 'boxtruck') && lane < this.lanesFor(dir) - 2) lane = this.lanesFor(dir) - 1 - Math.floor(r() * 2);
     if (hw && driver === 'slow' && r() < 0.6) lane = Math.max(lane, this.lanesFor(dir) - 2);
     const dims = trafficDims(type);
@@ -392,6 +395,15 @@ export class Traffic {
         }
       }
       // ------------- lateral motion -------------
+      // already moving over but the player is coming up fast in the target lane: give the move up and go back
+      if (c.lcT < 1 && c.targetLane !== c.lane && player.alive && c.dir > 0) {
+        const tD = this.laneD(c.dir, c.targetLane);
+        const behind = c.s - player.s - (c.L + player.L) / 2;
+        const closing = player.v - c.v;
+        if (behind > 0 && closing > 6 && behind / closing < 1.8 && Math.abs(player.d - tD) < (player.W + c.W) / 2 + 1.0) {
+          c.targetLane = c.lane; c.dFrom = c.d; c.lcT = 0; c.lcDur = 1.2; c.signal = 0; c.pendingLane = -1;
+        }
+      }
       let dTarget = this.laneD(c.dir, c.targetLane);
       if (c.lcT < 1) {
         c.lcT = Math.min(1, c.lcT + dt / c.lcDur);
@@ -442,7 +454,10 @@ export class Traffic {
     const fol = this.follower(c, d, c.W / 2, player);
     const tight = c.driver === 'fast' ? 0.5 : 1;
     if (lead.gap < (4 + c.v * 0.35) * tight) return false;
-    if (fol.gap < (5 + Math.max(0, fol.v - c.v) * 1.6) * tight) return false;
+    // a lane change takes 2 to 3 seconds, so look at where the follower will be by then: for the player (who can close
+    // at 30 m/s or more) that means needing about 4 seconds of room, not just a gap that looks fine right now
+    const reach = fol.isPlayer ? 4.2 : 1.6;
+    if (fol.gap < (5 + Math.max(0, fol.v - c.v) * reach) * (fol.isPlayer ? 1 : tight)) return false;
     // MOBIL safety: new follower must not need to brake harder than bSafe
     if (fol.gap < 1e8) {
       const T = 1.2, s0 = 2;

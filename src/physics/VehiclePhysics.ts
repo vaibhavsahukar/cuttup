@@ -307,8 +307,10 @@ export class VehiclePhysics {
     } else if (brkAny > 0 && v > 0.3) {
       // brakes (ABS-clamped)
       const Fb = sp.brakeG * W * brkAny;
-      FxF -= Math.min(Fb * 0.68, mu * Fzf * 1.05);
-      FxR -= Math.min(Fb * 0.32, mu * Fzr * 1.05);
+      // braking bias moves forward (weight transfer) and the rear is kept well inside its grip limit, so the rear
+      // never lets go under hard braking
+      FxF -= Math.min(Fb * 0.76, mu * Fzf * 1.05);
+      FxR -= Math.min(Fb * 0.24, mu * Fzr * 0.55);
     }
     if (c.handbrake && v > 0.5 && !bk) FxR -= Math.min(W * 0.6, mu * Fzr);
 
@@ -462,6 +464,9 @@ export class VehiclePhysics {
   /** bikes: pitch dynamics (wheelie / stoppie about the contact patch), tyre heat, falls */
   private bikeStep(dt: number, Ax: number, av: number) {
     // ---- pitch: torque about the wheel still on the ground ----
+    // a stoppie that settles a hair below level (-0.0001 rad) used to leave the pitch stuck there, where neither the
+    // wheelie nor the stoppie branch below applies: no wheelie was possible after braking. Snap it back to level.
+    if (this.wheelie < 0 && this.wheelie > -2e-3 && this.pitchRate > -0.02) { this.wheelie = 0; this.pitchRate = 0; }
     const th = this.wheelie, bw = this.bEff;
     const liftF = Ax * this.h - G * bw, liftR = -Ax * this.h - G * this.a;
     let acc = 0;

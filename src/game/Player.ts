@@ -29,7 +29,7 @@ export class Player {
     this.collW = spec.kind === 'bike' ? spec.dims.width * 0.7 : spec.dims.width * 0.96;
     this.collL = spec.kind === 'bike' ? spec.dims.length * 0.8 : spec.dims.length * 0.97;
     if (night) {
-      const h = new THREE.SpotLight(0xfff2dd, night ? 500 : 250, 120, 0.42, 0.5, 2);
+      const h = new THREE.SpotLight(0xfff2dd, night ? 950 : 500, 150, 0.45, 0.5, 2);
       h.position.set(0, 0.8, spec.dims.length / 2);
       h.target.position.set(0, 0, spec.dims.length / 2 + 30);
       h.castShadow = false;
