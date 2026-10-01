@@ -74,6 +74,8 @@ export class Police {
   static OUTRUN_CLEAR_AFTER = 90;
   /** the motorcycle unit only chases riders */
   playerIsBike = false;
+  /** highest wanted level already announced in the current pursuit */
+  private announced = 0;
   /** lowest lateral position a unit may drive at s (a fork's new highway is still folded up) */
   minD: ((s: number) => number) | null = null;
   /** the drivable area at s for a vehicle at d (lo..hi before its half width); null = the plain road */
@@ -124,7 +126,10 @@ export class Police {
     };
     this.traffic.cars.push(car);
     this.cops.push({ kind, smart: charger, retiring: 0, car, red, blue, skill: charger || kind === 'samurai' ? 0.96 + Math.random() * 0.04 : 0.85 + Math.random() * 0.15, vMax: vTop * this.diff.copSpeed, charger, moto, dSm: car.d, laneT: 0, stuckT: 0, slot: this.cops.length });
-    this.onDispatch?.(this.active().length, kind);
+    // backroads send one unit at a time, so a replacement for a lost or wrecked cop must not announce the pursuit again:
+    // only a new, higher wanted level (a stronger unit) does
+    if (this.map.road !== 'backroad' || this.wanted > this.announced) this.onDispatch?.(this.active().length, kind);
+    this.announced = Math.max(this.announced, this.wanted);
   }
 
   /** units still in the chase (not dropping out) */
@@ -134,6 +139,7 @@ export class Police {
     this.time += dt;
     const tier = this.map.road === 'backroad' ? Math.min(4, copsForScore(score / this.diff.copTier)) : copsForScore(score / this.diff.copTier);
     this.wanted = tier > this.clearedTier ? tier : 0;
+    if (this.wanted === 0) this.announced = 0;
     if (this.wanted === 0 && this.cops.length) { for (const c of this.cops) this.traffic.release(c.car); this.cops = []; }
     // outrunning the police: a minute with no cop near, then 30 s of flashing stars, then the wanted level is gone
     if (this.wanted > 0 && active) {
