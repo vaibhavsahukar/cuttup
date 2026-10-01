@@ -645,6 +645,13 @@ export class Game {
       ph.psi *= 0.6;
       ph.vl *= -0.2;
       ph.r *= 0.5;
+      if (ph.bike) {
+        // a bike's yaw comes straight from its lean: holding the bars into the wall would keep turning it back in
+        // and pin it there, so the wall takes the lean (and any yaw) pointing into it
+        if (ph.lean * -side > 0) ph.lean *= 0.3;
+        if (ph.r * -side > 0) ph.r = 0;
+        if (ph.psi * -side > 0) ph.psi = 0;
+      }
       ph.v *= 1 - clamp(into * 0.012, 0.002, 0.2);
       this.scrape = Math.min(1, 0.4 + into * 0.1);
       if (into > 1.5 && this.bumpCd <= 0) { this.audio.thud(clamp(into / 8, 0.2, 1)); this.rig.addShake(0.3); this.scoring.bump(); this.bumpCd = 0.5; }
