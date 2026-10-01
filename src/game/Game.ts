@@ -816,9 +816,9 @@ export class Game {
   /** player horn: scared drivers just ahead flinch */
   private horn(dt: number) {
     this.hornCd -= dt;
+    this.audio.hornHeld(this.input.horn && this.state === 'driving'); // sounds for as long as it is held
     if (!this.input.horn || this.hornCd > 0) return;
     this.hornCd = 0.45;
-    this.audio.honk(0.9, 0);
     const ph = this.player.phys;
     for (const c of this.traffic.cars) {
       if (c.wrecked || c.dir < 0 || c.driver !== 'scared') continue;
@@ -861,6 +861,7 @@ export class Game {
   startCrash(kind: CrashKind, impact: number, hit: TrafficCar | null) {
     if (this.state === 'crash' || this.state === 'done') return;
     this.state = 'crash';
+    this.audio.hornHeld(false);
     this.crashTimer = 0;
     const ph = this.player.phys;
     this.player.sync(1 / 60);

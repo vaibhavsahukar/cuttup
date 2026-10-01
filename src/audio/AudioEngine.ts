@@ -208,12 +208,79 @@ export class AudioEngine {
     this.burst(1.2, 700, 'bandpass', 0.35, 0.3);
   }
   thud(intensity: number) { this.tone(90, 0.3, 0.4 * clamp(intensity, 0.1, 1), 'sine', 0, 45); this.burst(0.25, 700, 'lowpass', 0.3 * intensity); }
+  /**
+   * One car horn: the usual pair of reed horns a major third apart (about 415 and 520 Hz). Each is a buzzy saw plus a
+   * slightly detuned square (the beating is what makes it sound like two diaphragms, not a synth), with a touch of the
+   * octave, driven through soft clipping and shaped by the resonances of the horn's bell. The diaphragm starts a little
+   * sharp and settles, and the level has a firm attack and a short release. Returns a function that releases it.
+   */
+  private hornVoice(volume: number, pan: number, pitch = 1) {
+    const c = this.ctx, t0 = c.currentTime;
+    const out = c.createGain(); out.gain.setValueAtTime(0.0001, t0);
+    out.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume), t0 + 0.014);
+    // soft clipping: the harmonics of an overdriven reed
+    const shaper = c.createWaveShaper();
+    const curve = new Float32Array(512);
+    for (let i = 0; i < curve.length; i++) { const x = (i / 255.5) - 1; curve[i] = Math.tanh(2.2 * x); }
+    shaper.curve = curve; shaper.oversample = '2x';
+    // the bell: two resonances, and the top rolled off
+    const r1 = c.createBiquadFilter(); r1.type = 'peaking'; r1.frequency.value = 1150; r1.Q.value = 1.4; r1.gain.value = 7;
+    const r2 = c.createBiquadFilter(); r2.type = 'peaking'; r2.frequency.value = 2350; r2.Q.value = 1.2; r2.gain.value = 5;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3800; lp.Q.value = 0.5;
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 180;
+    const p = c.createStereoPanner(); p.pan.value = pan;
+    shaper.connect(r1).connect(r2).connect(lp).connect(hp).connect(out).connect(p).connect(this.sfx);
+    // a faint buzz from the diaphragm
+    const buzz = c.createOscillator(); buzz.frequency.value = 83;
+    const buzzG = c.createGain(); buzzG.gain.value = 0.06;
+    const am = c.createGain(); am.gain.value = 0.94;
+    buzz.connect(buzzG).connect(am.gain);
+    const oscs: OscillatorNode[] = [buzz];
+    am.connect(shaper);
+    for (const [f, lvl] of [[415 * pitch, 1], [521 * pitch, 0.9]] as const) {
+      const base = f * (0.992 + Math.random() * 0.016); // no two horns are quite alike
+      for (const [type, mult, det, g] of [['sawtooth', 1, 0, 0.5], ['square', 1, 5, 0.3], ['sawtooth', 2, -3, 0.12]] as const) {
+        const o = c.createOscillator(); o.type = type;
+        o.frequency.setValueAtTime(base * mult * 1.035, t0);
+        o.frequency.exponentialRampToValueAtTime(base * mult, t0 + 0.06);
+        o.detune.value = det;
+        const og = c.createGain(); og.gain.value = g * lvl * 0.5;
+        o.connect(og).connect(am);
+        o.start(t0);
+        oscs.push(o);
+      }
+    }
+    buzz.start(t0);
+    let done = false;
+    return (when = 0) => {
+      if (done) return; done = true;
+      const t = c.currentTime + when;
+      out.gain.cancelScheduledValues(t);
+      out.gain.setValueAtTime(Math.max(0.0002, out.gain.value), t);
+      out.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+      for (const o of oscs) o.stop(t + 0.09);
+    };
+  }
+  /** a horn blast from other traffic: one long honk, or sometimes a short double tap */
   honk(volume: number, pan: number) {
-    const v = clamp(volume, 0, 1) * 0.35;
+    const v = clamp(volume, 0, 1) * 0.3;
     if (v < 0.01) return;
-    const dur = 0.35 + Math.random() * 0.4;
-    this.tone(410, dur, v, 'square', 0, undefined, pan);
-    this.tone(515, dur, v * 0.8, 'square', 0, undefined, pan);
+    const pitch = 0.92 + Math.random() * 0.2; // different cars, different horns
+    if (Math.random() < 0.3) {
+      const a = this.hornVoice(v, pan, pitch); a(0.16);
+      setTimeout(() => { const b = this.hornVoice(v, pan, pitch); b(0.2); }, 260);
+    } else {
+      const stop = this.hornVoice(v, pan, pitch);
+      stop(0.3 + Math.random() * 0.45);
+    }
+  }
+  private horn?: () => void;
+  private hornFrom = 0;
+  /** the player's horn: sounds for exactly as long as the button is held (at least a short blip) */
+  hornHeld(on: boolean) {
+    const now = this.ctx.currentTime;
+    if (on && !this.horn) { this.horn = this.hornVoice(0.34, 0); this.hornFrom = now; }
+    else if (!on && this.horn && now - this.hornFrom > 0.12) { this.horn(); this.horn = undefined; }
   }
   whoosh(intensity: number) {
     const f = this.burst(0.45, 400, 'bandpass', 0.5 * clamp(intensity, 0.3, 1), 0, 2);
@@ -239,6 +306,7 @@ export class AudioEngine {
   }
   click() { this.tone(1200, 0.05, 0.1, 'square'); }
   reset() {
+    if (this.horn) { this.horn(); this.horn = undefined; }
     const t = this.ctx.currentTime;
     this.muffle.frequency.cancelScheduledValues(t);
     this.muffle.frequency.setValueAtTime(20000, t);
