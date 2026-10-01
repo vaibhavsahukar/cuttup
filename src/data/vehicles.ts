@@ -160,7 +160,7 @@ export const VEHICLES: VehicleSpec[] = [
     tireMu: 1.1, launchMu: 0.95, frontGrip: 0.9, rearGrip: 1.08, powerOversteer: 0,
     cgHeight: 0.52, wheelbase: 2.7, frontWeight: 0.61, track: 1.55, rollFactor: 0.06,
     brakeG: 1.0, downforce: 0.05, steerLock: 0.58, steerSpeed: 3.2, stability: 0.8, yawInertia: 0.85,
-    dims: { length: 4.6, width: 1.89, height: 1.41 }, engine: { cylinders: 4, tone: 1.05, roughness: 0.2 } },
+    dims: { length: 4.595, width: 1.89, height: 1.44 }, engine: { cylinders: 4, tone: 1.05, roughness: 0.2 } },
   { ...base, id: 'tesla', name: 'Tesler', kind: 'car', model: 'models', color: 0xb3141c,
     hp: 450, massKg: 1847, drive: 'AWD', zeroSixty: 3.2, topSpeedMph: 155, limited: true,
     character: 'Silent instant torque, heavy battery keeps it planted',

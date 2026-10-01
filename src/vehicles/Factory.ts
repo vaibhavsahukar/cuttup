@@ -5,6 +5,7 @@ import { buildPanelCar } from './PanelBuilder';
 import { buildBike } from './BikeBuilder';
 import { buildZ350 } from './Z350Builder';
 import { buildC6 } from './C6Builder';
+import { buildCivic } from './CivicBuilder';
 import { buildSchoolBus, BUS_DIMS } from './SchoolBus';
 
 /** cars with hand-made signature details (others get the generic panel build; bikes keep ShapeBuilder) */
@@ -22,6 +23,7 @@ export function buildPlayerModel(spec: VehicleSpec, shadows = true): VehicleMode
   if (spec.kind === 'bike') return buildBike(spec.model, spec.color, shadows, undefined, spec.paint);
   if (spec.model === 'z350') return buildZ350(spec.color, shadows);
   if (spec.id === 'zr1') return buildC6(spec.color, shadows);
+  if (spec.id === 'civic') return buildCivic(spec.color, shadows);
   return build(spec.model, spec.color, false, shadows, undefined, true);
 }
 
