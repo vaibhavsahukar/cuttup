@@ -185,7 +185,7 @@ export const VEHICLES: VehicleSpec[] = [
     tireMu: 1.12, launchMu: 1.0, frontGrip: 1.04, rearGrip: 0.98, powerOversteer: 1.05,
     cgHeight: 0.5, wheelbase: 2.65, frontWeight: 0.53, track: 1.6, rollFactor: 0.03, pitchFactor: 0.025,
     brakeG: 1.1, downforce: 0.3, steerLock: 0.55, steerSpeed: 3.2, highSpeedSteer: 0.18, stability: 0.5, yawInertia: 0.85,
-    dims: { length: 4.31, width: 1.98, height: 1.32 }, engine: { cylinders: 6, tone: 1.3, roughness: 0.35 } },
+    dims: { length: 4.31, width: 1.82, height: 1.32 }, engine: { cylinders: 6, tone: 1.3, roughness: 0.35 } },
 ];
 
 /** the colorway picked per vehicle (index into COLORWAYS[id]; missing = stock), kept in sync with the save by the UI */

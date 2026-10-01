@@ -3,6 +3,7 @@ import type { VehicleModel } from './ModelKit';
 import { buildFromShape, getShape } from './ShapeBuilder';
 import { buildPanelCar } from './PanelBuilder';
 import { buildBike } from './BikeBuilder';
+import { buildZ350 } from './Z350Builder';
 import { buildSchoolBus, BUS_DIMS } from './SchoolBus';
 
 /** cars with hand-made signature details (others get the generic panel build; bikes keep ShapeBuilder) */
@@ -18,6 +19,7 @@ const build = (id: string, color: number, lite: boolean, shadows: boolean, liver
  */
 export function buildPlayerModel(spec: VehicleSpec, shadows = true): VehicleModel {
   if (spec.kind === 'bike') return buildBike(spec.model, spec.color, shadows, undefined, spec.paint);
+  if (spec.model === 'z350') return buildZ350(spec.color, shadows);
   return build(spec.model, spec.color, false, shadows, undefined, true);
 }
 
