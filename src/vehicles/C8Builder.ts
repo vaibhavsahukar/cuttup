@@ -108,7 +108,7 @@ export function buildC8(color: number, shadows = true): VehicleModel {
   };
   for (const sx of [1, -1]) {
     // headlamp: a long slim blade lying along the fender, pointing forward and in; dark housing under it
-    const blade: [number, number][] = [[0.9, 1.5], [0.95, 1.6], [0.9, 1.78], [0.78, 1.98], [0.62, 2.15], [0.5, 2.22], [0.55, 2.12], [0.68, 1.92], [0.82, 1.7]];
+    const blade: [number, number][] = [[0.88, 1.78], [0.93, 1.85], [0.88, 1.97], [0.77, 2.08], [0.62, 2.17], [0.5, 2.22], [0.55, 2.14], [0.67, 2.03], [0.8, 1.9]];
     const grow = (o: [number, number][], f: number): [number, number][] => { let cx = 0, cz = 0; for (const p of o) { cx += p[0]; cz += p[1]; } cx /= o.length; cz /= o.length; return o.map(([x, z]) => [cx + (x - cx) * f, cz + (z - cz) * f]); };
     onDeck('dark', sx, grow(blade, 1.14), 0.01);
     onDeck('head', sx, blade, 0.02);
