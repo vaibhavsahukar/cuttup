@@ -327,6 +327,13 @@ const PROFILES: Record<string, { centre: [number, number][]; belt: [number, numb
     roof: 0.7,
     beltMax: 0.84,
   },
+  // 911 GT3 RS (992): short low nose, steep screen, tall rounded roof, fastback falling to a high engine cover
+  gt3rs: {
+    centre: [[0, 0.82], [0.03, 0.98], [0.1, 1.04], [0.2, 1.12], [0.3, 1.22], [0.4, 1.3], [0.5, 1.32], [0.58, 1.3], [0.66, 1.08], [0.72, 0.96], [0.78, 0.9], [0.88, 0.78], [0.96, 0.66], [1, 0.55]],
+    belt: [[0, 0.82], [0.1, 0.98], [0.3, 1.0], [0.5, 0.97], [0.72, 0.92], [0.9, 0.78], [1, 0.55]],
+    roof: 0.72,
+    beltMax: 0.8,
+  },
   // Huracán: very low wedge, flat engine deck, cabin well forward of the rear axle, long raked screen, low beak
   huracan: {
     centre: [[0, 0.86], [0.05, 0.96], [0.3, 1.0], [0.4, 1.07], [0.47, 1.13], [0.56, 1.11], [0.7, 0.86], [0.8, 0.75], [0.93, 0.64], [1, 0.5]],
@@ -451,6 +458,48 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     box('carbon', 0, ground + 0.12, R + 0.05, c.tailW * 1.7, 0.2, 0.12);
     for (const x of [-0.27, -0.09, 0.09, 0.27]) box('chrome', x, ground + 0.2, R - 0.01, 0.1, 0.1, 0.08);
     box('carbon', 0, wR + 0.12, R + 0.3, c.tailW * 1.8, 0.03, 0.3);
+  },
+  // Porsche 911 GT3 RS (992): round headlamps on raised fender peaks, carbon centre bonnet with vents, wide lower mouth,
+  // black rear quarter intakes, full width light bar, twin centre tips, big diffuser, tall swan neck wing with end plates.
+  gt3rs(c) {
+    const { L, ground, box } = c;
+    const F = L / 2, R = -L / 2;
+    const wR = c.deckAt(R + 0.35) + 0.28; // wing height: above the engine cover, near roof level
+    for (const sx of [1, -1]) {
+      // round headlamps on the fender humps
+      const zl = F - 0.32, xl = sx * c.hwAt(zl) * 0.7;
+      const [lx, ly, lz] = c.onTop(xl, zl, 0.03);
+      box('dark', lx, ly, lz, 0.17, 0.12, 0.17);
+      box('head', lx, ly, lz + 0.08, 0.13, 0.1, 0.04);
+      // fender top vents, front intakes either side of the mouth
+      const zv = F - 1.05, [vx, vy, vz] = c.onTop(sx * c.hwAt(zv) * 0.62, zv, 0.012);
+      box('dark', vx, vy, vz, 0.28, 0.01, 0.2);
+      box('dark', sx * c.noseW * 0.78, ground + 0.2, F - 0.03, c.noseW * 0.34, 0.2, 0.06);
+      // rear quarter intake behind the door, side blade, door stripe, side skirts
+      const zs = -0.62;
+      box('dark', sx * (c.hwAt(zs) + 0.004), c.shAt(zs) - 0.2, zs, 0.02, 0.26, 0.42);
+      box('carbon', sx * (c.hwAt(0.1) + 0.004), ground + 0.4, 0.1, 0.02, 0.025, 1.0);
+      box('carbon', sx * (c.hwAt(0.1) - 0.02), ground + 0.07, 0.1, 0.07, 0.1, L * 0.36);
+      // tail: slim outer lamp, small lower lamp
+      box('tail', sx * c.tailW * 0.8, c.tailH - 0.14, R + 0.004, c.tailW * 0.34, 0.06, 0.05);
+      box('tail', sx * c.tailW * 0.62, ground + 0.3, R + 0.004, c.tailW * 0.2, 0.05, 0.05);
+      // swan neck wing: tall uprights from the engine cover, big end plates
+      box('carbon', sx * c.tailW * 0.45, wR - 0.17, R + 0.4, 0.05, 0.34, 0.18);
+      box('carbon', sx * c.tailW * 0.98, wR + 0.02, R + 0.38, 0.03, 0.14, 0.4);
+    }
+    // nose: wide lower mouth, splitter, carbon bonnet centre with a vent
+    box('dark', 0, ground + 0.16, F - 0.03, c.noseW * 0.95, 0.2, 0.06);
+    box('carbon', 0, ground + 0.02, F - 0.1, c.noseW * 1.9, 0.035, 0.28);
+    const zh = F - 0.95;
+    box('carbon', 0, c.deckAt(zh) + 0.012, zh, c.hwAt(zh) * 0.9, 0.012, 0.9);
+    box('dark', 0, c.deckAt(zh + 0.4) + 0.02, zh + 0.4, c.hwAt(zh) * 0.45, 0.012, 0.18);
+    // rear: light bar across the engine cover lip, dark lower band, diffuser, twin tips, wing blade and ducktail
+    box('tail', 0, c.tailH - 0.12, R + 0.004, c.tailW * 1.3, 0.035, 0.05);
+    box('dark', 0, ground + 0.34, R + 0.01, c.tailW * 1.9, 0.26, 0.04);
+    box('carbon', 0, ground + 0.12, R + 0.05, c.tailW * 1.8, 0.2, 0.12);
+    for (const x of [-0.14, 0.14]) box('chrome', x, ground + 0.25, R - 0.01, 0.1, 0.1, 0.08);
+    box('carbon', 0, c.deckAt(R + 0.2) + 0.02, R + 0.2, c.tailW * 1.7, 0.03, 0.16);
+    box('carbon', 0, wR + 0.06, R + 0.38, c.tailW * 1.96, 0.035, 0.38);
   },
   // Lamborghini Huracán: slim Y headlamps, wide three-part mouth, hexagon side intakes,
   // louvred engine cover, Y tail lamps, twin exhausts in the diffuser.

@@ -6,7 +6,7 @@ import { buildBike } from './BikeBuilder';
 import { buildSchoolBus, BUS_DIMS } from './SchoolBus';
 
 /** cars with hand-made signature details (others get the generic panel build; bikes keep ShapeBuilder) */
-export const DESIGNED = new Set(['zr1', 'c8', 'm4', 'huracan', 'c63', 'civic', 'tesla']);
+export const DESIGNED = new Set(['zr1', 'c8', 'gt3rs', 'm4', 'huracan', 'c63', 'civic', 'tesla']);
 const build = (id: string, color: number, lite: boolean, shadows: boolean, livery?: 'police', player = false) => {
   const sh = getShape(id)!;
   return sh.bike ? buildFromShape(sh, color, lite, shadows) : buildPanelCar(sh, color, lite, shadows, livery, player);
