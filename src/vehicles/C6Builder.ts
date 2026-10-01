@@ -22,7 +22,7 @@ export function buildC6(color: number, shadows = true): VehicleModel {
   const box = (tag: Tag, x: number, y: number, z: number, w: number, h: number, d: number) => addGeo(tag, new THREE.BoxGeometry(w, h, d).translate(x, y, z));
   const ball = (tag: Tag, x: number, y: number, z: number, rx: number, ry: number, rz: number) => addGeo(tag, new THREE.SphereGeometry(1, 18, 12).scale(rx, ry, rz).translate(x, y, z));
   /** a flat round lamp lying on the rear face */
-  const disc = (tag: Tag, x: number, y: number, z: number, r: number) => addGeo(tag, new THREE.CylinderGeometry(r, r, 0.04, 28).rotateX(Math.PI / 2).translate(x, y, z));
+  const disc = (tag: Tag, x: number, y: number, z: number, r: number) => addGeo(tag, new THREE.CylinderGeometry(r, r, 0.02, 28).rotateX(Math.PI / 2).translate(x, y, z));
   const lampOn = (tag: Tag, sx: number, z0: number, z1: number, xin: (z: number) => number, xout: (z: number) => number, lift = 0.02) => {
     const surf = (x: number, z: number) => { const hw = lerpK(HW, z), t = Math.min(1, Math.max(0, (x / hw - 0.6) / 0.355)); return lerpK(DECK, z) - 0.008 - 0.042 * t * t + lift; };
     const n = 16, rows: [number, number, number][][] = [];
@@ -102,8 +102,8 @@ export function buildC6(color: number, shadows = true): VehicleModel {
     ball('paint', sx * 0.98, 1.0, 0.42, 0.06, 0.07, 0.12); // mirror
     box('paint', sx * 0.86, 0.97, 0.47, 0.22, 0.05, 0.1); // stalk
     // four round tail lamps, quad tips
-    disc('tail', sx * 0.76, 0.84, R - 0.005, 0.11);
-    disc('tail', sx * 0.5, 0.84, R - 0.005, 0.105);
+    disc('tail', sx * 0.6, 0.84, R + 0.012, 0.085);
+    disc('tail', sx * 0.38, 0.84, R + 0.012, 0.08);
     box('chrome', sx * 0.3, 0.2, R - 0.04, 0.11, 0.11, 0.12);
     box('chrome', sx * 0.5, 0.2, R - 0.04, 0.11, 0.11, 0.12);
   }
