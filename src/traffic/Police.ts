@@ -12,9 +12,11 @@ import { difficultyOf, type Difficulty } from '../data/difficulty';
 
 /** Score thresholds -> number of pursuing police cars. */
 export const POLICE_TIERS: [number, number][] = [[5000, 1], [10000, 2], [15000, 3], [20000, 4], [25000, 5]];
-export function copsForScore(score: number) {
+/** backroads: four units, one per level, from 10k / 15k / 20k / 30k points */
+export const BACKROAD_POLICE_TIERS: [number, number][] = [[10000, 1], [15000, 2], [20000, 3], [30000, 4]];
+export function copsForScore(score: number, tiers = POLICE_TIERS) {
   let n = 0;
-  for (const [s, c] of POLICE_TIERS) if (score >= s) n = c;
+  for (const [s, c] of tiers) if (score >= s) n = c;
   return n;
 }
 
@@ -137,7 +139,7 @@ export class Police {
 
   update(dt: number, player: PlayerProxy, playerVl: number, score: number, active: boolean) {
     this.time += dt;
-    const tier = this.map.road === 'backroad' ? Math.min(4, copsForScore(score / this.diff.copTier)) : copsForScore(score / this.diff.copTier);
+    const tier = this.map.road === 'backroad' ? copsForScore(score / this.diff.copTier, BACKROAD_POLICE_TIERS) : copsForScore(score / this.diff.copTier);
     this.wanted = tier > this.clearedTier ? tier : 0;
     if (this.wanted === 0) this.announced = 0;
     if (this.wanted === 0 && this.cops.length) { for (const c of this.cops) this.traffic.release(c.car); this.cops = []; }
