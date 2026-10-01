@@ -439,7 +439,10 @@ export class UI {
     // the crash's phrase up top, the run's numbers bottom left, what next bottom right: nothing else
     const phrase = r.message || (r.crashKind === 'fuel' ? 'Out of gas' : r.caught ? 'Caught' : 'Wrecked');
     $('#results .over').innerHTML = `
-      <div class="phrase">${esc(phrase)}</div>
+      <div class="top">
+        <div class="phrase">${esc(phrase)}</div>
+        <div class="score">${r.score.toLocaleString()}</div>
+      </div>
       <div class="bottom">
         <div class="kv">
           <span>Vehicle</span><b>${esc(getVehicle(vehicleId).name)}</b>
