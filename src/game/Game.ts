@@ -365,7 +365,7 @@ export class Game {
   private fuelStep(dt: number, ds: number) {
     const ph = this.player.phys;
     if (this.state !== 'driving') return;
-    const range = this.player.bike ? 4800 : 6200; // metres on a tank at a steady cruise
+    const range = this.player.bike ? 14500 : 15600; // metres on a tank at the base burn rate: about 7 to 8 miles driven hard
     this.fuel = Math.max(0, this.fuel - (Math.max(0, ds) / range) * (0.5 + 0.8 * ph.throttle) - dt * 0.0003);
     this.refueling = this.features.inRefuel(ph.s, ph.d) && Math.abs(ph.v) < 13.4;
     if (this.refueling && this.fuel < 1) {
