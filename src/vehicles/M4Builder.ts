@@ -78,17 +78,21 @@ export function buildM4(color: number, shadows = true): VehicleModel {
   const hwAt = (z: number) => lerpK(HW, z);
   // ---- front: double kidney grille, slim hockey stick headlamps, corner intakes, bonnet bulges ----
   for (const sx of [1, -1]) {
-    // kidney: silver frame, dark opening and bars
-    faceSlab('chrome', sx, [[0.03, 0.31], [0.5, 0.31], [0.52, 0.62], [0.03, 0.62]], false, 0.02);
-    faceSlab('dark', sx, [[0.06, 0.34], [0.47, 0.34], [0.49, 0.59], [0.06, 0.59]], false, 0.034);
-    for (const y of [0.4, 0.46, 0.52]) box('carbon', sx * 0.275, y, F + 0.012, 0.4, 0.014, 0.01);
-    // slim angled headlamp at the upper corner
-    faceSlab('dark', sx, [[0.56, 0.6], [0.8, 0.66], [0.84, 0.72], [0.8, 0.745], [0.56, 0.665]], false, 0.02);
-    faceSlab('head', sx, [[0.58, 0.612], [0.79, 0.668], [0.82, 0.71], [0.79, 0.725], [0.58, 0.655]], false, 0.032);
-    // big corner intakes
-    faceSlab('dark', sx, [[0.56, 0.24], [0.8, 0.24], [0.82, 0.5], [0.56, 0.5]], false, 0.022);
-    // bonnet power bulge stripes laid on the surface
-    onDeck('carbon', sx, [[0.12, 0.95], [0.34, 0.95], [0.38, 1.9], [0.16, 1.95]]);
+    // kidney: tall trapezoid, wider at the top, dark surround and opening with horizontal bars
+    faceSlab('carbon', sx, [[0.015, 0.325], [0.255, 0.335], [0.3, 0.635], [0.015, 0.635]], false, 0.022);
+    faceSlab('dark', sx, [[0.035, 0.35], [0.24, 0.355], [0.275, 0.615], [0.035, 0.615]], false, 0.036);
+    for (const y of [0.42, 0.485, 0.55]) box('carbon', sx * 0.15, y, F + 0.012, 0.19, 0.016, 0.01);
+    // slim hockey stick headlamp: dark housing, white lamp and the amber light line, running out to the corner
+    faceSlab('dark', sx, [[0.38, 0.655], [0.62, 0.6], [0.84, 0.585], [0.87, 0.64], [0.84, 0.69], [0.62, 0.7], [0.4, 0.715]], false, 0.02);
+    faceSlab('head', sx, [[0.4, 0.665], [0.62, 0.615], [0.83, 0.6], [0.85, 0.64], [0.82, 0.67], [0.62, 0.68], [0.42, 0.705]], false, 0.03);
+    faceSlab('amber', sx, [[0.42, 0.674], [0.62, 0.628], [0.8, 0.616], [0.81, 0.628], [0.62, 0.642], [0.43, 0.688]], false, 0.036);
+    // wide lower intake with a divider, and the tall angled corner intakes
+    faceSlab('dark', sx, [[0.0, 0.2], [0.56, 0.2], [0.56, 0.31], [0.0, 0.31]], false, 0.022);
+    box('carbon', sx * 0.28, 0.255, F + 0.01, 0.56, 0.014, 0.01);
+    faceSlab('dark', sx, [[0.6, 0.2], [0.82, 0.2], [0.82, 0.52], [0.7, 0.5], [0.6, 0.34]], false, 0.022);
+    box('carbon', sx * 0.83, 0.36, F - 0.04, 0.04, 0.3, 0.05); // corner fin
+    // bonnet power bulge stripes laid on the surface, behind the lamps towards the cowl
+    onDeck('carbon', sx, [[0.1, 1.0], [0.32, 1.0], [0.36, 1.75], [0.14, 1.8]]);
     // gill behind the front wheel
     faceSide('dark', sx, 1.05, 0.62, 0.06, 0.26);
     // side skirt, door seam and handle, mirror
@@ -102,9 +106,8 @@ export function buildM4(color: number, shadows = true): VehicleModel {
     // quad exhaust: two round tips each side
     disc('chrome', sx * 0.3, 0.28, R - 0.006, 0.055); disc('chrome', sx * 0.5, 0.28, R - 0.006, 0.055);
   }
-  box('chrome', 0, 0.63, F + 0.004, 0.09, 0.07, 0.01); // roundel
-  box('carbon', 0, 0.2, F - 0.03, 1.55, 0.03, 0.06); // splitter lip
-  box('dark', 0, 0.26, F - 0.012, 1.0, 0.1, 0.022); // lower centre intake
+  box('chrome', 0, 0.595, F + 0.01, 0.08, 0.05, 0.012); // roundel on the bonnet front
+  box('carbon', 0, 0.19, F - 0.05, 1.7, 0.03, 0.1); // splitter lip
   // ---- rear: carbon diffuser, plate recess, boot lip and a wing ----
   box('dark', 0, 0.34, R + 0.006, 1.6, 0.26, 0.02);
   box('carbon', 0, 0.2, R + 0.0, 1.5, 0.04, 0.08);
@@ -119,7 +122,8 @@ export function buildM4(color: number, shadows = true): VehicleModel {
   const root = new THREE.Group(), chassis = new THREE.Group();
   root.add(chassis);
   const carbonM = new THREE.MeshStandardMaterial({ color: 0x151618, metalness: 0.4, roughness: 0.35 });
-  const matFor = (t: string): THREE.Material => t === 'paint' ? paint(color) : t === 'glass' ? MAT.glass : t === 'head' ? MAT.head : t === 'tail' ? MAT.tailOff : t === 'chrome' ? MAT.chrome : t === 'carbon' ? carbonM : MAT.trim;
+  const amberM = new THREE.MeshStandardMaterial({ color: 0xffc23a, emissive: 0xffa000, emissiveIntensity: 1.2 });
+  const matFor = (t: string): THREE.Material => t === 'amber' ? amberM : t === 'paint' ? paint(color) : t === 'glass' ? MAT.glass : t === 'head' ? MAT.head : t === 'tail' ? MAT.tailOff : t === 'chrome' ? MAT.chrome : t === 'carbon' ? carbonM : MAT.trim;
   let body: THREE.Mesh | undefined;
   const brake: THREE.Mesh[] = [], heads: THREE.Mesh[] = [];
   for (const [tag, arr] of out) {
