@@ -75,8 +75,10 @@ export function buildC6(color: number, shadows = true): VehicleModel {
   for (const sx of [1, -1]) {
     // exposed teardrop headlamps lying along the front fenders
     // C6 lamps: flush teardrop units on the front corners of the nose, wide at the nose and tapering back and inwards
-    lampOn('head', sx, 2.2, 1.78, (z) => lerpK([[2.2, 0.5], [2.1, 0.46], [1.95, 0.52], [1.78, 0.64]], z), (z) => lerpK([[2.2, 0.7], [2.12, 0.86], [1.95, 0.92], [1.78, 0.84]], z), 0.025); // compact wedge on the front corner, wide at the nose and tapering back
-    box('dark', sx * 0.5, 0.34, F, 0.2, 0.1, 0.04); // fog lamp
+    { // oval lamp set into the upper front corner, outer end high, inner end dipping towards the nose centre (per the mockup)
+      const g = new THREE.SphereGeometry(1, 20, 12).scale(0.17, 0.062, 0.06).rotateZ(sx * 0.32).translate(sx * 0.62, 0.5, F - 0.045);
+      addGeo('head', g);
+    }
     box('amber', sx * (hwAt(1.9) + 0.014), 0.52, 1.9, 0.012, 0.05, 0.16); // side marker
     // side cove behind the front wheel with its gill, rear fender duct, door line, shoulder trim
     box('dark', sx * (hwAt(0.85) + 0.014), 0.7, 0.85, 0.012, 0.15, 0.34);
@@ -122,7 +124,7 @@ export function buildC6(color: number, shadows = true): VehicleModel {
   const sg = new THREE.BoxGeometry(0.07, 0.04, 0.03);
   for (const sx of [1, -1]) for (const sz of [1, -1]) {
     const s = new THREE.Mesh(sg, MAT.sigOff);
-    s.position.set(sx * (sz > 0 ? 0.62 : 0.66), sz > 0 ? 0.48 : 0.66, sz * (F - 0.005));
+    s.position.set(sx * (sz > 0 ? 0.8 : 0.66), sz > 0 ? 0.3 : 0.66, sz * (F - 0.005));
     chassis.add(s);
     (sx > 0 ? sigL : sigR).push(s);
   }
