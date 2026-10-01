@@ -111,8 +111,8 @@ export class StationRenderer {
     // shop with a lit window and the brand on the roof edge
     this.box(g, this.white, s + 4, c + side * 19, 11, 4.6, 22);
     this.box(g, this.glow, s + 4, c + side * 13.4, 0.1, 1.8, 16, 0.9);
-    const sign = this.box(g, this.gasMat, s + 4, c + side * 13.35, 0.12, 1.3, 5, 3.4);
-    sign.rotation.y += Math.PI / 2;
+    // flat on the shop front, facing the road (it used to be turned edge on and sank into the wall)
+    this.box(g, this.gasMat, s + 4, c + side * 13.3, 0.12, 1.3, 5, 3.4);
   }
 
   /** tall roadside pylon with the GAS panel, visible from far off */
