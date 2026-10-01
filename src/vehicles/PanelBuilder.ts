@@ -568,6 +568,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
       const [lx, ly, lz] = c.onTop(sx * c.hwAt(F - 0.3) * 0.68, F - 0.3, 0.02);
       box('dark', lx, ly - 0.005, lz - 0.01, 0.42, 0.08, 0.26);
       box('head', lx, ly + 0.01, lz + 0.01, 0.36, 0.05, 0.2);
+      box('dark', sx * c.noseW * 0.66, c.noseH - 0.08, F - 0.015, c.noseW * 0.46, 0.12, 0.05); box('head', sx * c.noseW * 0.66, c.noseH - 0.08, F + 0.005, c.noseW * 0.4, 0.07, 0.04); // lamp wrapping onto the front face
       box('dark', sx * c.noseW * 0.7, ground + 0.17, F - 0.02, c.noseW * 0.38, 0.12, 0.06); // fog intake
       box('tail', sx * c.tailW * 0.74, c.tailH - 0.1, R + 0.004, c.tailW * 0.46, 0.07, 0.05);
       box('carbon', sx * (c.hwAt(0) - 0.02), ground + 0.06, 0, 0.04, 0.05, L * 0.4);
@@ -653,6 +654,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     const wR = c.deckAt(R + 0.25) + 0.05;
     for (const sx of [1, -1]) {
       { const [lx, ly, lz] = c.onTop(sx * c.hwAt(F - 0.3) * 0.7, F - 0.3, 0.02); box('dark', lx, ly - 0.005, lz - 0.01, 0.46, 0.1, 0.27); box('head', lx, ly + 0.01, lz + 0.01, 0.38, 0.06, 0.22); } // slim swept lamp in a dark surround
+      box('dark', sx * c.noseW * 0.66, c.noseH - 0.1, F - 0.015, c.noseW * 0.5, 0.15, 0.05); box('head', sx * c.noseW * 0.66, c.noseH - 0.1, F + 0.005, c.noseW * 0.44, 0.09, 0.04); // lamp wrapping onto the front face
       box('dark', sx * c.noseW * 0.76, ground + 0.16, F - 0.02, c.noseW * 0.38, 0.2, 0.06);
       box('tail', sx * c.tailW * 0.72, c.tailH - 0.06, R + 0.004, c.tailW * 0.55, 0.08, 0.05);
       box('carbon', sx * c.tailW * 0.55, wR + 0.12, R + 0.25, 0.04, 0.24, 0.12); // wing uprights
