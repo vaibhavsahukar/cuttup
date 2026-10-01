@@ -210,6 +210,7 @@ async function boot() {
         else goodChecks = 0;
       }
     }
+    audio.setPaused(mode === 'paused'); // nothing keeps playing behind the pause menu
     input.update(dt);
     if (mode !== 'game') pollPadMenu(); else pollCrashPad();
     if (game && (mode === 'game')) {

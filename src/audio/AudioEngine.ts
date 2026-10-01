@@ -73,7 +73,14 @@ export class AudioEngine {
     return s;
   }
 
-  resume() { if (this.ctx.state !== 'running') this.ctx.resume(); }
+  private paused = false;
+  resume() { if (!this.paused && this.ctx.state !== 'running') this.ctx.resume(); }
+  /** the whole sound world freezes while the game is paused (engine, rain, siren and any sound still ringing out) */
+  setPaused(on: boolean) {
+    if (on === this.paused) return;
+    this.paused = on;
+    if (on) this.ctx.suspend(); else this.ctx.resume();
+  }
 
   applyVolumes() {
     const t = this.ctx.currentTime;
