@@ -348,6 +348,12 @@ const PROFILES: Record<string, { centre: [number, number][]; belt: [number, numb
     roof: 0.66,
     beltMax: 0.82,
   },
+  // Civic Type R (FL5): fastback hatch, roof peak mid body, steep short tail, low nose
+  civic: {
+    centre: [[0, 0.78], [0.02, 1.0], [0.08, 1.06], [0.18, 1.2], [0.3, 1.36], [0.4, 1.41], [0.55, 1.41], [0.63, 1.34], [0.7, 1.12], [0.76, 1.02], [0.86, 0.97], [0.95, 0.9], [1, 0.76]],
+    belt: [[0, 0.8], [0.1, 1.0], [0.3, 1.0], [0.5, 0.98], [0.75, 0.97], [0.9, 0.9], [1, 0.76]],
+    roof: 0.74,
+  },
   // Huracán: very low wedge, flat engine deck, cabin well forward of the rear axle, long raked screen, low beak
   huracan: {
     centre: [[0, 0.86], [0.05, 0.96], [0.3, 1.0], [0.4, 1.07], [0.47, 1.13], [0.56, 1.11], [0.7, 0.86], [0.8, 0.75], [0.93, 0.64], [1, 0.5]],
@@ -621,7 +627,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     const F = L / 2, R = -L / 2;
     const wR = c.deckAt(R + 0.25) + 0.05;
     for (const sx of [1, -1]) {
-      c.lamp(sx, F - 0.08, F - 0.45, 0.45, 0.92, 0.78, 0.98);
+      { const [lx, ly, lz] = c.onTop(sx * c.hwAt(F - 0.3) * 0.7, F - 0.3, 0.02); box('dark', lx, ly - 0.005, lz - 0.01, 0.46, 0.1, 0.27); box('head', lx, ly + 0.01, lz + 0.01, 0.38, 0.06, 0.22); } // slim swept lamp in a dark surround
       box('dark', sx * c.noseW * 0.76, ground + 0.16, F - 0.02, c.noseW * 0.38, 0.2, 0.06);
       box('tail', sx * c.tailW * 0.72, c.tailH - 0.06, R + 0.004, c.tailW * 0.55, 0.08, 0.05);
       box('carbon', sx * c.tailW * 0.55, wR + 0.12, R + 0.25, 0.04, 0.24, 0.12); // wing uprights
@@ -629,7 +635,8 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
       box('tail', sx * (c.hwAt(0) + 0.01), ground + 0.1, 0.4, 0.01, 0.015, 0.6); // red skirt stripe
     }
     box('dark', 0, c.noseH - 0.2, F + 0.005, c.noseW * 0.8, 0.18, 0.05); // honeycomb grille
-    box('dark', 0, ground + 0.15, F - 0.02, c.noseW * 0.7, 0.14, 0.06);
+    box('chrome', 0, c.noseH - 0.2, F + 0.03, 0.1, 0.07, 0.02); // badge
+    box('dark', 0, ground + 0.17, F - 0.02, c.noseW * 1.25, 0.2, 0.06); // wide lower intake
     box('tail', 0, ground + 0.03, F - 0.06, c.noseW * 1.7, 0.02, 0.1); // red lip line
     box('carbon', 0, wR + 0.25, R + 0.22, c.tailW * 1.95, 0.03, 0.26);
     box('carbon', 0, ground + 0.1, R + 0.05, c.tailW * 1.3, 0.14, 0.12);
