@@ -10,7 +10,7 @@ button:hover, button:focus-visible, button.focus { background: rgba(255,61,110,0
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 button.small { padding: 5px 10px; font-size: 12px; }
 .logo { white-space: nowrap; width: max-content; padding-right: 0.15em; font-weight: 900; font-style: italic; letter-spacing: -0.02em; font-size: 46px; line-height: 0.95; margin: 0 0 6px; background: linear-gradient(95deg, #fff 0%, #ff3d6e 55%, #ff9d3d 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 6px 24px rgba(255,61,110,0.35)); }
-.tag { color: var(--dim); letter-spacing: 0.4em; font-size: 12px; margin-bottom: 36px; }
+.tag { color: #5ff3ff; text-transform: uppercase; font-family: Consolas, 'Courier New', monospace; font-weight: 700; letter-spacing: 0.3em; font-size: 14px; margin-bottom: 36px; text-shadow: 0 0 10px rgba(95,243,255,0.55); }
 .logo span { display: block; font-size: 1.5em; letter-spacing: 0.02em; }
 #menu .col { position: absolute; left: 7vw; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; width: 300px; }
 #menu .col .tag { white-space: nowrap; }
