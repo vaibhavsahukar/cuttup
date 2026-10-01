@@ -132,6 +132,32 @@ export class Features {
    * null = the normal road limits.
    */
   limits(s: number, d: number, lo: number, hi: number): { lo: number; hi: number } | null {
+    const r0 = this.limits0(s, d, lo, hi);
+    // the shop is reachable (so it can be driven into): the drivable area opens up to it along its length
+    const st = this.at(s);
+    if (st) {
+      const f = this.forecourt(st), shop = f.solids[f.solids.length - 1];
+      if (Math.abs(s - shop.s) < shop.hl + 1) return { lo: r0 ? r0.lo : lo, hi: Math.max(r0 ? r0.hi : hi, shop.d - shop.hw + 3) };
+    }
+    return r0;
+  }
+  /** the forecourt's solid things (canopy posts, pumps, the shop last) as rectangles in road coordinates; mirrors Stations.forecourt */
+  forecourt(st: Station) {
+    const s = st.s0 + (st.ramp ? 260 : 100), c = st.ramp ? this.rampLane(260).c : this.edge + 4.5;
+    const solids: { s: number; d: number; hw: number; hl: number }[] = [];
+    for (const ds of [-21, 21]) for (const dd of [-2.2, 8.6]) solids.push({ s: s + ds, d: c + dd, hw: 0.25, hl: 0.25 });
+    for (let k = -1.5; k <= 1.5; k++) solids.push({ s: s + k * 9, d: c + 4.3, hw: 0.45, hl: 0.6 });
+    solids.push({ s: s + 4, d: c + 19, hw: 5.5, hl: 11 });
+    return { s, c, solids };
+  }
+  /** does a vehicle's box (half width hw, half length hl, centred at s, d) overlap a station's posts, pumps or shop? */
+  hitStation(s: number, d: number, hw: number, hl: number) {
+    const st = this.at(s);
+    if (!st) return false;
+    for (const b of this.forecourt(st).solids) if (Math.abs(s - b.s) < hl + b.hl && Math.abs(d - b.d) < hw + b.hw) return true;
+    return false;
+  }
+  private limits0(s: number, d: number, lo: number, hi: number): { lo: number; hi: number } | null {
     const st = this.at(s);
     if (!st) return null;
     const x = s - st.s0;

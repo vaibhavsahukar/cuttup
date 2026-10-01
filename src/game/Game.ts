@@ -649,6 +649,8 @@ export class Game {
     const ph = this.player.phys;
     const L = this.layout;
     const half = this.player.collW / 2;
+    // a gas station is solid: any contact with its posts, pumps or shop wrecks the car in a fireball
+    if (this.state === 'driving' && this.features.hitStation(ph.s, ph.d, half, this.player.collL / 2)) { this.startCrash('barrier', 70, null); return; }
     ph.onGrass = (ph.d < L.softMin || ph.d > L.softMax) && !this.features.paved(ph.s, ph.d);
     const { lo: rlo, hi: rhi } = this.driveRange(ph.s, ph.d, L.playerMin, L.playerMax);
     const lo = rlo + half, hi = rhi - half;
