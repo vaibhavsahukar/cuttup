@@ -73,6 +73,7 @@ input[type=range] { width: 260px; accent-color: var(--accent); }
 .binds { display: grid; grid-template-columns: 230px 1fr 1fr 1.3fr; gap: 6px 10px; align-items: center; font-size: 13px; }
 .binds .bh { font-size: 11px; letter-spacing: 0.12em; opacity: 0.6; text-transform: uppercase; }
 .binds button { text-transform: none; font-size: 12px; padding: 6px 10px; }
+.binds button.shared { border-color: rgba(95,243,255,0.55); }
 .binds button.wait { border-color: var(--accent); animation: pulse 0.8s infinite; }
 @keyframes pulse { 50% { opacity: 0.5; } }
 /* HUD */

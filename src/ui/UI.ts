@@ -261,7 +261,11 @@ export class UI {
     const opt = (key: string, vals: [string, string][], cur: string) => `<div class="opts" data-k="${key}">${vals.map(([v, l]) => `<button class="${v === cur ? 'sel' : ''}" data-v="${v}">${l}</button>`).join('')}</div>`;
     const res = ['native', '1280x720', '1600x900', '1920x1080', '2560x1440'];
     const w = (a: Action, i: number) => this.waiting !== null && this.waiting.a === a && this.waiting.i === i;
-    const binds = `<div></div><div class="bh">Key</div><div class="bh">Alt key</div><div class="bh">Gamepad</div>` + ACTIONS.map((a) => `<div>${a.label}</div>${[0, 1].map((i) => `<button data-b="${a.id}" data-i="${i}" class="${w(a.id, i) ? 'wait' : ''}">${w(a.id, i) ? 'press a key…' : esc(fmtKey(st.bindings[a.id][i] ?? ''))}</button>`).join('')}<button data-b="${a.id}" data-i="2" class="${w(a.id, 2) ? 'wait' : ''}">${w(a.id, 2) ? 'press a button / move a stick…' : esc(fmtPad(st.padBindings[a.id] ?? ''))}</button>`).join('');
+    // inputs bound to more than one action are marked, with the other actions in the tooltip
+    const labelOf = (id: string) => ACTIONS.find((x) => x.id === id)?.label ?? id;
+    const sharedWith = (code: string, self: Action, pad: boolean) => !code ? [] : ACTIONS.filter((x) => x.id !== self && (pad ? st.padBindings[x.id] === code : st.bindings[x.id].includes(code))).map((x) => labelOf(x.id));
+    const tip = (code: string, self: Action, pad: boolean) => { const o = sharedWith(code, self, pad); return o.length ? ` shared" title="Also bound to: ${esc(o.join(', '))}` : ''; };
+    const binds = `<div></div><div class="bh">Key</div><div class="bh">Alt key</div><div class="bh">Gamepad</div>` + ACTIONS.map((a) => `<div>${a.label}</div>${[0, 1].map((i) => `<button data-b="${a.id}" data-i="${i}" class="${w(a.id, i) ? 'wait' : ''}${tip(st.bindings[a.id][i] ?? '', a.id, false)}">${w(a.id, i) ? 'press a key…' : esc(fmtKey(st.bindings[a.id][i] ?? ''))}</button>`).join('')}<button data-b="${a.id}" data-i="2" class="${w(a.id, 2) ? 'wait' : ''}${tip(st.padBindings[a.id] ?? '', a.id, true)}">${w(a.id, 2) ? 'press a button / move a stick…' : esc(fmtPad(st.padBindings[a.id] ?? ''))}</button>`).join('');
     const lv = (n: number, off = 'Off') => Array.from({ length: n + 1 }, (_, i) => [String(i), i === 0 ? off : String(i)] as [string, string]);
     $('#settings .panel').innerHTML = `
       <h2>Settings</h2>
@@ -282,7 +286,7 @@ export class UI {
       <div class="row"><span>Anti-wheelie</span>${opt('aw', lv(3), String(st.aids.aw))}</div>
       <div class="row"><span>Engine braking</span>${opt('eb', [['0', 'Low'], ['1', 'Medium'], ['2', 'High']], String(st.aids.eb))}</div>
       <div class="row"><span>Riding style <small>(manual: you lean the bike and shift your weight yourself)</small></span>${opt('style', [['assisted', 'Assisted'], ['manual', 'Manual']], st.ridingStyle)}</div>
-      <h2 style="margin-top:22px">Controls <span style="letter-spacing:0.05em;text-transform:none">(click a binding, then press a key or a gamepad button / stick · Esc cancels · bikes: hold brake while accelerating to pull a wheelie)</span></h2>
+      <h2 style="margin-top:22px">Controls <span style="letter-spacing:0.05em;text-transform:none">(click a binding, then press a key or a gamepad button / stick · the same input can drive several actions · Esc cancels · bikes: hold brake while accelerating to pull a wheelie)</span></h2>
       <div class="binds">${binds}</div>
       <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
         <button data-x="reset">Reset controls</button><button data-x="back" class="primary">Done</button></div>`;
@@ -324,8 +328,7 @@ export class UI {
   }
   padCaptured(a: Action, code: string) {
     const st = this.save.data.settings;
-    // one gamepad input per action: take it off whatever had it before
-    for (const other of Object.keys(st.padBindings) as Action[]) if (st.padBindings[other] === code) st.padBindings[other] = '';
+    // one gamepad input may drive several actions (multi-binding): nothing is taken off the others
     st.padBindings[a] = code;
     this.waiting = null;
     this.save.persist();
@@ -335,8 +338,7 @@ export class UI {
   keyCaptured(a: Action, i: number, code: string) {
     const st = this.save.data.settings;
     if (code !== 'Escape' || a === 'pause') {
-      // unbind the key from other actions to avoid conflicts
-      for (const other of Object.keys(st.bindings) as Action[]) st.bindings[other] = st.bindings[other].map((c) => (c === code ? '' : c));
+      // the same key may be bound to several actions (multi-binding): nothing is taken off the others
       st.bindings[a][i] = code;
     }
     this.waiting = null;
