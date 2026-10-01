@@ -35,14 +35,14 @@ export class Features {
     this.ramp = map.road === 'highway';
     this.edge = this.ramp ? layout.playerMax : layout.softMax;
     this.rngF = mulberry32((map.seed * 29 + 3) >>> 0);
-    if (map.id === 'city') this.nextFork = 4200 + this.rngF() * 2200;
+    if (map.id === 'city') this.nextFork = 2000 + this.rngF() * 1200;
     if (firstStation !== null) { this.stations.push({ s0: firstStation, ramp: this.ramp }); this.nextS = firstStation + this.gap(); }
     else this.nextS = 2200 + this.rng() * 2200;
   }
   /** 2 to 3 miles */
   private gap() { return 3200 + this.rng() * 1650; }
   private ensure(s: number) {
-    while (this.nextFork < s + 9000) { this.forkS.push(this.nextFork); this.nextFork += 6400 + this.rngF() * 1650; } // 4 to 5 miles
+    while (this.nextFork < s + 9000) { this.forkS.push(this.nextFork); this.nextFork += 3400 + this.rngF() * 1400; } // 2 to 3 miles
     while (this.nextS < s + 4000) {
       // a station never sits inside a fork
       const f = this.forkS.find((x) => this.nextS > x - 800 && this.nextS < x + FORK_SPAN + 300);
