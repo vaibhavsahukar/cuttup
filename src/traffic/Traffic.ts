@@ -160,7 +160,7 @@ export class Traffic {
     // backroads are full of pickups; the countryside highway carries a lot of freight
     if (!hw && driver !== 'fast' && r() < 0.4) type = 'pickup';
     // the occasional school bus, always a slow driver
-    if (type === 'schoolbus') { if (r() < 0.65) type = 'sedan'; else driver = 'slow'; }
+    if (type === 'schoolbus') { if (r() < 0.93) type = 'sedan'; else driver = 'slow'; } // rare: about one car in 130
     if (this.map.id === 'country' && driver !== 'fast' && r() < 0.22) type = 'boxtruck';
     if (look) { type = look.type; if (type === 'schoolbus') driver = 'slow'; }
     if (!look && hw && (type === 'boxtruck') && lane < this.lanesFor(dir) - 2) lane = this.lanesFor(dir) - 1 - Math.floor(r() * 2);

@@ -376,7 +376,7 @@ export class Fork {
   private newDeckCar(t: number, dir: 1 | -1, lane: number, v: number, type?: TrafficType, color?: number): DeckCar {
     const L = this.layout;
     let ty = type ?? TRAFFIC_TYPES[Math.floor(Math.random() * TRAFFIC_TYPES.length)];
-    if (!type && ty === 'schoolbus' && Math.random() < 0.8) ty = 'sedan';
+    if (!type && ty === 'schoolbus' && Math.random() < 0.93) ty = 'sedan';
     const col = color ?? (ty === 'schoolbus' ? 0xf2b400 : TRAFFIC_COLORS[Math.floor(Math.random() * TRAFFIC_COLORS.length)]);
     const c: DeckCar = { t, d: dir > 0 ? L.laneCenter(lane) : -L.laneCenter(lane), v, dir, lane, type: ty, color: col, obj: new THREE.Object3D() };
     this.deckCars.push(c);
