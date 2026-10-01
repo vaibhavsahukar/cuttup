@@ -114,6 +114,13 @@ export function buildC6(color: number, shadows = true): VehicleModel {
   box('dark', 0, 0.55, R - 0.01, 0.65, 0.14, 0.04); // number plate recess
   box('carbon', 0, 0.28, R + 0.0, 1.7, 0.2, 0.12); // diffuser
   box('paint', 0, 0.99, -1.95, 1.4, 0.04, 0.2); // tail lip
+  // swan neck wing like the GT3 RS: uprights from the deck, a wide blade high above the tail and tall end plates
+  for (const sx of [1, -1]) {
+    box('carbon', sx * 0.5, 1.05, R + 0.42, 0.05, 0.16, 0.12); // upright
+    box('carbon', sx * 0.5, 1.14, R + 0.34, 0.05, 0.05, 0.28); // swan neck sweeping back to the blade
+    box('carbon', sx * 0.9, 1.15, R + 0.3, 0.025, 0.12, 0.4); // end plate
+  }
+  box('carbon', 0, 1.16, R + 0.3, 1.8, 0.035, 0.38); // wing blade
 
   const root = new THREE.Group(), chassis = new THREE.Group();
   root.add(chassis);
