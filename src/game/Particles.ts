@@ -109,7 +109,8 @@ export class Particles {
     this.chunkMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.chunkMesh.setColorAt(0, new THREE.Color());
     this.darkGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.SMAX * 3), 3));
-    this.darkPts = new THREE.Points(this.darkGeo, new THREE.PointsMaterial({ size: 0.09, color: 0x070707, transparent: true, opacity: 0.95, depthWrite: false }));
+    this.darkGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(this.SMAX * 3), 3));
+    this.darkPts = new THREE.Points(this.darkGeo, new THREE.PointsMaterial({ size: 0.09, vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false }));
     this.darkPts.frustumCulled = false;
     this.root.add(this.darkPts, this.sparkPts, this.chunkMesh, this.smokes.pts, this.flames.pts, this.skids.mesh);
   }
@@ -151,7 +152,7 @@ export class Particles {
       if (this.darks.length >= this.SMAX) this.darks.shift();
       const v = baseVel.clone().multiplyScalar(0.4 + Math.random() * 0.5).add(new THREE.Vector3((Math.random() - 0.5) * spread, Math.random() * spread * 0.7, (Math.random() - 0.5) * spread));
       const life = 0.3 + Math.random() * 0.6;
-      this.darks.push({ pos: pos.clone(), vel: v, life, max: life, rot: new THREE.Euler(), spin: new THREE.Vector3(), scale: 1, color: new THREE.Color(0, 0, 0) });
+      this.darks.push({ pos: pos.clone(), vel: v, life, max: life, rot: new THREE.Euler(), spin: new THREE.Vector3(), scale: 1, color: new THREE.Color().setScalar(Math.random() * 0.5) });
     }
   }
 
@@ -182,15 +183,17 @@ export class Particles {
   update(dt: number) {
     this.flames.update(dt); this.smokes.update(dt);
     const da = this.darkGeo.attributes.position as THREE.BufferAttribute;
+    const dc = this.darkGeo.attributes.color as THREE.BufferAttribute;
     let dn = 0;
     for (const p of this.darks) {
       p.life -= dt; p.vel.y -= 9.8 * dt; p.pos.addScaledVector(p.vel, dt);
       const g = this.groundY(p.pos);
       if (p.pos.y < g) { p.pos.y = g; p.vel.y *= -0.3; p.vel.x *= 0.7; p.vel.z *= 0.7; }
+      dc.setXYZ(dn, p.color.r, p.color.g, p.color.b);
       da.setXYZ(dn++, p.pos.x, p.pos.y, p.pos.z);
     }
     this.darks = this.darks.filter((p) => p.life > 0);
-    this.darkGeo.setDrawRange(0, dn); da.needsUpdate = true;
+    this.darkGeo.setDrawRange(0, dn); da.needsUpdate = true; dc.needsUpdate = true;
     const pa = this.sparkGeo.attributes.position as THREE.BufferAttribute;
     const ca = this.sparkGeo.attributes.color as THREE.BufferAttribute;
     let n = 0;
