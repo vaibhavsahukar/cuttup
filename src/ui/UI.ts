@@ -149,7 +149,7 @@ export class UI {
   private tagIdx = -1;
   /** the home screen tagline changes at random every time the player comes back to it */
   private rotateTag() {
-    const phrases = ['Best played using a controller!', "Don't replicate in real life!", 'Drive safe idiot.', 'Reckless driving kills you nincompoop'];
+    const phrases = ['Best played using a controller!', "Don't replicate in real life!", 'Drive safe idiot.', 'Reckless driving kills, you nincompoop'];
     let i = Math.floor(Math.random() * phrases.length);
     if (i === this.tagIdx) i = (i + 1 + Math.floor(Math.random() * (phrases.length - 1))) % phrases.length; // never the same twice in a row
     this.tagIdx = i;
