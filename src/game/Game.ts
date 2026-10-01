@@ -229,7 +229,7 @@ export class Game {
       this.countdown -= dt;
       // a tick of rumble on each of 3, 2, 1 and a firmer one on GO
       const cd = Math.max(0, Math.ceil(this.countdown));
-      if (cd !== this.cdLast) { this.haptics.pulse(cd > 0 ? 0.28 : 0.6, cd > 0 ? 0.4 : 0.6, cd > 0 ? 0.14 : 0.3); this.cdLast = cd; }
+      if (cd !== this.cdLast) { this.haptics.pulse(cd > 0 ? 0.2 : 0.42, cd > 0 ? 0.28 : 0.42, cd > 0 ? 0.14 : 0.3); this.cdLast = cd; }
       if (this.countdown <= 0) this.state = 'driving';
     }
     if (this.state === 'driving' || this.state === 'countdown') {
@@ -309,10 +309,10 @@ export class Game {
     // lean: nothing until it is well past a normal corner, then rising with the angle
     const leanK = ph.bike ? clamp((Math.abs(ph.bikeLean) - 0.5) / 0.45, 0, 1) : 0;
     this.haptics.enabled = this.settings.vibration !== false;
-    // everything here is 20% down from the first pass (wall grinding goes with the bumps and stays as it was)
+    // everything here is a further 30% down (20% before that) (wall grinding goes with the bumps and stays as it was)
     const brakeK = live && Math.abs(ph.v) > 5 ? clamp(Math.max(input.brake, input.frontBrake), 0, 1) : 0;
-    this.haptics.set(live ? clamp(this.scrape * 0.7 + (ph.onGrass && moving ? 0.2 * spdK : 0) + clamp(ph.slip, 0, 1) * 0.2 + brakeK * 0.03, 0, 1) : 0,
-      live ? clamp((ph.onGrass && moving ? 0.16 * spdK : 0) + (moving ? leanK * 0.28 : 0) + brakeK * 0.05, 0, 0.6) : 0);
+    this.haptics.set(live ? clamp(this.scrape * 0.7 + (ph.onGrass && moving ? 0.14 * spdK : 0) + clamp(ph.slip, 0, 1) * 0.14 + brakeK * 0.021, 0, 1) : 0,
+      live ? clamp((ph.onGrass && moving ? 0.112 * spdK : 0) + (moving ? leanK * 0.196 : 0) + brakeK * 0.035, 0, 0.6) : 0);
     this.haptics.update(realDt);
     this.scrape = Math.max(0, this.scrape - realDt * 4);
     return this.state !== 'done';
