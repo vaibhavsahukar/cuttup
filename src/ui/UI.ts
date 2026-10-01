@@ -270,6 +270,7 @@ export class UI {
       <div class="row"><span>Display</span>${opt('fullscreen', [['false', 'Windowed'], ['true', 'Fullscreen']], String(st.fullscreen))}</div>
       <div class="row"><span>Difficulty</span>${opt('difficulty', [['0', 'Easy'], ['1', 'Normal'], ['2', 'Hard'], ['3', 'Insane']], String(st.difficulty))}</div>
       <div class="row"><span>FPS counter <small>(shows frame rate and render resolution)</small></span>${opt('showFps', [['false', 'Off'], ['true', 'On']], String(st.showFps))}</div>
+      <div class="row"><span>Controller vibration</span>${opt('vibration', [['true', 'On'], ['false', 'Off']], String(st.vibration !== false))}</div>
       <div class="row"><span>Speed units</span>${opt('units', [['mph', 'MPH'], ['kph', 'KM/H']], st.units)}</div>
       <div class="row"><span>Default camera</span>${opt('camera', [['chase', 'Chase'], ['hood', 'Hood / Cockpit']], st.camera)}</div>
       <div class="row"><span>Master volume</span><input type="range" min="0" max="1" step="0.05" data-vol="master" value="${st.volumes.master}"></div>
@@ -297,6 +298,7 @@ export class UI {
         else if (k === 'fullscreen') st.fullscreen = v === 'true';
         else if (k === 'difficulty') st.difficulty = Number(v);
         else if (k === 'showFps') st.showFps = v === 'true';
+        else if (k === 'vibration') st.vibration = v === 'true';
         else if (k === 'units') st.units = v as 'mph' | 'kph';
         else if (k === 'camera') st.camera = v as 'chase' | 'hood';
         else if (k === 'abs' || k === 'tc' || k === 'aw' || k === 'eb') st.aids[k] = Number(v);

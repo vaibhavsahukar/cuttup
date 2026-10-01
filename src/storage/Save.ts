@@ -19,6 +19,8 @@ export interface Settings {
   aids: { abs: number; tc: number; aw: number; eb: number };
   ridingStyle: 'assisted' | 'manual';
   showFps: boolean;
+  /** gamepad rumble (missing in older saves = on) */
+  vibration?: boolean;
   vehicle: string;
   map: string;
 }

@@ -12,6 +12,7 @@ import { CrashScene, type CrashKind } from './Crash';
 import { Scoring, type Popup } from './Scoring';
 import { CameraRig } from './CameraRig';
 import type { Input } from '../input/Input';
+import { Haptics } from '../input/Haptics';
 import type { AudioEngine } from '../audio/AudioEngine';
 import { QUALITY, type Settings } from '../storage/Save';
 import { clamp, smoothstep } from '../core/math';
@@ -48,6 +49,7 @@ export class Game {
   countdown = 2.6;
   private proxy: PlayerProxy;
   scrape = 0;
+  readonly haptics = new Haptics();
   crashTimer = 0;
   result: RunResult | null = null;
   onPopup: ((p: Popup) => void) | null = null;
@@ -296,6 +298,13 @@ export class Game {
     } else this.rig.update(realDt, p, input.lookback, input.lookYaw);
     this.ambient(realDt, ph.s, p.model.root.position);
     this.audio.update(ph.rpm, this.state === 'driving' ? ph.throttle : 0.2, Math.abs(ph.v), ph.slip + ph.wheelspin * 0.4 + (ph.onGrass ? 0.2 : 0) * 0, this.scrape, this.state !== 'crash' && this.state !== 'done');
+    // rumble: a faint engine hum, a rough shake on the grass, grinding along a wall, a juddering slide
+    const live = this.state === 'driving';
+    const spdK = clamp(Math.abs(ph.v) / 45, 0, 1);
+    this.haptics.enabled = this.settings.vibration !== false;
+    this.haptics.set(live ? clamp(this.scrape * 0.7 + (ph.onGrass ? 0.25 * spdK : 0) + clamp(ph.slip, 0, 1) * 0.25, 0, 1) : 0,
+      live ? clamp(0.05 + 0.1 * (ph.rpm / this.spec.redline) * (ph.throttle > 0.1 ? 1 : 0.4) + ph.wheelspin * 0.15 + (ph.onGrass ? 0.2 * spdK : 0), 0, 0.6) : 0);
+    this.haptics.update(realDt);
     this.scrape = Math.max(0, this.scrape - realDt * 4);
     return this.state !== 'done';
   }
@@ -655,14 +664,14 @@ export class Game {
       }
       ph.v *= 1 - clamp(into * 0.012, 0.002, 0.2);
       this.scrape = Math.min(1, 0.4 + into * 0.1);
-      if (into > 1.5 && this.bumpCd <= 0) { this.audio.thud(clamp(into / 8, 0.2, 1)); this.rig.addShake(0.3); this.scoring.bump(); this.bumpCd = 0.5; }
+      if (into > 1.5 && this.bumpCd <= 0) { this.thud(clamp(into / 8, 0.2, 1)); this.rig.addShake(0.3); this.scoring.bump(); this.bumpCd = 0.5; }
       if (Math.random() < 0.5) {
         const pos = this.player.model.root.position.clone();
         const right = new THREE.Vector3(-Math.cos(this.path.frame(ph.s, fr).heading), 0, Math.sin(fr.heading));
         pos.addScaledVector(right, side * half).y += 0.3;
         this.particles.spark(pos, this.player.worldVel, 3, 3);
       }
-      if (into > 3 && this.bumpCd <= 0) { this.audio.thud(into / 10); this.rig.addShake(0.4); this.scoring.bump(); this.bumpCd = 0.5; }
+      if (into > 3 && this.bumpCd <= 0) { this.thud(into / 10); this.rig.addShake(0.4); this.scoring.bump(); this.bumpCd = 0.5; }
     }
   }
 
@@ -695,7 +704,7 @@ export class Game {
       ph.v *= 1 - clamp(0.0012 + Math.max(0, into) * 0.006, 0, 0.08); // runs every physics step
       ph.psi *= 0.9;
       this.scrape = Math.min(1, 0.4 + Math.max(0, into) * 0.1);
-      if (into > 1.5 && this.bumpCd <= 0) { this.audio.thud(clamp(into / 8, 0.2, 1)); this.rig.addShake(0.4); this.scoring.bump(); this.bumpCd = 0.5; }
+      if (into > 1.5 && this.bumpCd <= 0) { this.thud(clamp(into / 8, 0.2, 1)); this.rig.addShake(0.4); this.scoring.bump(); this.bumpCd = 0.5; }
     }
   }
 
@@ -753,7 +762,7 @@ export class Game {
         c.panicT = 1.2; c.swerveTarget = Math.sign(nD) * 0.8;
       }
       this.scoring.bump(); // the streak resets on every bump, even in the cooldown
-      if (this.bumpCd <= 0) { this.audio.thud(0.5); this.rig.addShake(0.5); this.bumpCd = 0.6; if (!c.wrecked) this.traffic.onHonk?.(c, 1); }
+      if (this.bumpCd <= 0) { this.thud(0.5); this.rig.addShake(0.5); this.bumpCd = 0.6; if (!c.wrecked) this.traffic.onHonk?.(c, 1); }
     }
   }
 
@@ -792,12 +801,16 @@ export class Game {
           // very rarely, the driver you just carved up snaps and comes after you
           if ((cut || insane) && c.dir > 0 && !c.cop && Math.random() < 0.012) this.police.startRage(c);
           this.audio.whoosh(relSpeed / 30);
+          this.haptics.pulse(0.1, clamp(0.4 + relSpeed / 80, 0, 0.9), 0.1);
           this.rig.addShake(0.25);
         }
       }
       c.passedSign = sign;
     }
   }
+
+  /** impact thump: sound plus rumble */
+  private thud(k: number) { this.audio.thud(k); this.haptics.pulse(clamp(0.35 + k * 0.5, 0, 1), clamp(0.2 + k * 0.4, 0, 1), 0.18); }
 
   startCrash(kind: CrashKind, impact: number, hit: TrafficCar | null) {
     if (this.state === 'crash' || this.state === 'done') return;
@@ -815,6 +828,7 @@ export class Game {
     this.rig.addShake(0.8);
     this.audio.stopEngine();
     this.audio.crash(clamp(impact / 30, 0.4, 1.5));
+    this.haptics.pulse(1, 1, 0.7);
     // a really bad one ends in a fireball
     const fall = ['lowside', 'highside', 'looped', 'endo', 'tipover'].includes(kind);
     if (impact > (fall ? 55 : 38) && kind !== 'rock') {
@@ -849,6 +863,7 @@ export class Game {
   }
 
   dispose() {
+    this.haptics.stop();
     // the composer's passes own render targets (the bloom has a dozen): free them explicitly
     for (const p of this.composer?.passes ?? []) (p as { dispose?: () => void }).dispose?.();
     this.composer?.renderTarget1.dispose(); this.composer?.renderTarget2.dispose();
