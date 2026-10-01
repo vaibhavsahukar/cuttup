@@ -58,6 +58,8 @@ export interface ChunkMods {
   leftDrop?: (s: number) => number;
   noProps?: (s: number, d: number) => boolean;
   noOverpass?: (s: number) => boolean;
+  /** raise or lower the ground beside the road (m) */
+  lift?: (s: number, d: number) => number;
 }
 
 const m4 = new THREE.Matrix4();
@@ -198,7 +200,8 @@ export class ChunkManager {
   terrainH(s: number, d: number) {
     const f = this.features?.flatten(s, d) ?? 0;
     const h = this.terrainRaw(s, d);
-    return f > 0 ? h + (-0.06 - h) * f : h;
+    const l = this.mods.lift?.(s, d) ?? 0;
+    return (f > 0 ? h + (-0.06 - h) * f : h) + l;
   }
   private terrainRaw(s: number, d: number) {
     const a = Math.abs(d) - this.edge;

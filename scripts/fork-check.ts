@@ -21,7 +21,7 @@ for (const take of [true, false]) {
     for (const c of g.traffic.cars) c.s += 99999;
     for (let i = 0; i < 90; i++) { ph.v = 30; ph.psi = 0; ph.vl = 0; ph.d = g.layout.laneCenter(4); a.advance(1 / 30, 1 / 30); }
   });
-  const shots = take ? [-150, 40, 160, 300, 500, 800] : [160, 500];
+  const shots = take ? [-150, 60, 200, 360, 520, 650, 760, 900] : [160, 380, 520];
   const log: string[] = [];
   for (const at of shots) {
     const r = await page.evaluate(([at, take]) => {
@@ -37,7 +37,7 @@ for (const take of [true, false]) {
         else { ph.d = g.layout.laneCenter(take ? 4 : 2); ph.psi = 0; }
         a.advance(1 / 30, 1 / 30);
       }
-      return `x=${Math.round(ph.s - sF)} d=${ph.d.toFixed(1)} fork=${g.fork?.state ?? 'none'} spliced=${g.path.spliced} state=${g.state}`;
+      return `sX=${Math.round((g.fork?.sX ?? 0) - sF)} x=${Math.round(ph.s - sF)} d=${ph.d.toFixed(1)} fork=${g.fork?.state ?? 'none'} spliced=${g.path.spliced} state=${g.state}`;
     }, [at, take] as const);
     log.push(r);
     await page.waitForTimeout(1400);

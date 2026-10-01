@@ -21,7 +21,7 @@ import { difficultyOf } from '../data/difficulty';
 import { Weather } from '../world/Weather';
 import { Features } from '../world/Features';
 import { StationRenderer } from '../world/Stations';
-import { Fork, FORK_SPAN, COMMIT_X, JOIN_X, UNFOLD_B } from '../world/Fork';
+import { Fork, FORK_SPAN, COMMIT_X, JOIN_X } from '../world/Fork';
 import { type ChunkMods } from '../world/ChunkManager';
 import { timeSetting } from '../world/TimeOfDay';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -77,6 +77,8 @@ export class Game {
   fork: Fork | null = null;
   private branchChunks: ChunkManager | null = null;
   private oldChunks: { cm: ChunkManager; until: number }[] = [];
+  /** interchange bridges standing in the world until the player is well past them */
+  private bridges: { g: THREE.Group; until: number }[] = [];
   /** the fork whose branch the active scenery belongs to (its folded start shapes it) */
   private chunksFork: Fork | null = null;
   private quality!: { chunksAhead: number; propDensity: number; shadows: boolean };
@@ -430,9 +432,15 @@ export class Game {
       noProps: (s, d) => {
         if (own && d < 0 && (own.unfold(s) < 1 || d < own.midBranch(s) + 24)) return true;
         const f = ahead();
-        return !!f && d > 0 && d > f.midMain(s) - 24;
+        return !!f && ((d > 0 && d > f.midMain(s) - 24) || f.underBridge(s));
       },
       noOverpass: own ? (s) => s < own.sF + FORK_SPAN + 100 : undefined,
+      lift: (s, d) => {
+        let l = own ? own.branchLift(s, d) : 0;
+        const f = ahead();
+        if (f) l += f.mainLift(s, d);
+        return l;
+      },
     };
   }
 
@@ -441,10 +449,14 @@ export class Game {
     const ph = this.player.phys;
     for (const o of this.oldChunks) if (s > o.until) { this.scene.remove(o.cm.root); o.cm.dispose(); }
     this.oldChunks = this.oldChunks.filter((o) => s <= o.until);
+    for (const o of this.bridges) if (s > o.until) this.scene.remove(o.g);
+    this.bridges = this.bridges.filter((o) => s <= o.until);
     if (!this.fork) {
       const sF = this.features.forkAfter(s);
       if (sF - s > 1900 || !isFinite(sF)) return;
-      const fk = new Fork(this.path, this.map, this.layout, sF);
+      const fk = new Fork(this.path, this.map, this.layout, sF, this.chunks.roadMat);
+      this.scene.add(fk.bridge);
+      this.bridges.push({ g: fk.bridge, until: sF + FORK_SPAN });
       this.fork = fk;
       this.features.fork = fk;
       const cm = new ChunkManager(fk.branch, this.map, this.layout, this.quality, this.features, this.chunkMods(fk));
@@ -464,8 +476,8 @@ export class Game {
         if (c.s > fk.sF - 260 && c.s < fk.sF - 120 && c.lane === 4) c.exitFork = Math.random() < 0.35;
       }
     }
-    if (fk.state !== 'branch') this.traffic.forkTarget = (c) => (c.s > fk.sF - 40 && c.s < fk.sF + FORK_SPAN - 60 ? fk.rampIn(c.s) + this.layout.laneWidth / 2 + 0.3 : null);
-    if (fk.state === 'main') for (const c of this.traffic.cars) if (c.exitFork && c.s > fk.sF + FORK_SPAN - 80) this.traffic.release(c);
+    if (fk.state !== 'branch') this.traffic.forkTarget = (c) => (c.s > fk.sF - 40 && c.s < fk.sF + fk.releaseX ? fk.rampIn(c.s) + this.layout.laneWidth / 2 + 0.3 : null);
+    if (fk.state !== 'branch') for (const c of this.traffic.cars) if (c.exitFork && c.s > fk.sF + fk.releaseX) this.traffic.release(c);
     if (fk.state === 'open' && this.state === 'driving') {
       if (x > COMMIT_X && ph.d > this.layout.playerMax + 0.5) this.takeFork(fk);
       else if (x > JOIN_X + 30 && ph.d <= this.layout.playerMax + 0.5) {
@@ -482,8 +494,8 @@ export class Game {
     }
     // traffic and cops on the new highway stay off its folded up lanes
     const cf = this.chunksFork;
-    if (cf && s < cf.sF + UNFOLD_B + 600) {
-      for (const c of this.traffic.cars) if (!c.cop && !c.rage && !c.wrecked && c.s > cf.sF && c.s < cf.sF + UNFOLD_B && c.d < cf.branchMin(c.s) - 0.5) this.traffic.release(c);
+    if (cf && s < cf.uB + 600) {
+      for (const c of this.traffic.cars) if (!c.cop && !c.rage && !c.wrecked && c.s > cf.sF && c.s < cf.uB && c.d < cf.branchMin(c.s) - 0.5) this.traffic.release(c);
     } else if (cf) { this.chunksFork = null; this.traffic.spawnOk = null; this.police.minD = null; }
   }
 
@@ -513,8 +525,8 @@ export class Game {
     this.chunks = this.branchChunks!;
     this.branchChunks = null;
     this.chunksFork = fk;
-    this.traffic.spawnOk = (s2, d2) => !(s2 > fk.sF - 50 && s2 < fk.sF + UNFOLD_B + 40 && d2 < fk.branchMin(s2) + 1);
-    this.police.minD = (s2) => (s2 > fk.sF && s2 < fk.sF + UNFOLD_B + 40 ? fk.branchMin(s2) : -999);
+    this.traffic.spawnOk = (s2, d2) => !(s2 > fk.sF - 50 && s2 < fk.uB + 40 && d2 < fk.branchMin(s2) + 1);
+    this.police.minD = (s2) => (s2 > fk.sF && s2 < fk.uB + 40 ? fk.branchMin(s2) : -999);
     this.onPopup?.({ text: 'NEW HIGHWAY', sub: 'you took the fork', color: '#6cf', big: true });
   }
 
@@ -534,7 +546,7 @@ export class Game {
       else if (x >= JOIN_X && x < FORK_SPAN && ph.d > L.playerMax + 0.5) { rlo = fk.rampIn(ph.s); rhi = fk.rampOut(ph.s); }
     }
     // the new highway's folded up left side is not drivable yet
-    if (this.chunksFork && ph.s < this.chunksFork.sF + UNFOLD_B + 20 && ph.s > this.chunksFork.sF) rlo = Math.max(rlo, this.chunksFork.branchMin(ph.s));
+    if (this.chunksFork && ph.s < this.chunksFork.uB + 20 && ph.s > this.chunksFork.sF) rlo = Math.max(rlo, this.chunksFork.branchMin(ph.s));
     const lo = rlo + half, hi = rhi - half;
     if (ph.d <= lo + 0.1 || ph.d >= hi - 0.1) this.wallContact = true;
     if (ph.d < lo || ph.d > hi) {
