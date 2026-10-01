@@ -91,8 +91,8 @@ solo|Congratulations, you are the only victim. Truly efficient
 solo|Somebody has to clean that up, and it is not going to be you
 solo|Fast, furious and now dead
 solo|Rest in pieces
-solo|Nice driving, dumbass. The road was not even that hard
-hit|Dumbass. That was somebody's whole family
+solo|Dumbass
+hit|Dumbass
 solo|Your insurance company has stopped laughing. Your family has started crying
 solo|You will be remembered as "that idiot who thought the road was a racetrack"
 solo|Great news: no other family was hurt. Yours has a funeral to plan
@@ -180,9 +180,9 @@ fuel,caught|Most people get caught at a roadblock. You got caught by a gas gauge
 fuel,caught|The officer would like to thank your empty tank for its cooperation
 fuel,caught|You had a plan for the cops. You did not have a plan for fuel
 caught|Congratulations, you outran nobody. The officer would like a word
-caught|You really thought you could outrun us, dumbass
 caught|Nice run. The officer had a full tank, a siren and absolutely nothing better to do
 caught|You have the right to remain silent. Your driving already said plenty
+caught|Dumbass
 caught|Great news, you finally got a police escort. The handcuffs are complimentary
 caught|That was a bold strategy, outrunning a car that comes with a siren and a radio
 caught|Speeding, reckless driving and being outdriven by a patrol car. Quite the hat trick
