@@ -26,6 +26,7 @@ export const MAT = {
   clearGlass: new THREE.MeshStandardMaterial({ color: 0x9fb4c0, metalness: 0.1, roughness: 0.3, transparent: true, opacity: 0.35, envMapIntensity: 0.5 }),
   trim: new THREE.MeshStandardMaterial({ color: 0x121314, metalness: 0.1, roughness: 0.75 }),
   carbon: new THREE.MeshStandardMaterial({ color: 0x1a1b1d, metalness: 0.4, roughness: 0.35 }),
+  gold: new THREE.MeshStandardMaterial({ color: 0xd9a21b, metalness: 0.85, roughness: 0.3, envMapIntensity: 0.7 }),
   chrome: new THREE.MeshStandardMaterial({ color: 0xc9cdd0, metalness: 0.9, roughness: 0.35, envMapIntensity: 0.7 }),
   rim: new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.9, roughness: 0.3 }),
   darkRim: new THREE.MeshStandardMaterial({ color: 0x2a2c2f, metalness: 0.8, roughness: 0.35 }),

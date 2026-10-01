@@ -8,7 +8,7 @@ await page.goto('http://localhost:5173/');
 await page.waitForFunction(() => (window as any).__app);
 const r = await page.evaluate(() => {
   const out: any = {};
-  for (const id of ['cbr650', 'r6', 'zx6r', 'fs450']) for (const mode of ['standing', 'rolling', 'no pull']) {
+  for (const id of ['cbr650', 'zx6r', 'cbr1000rr', 'fs450']) for (const mode of ['standing', 'rolling', 'no pull']) {
     const a = (window as any).__app; (window as any).__forceSeed = 5; a.save.data.settings.weather = 'clear'; a.save.data.settings.difficulty = 0;
     a.startGame('city', id); const g = a.game; g.startCrash = (k: string) => { g.__fall = k; }; a.advance(3.2, 1 / 30);
     const inp = g.input, ph = g.player.phys; inp.update = () => undefined;

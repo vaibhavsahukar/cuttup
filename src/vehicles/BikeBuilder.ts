@@ -7,7 +7,7 @@ import { MAT, paint } from './Materials';
  * Sport bikes built from sharp, flat-sided parts. Each part is a side-profile outline
  * (z forward, y up) extruded to a width, which gives crisp fairing edges in the game's style.
  */
-type Tag = 'paint' | 'a1' | 'a2' | 'dark' | 'metal' | 'chrome' | 'glass' | 'seat' | 'head' | 'tail';
+type Tag = 'paint' | 'a1' | 'a2' | 'dark' | 'metal' | 'chrome' | 'glass' | 'seat' | 'head' | 'tail' | 'gold';
 type P = [number, number]; // (z, y)
 
 interface Part { tag: Tag; pts: P[]; hw: number; x?: number; mirror?: boolean }
@@ -23,6 +23,7 @@ interface BikeDesign {
   tubes?: { tag: Tag; a: P; b: P; t: number; x: number; mirror?: boolean }[]; // frame tubes and pipes
   parts: Part[];
   fork: [P, P]; // bottom (axle) and top (clamp)
+  forkTag?: Tag; // fork leg material (default chrome)
   bars: P; barW: number; barT?: number; // handlebar width and tube thickness (default 0.03)
   heads: { z: number; y: number; x: number; w: number; h: number }[];
   tailLamp: P;
@@ -148,6 +149,52 @@ const DESIGNS: Record<string, BikeDesign> = {
     sigF: [0.56, 1.06],
     tailLamp: [-1.0, 0.96],
   },
+  // Honda CBR1000RR Fireblade (traced from the side photo, 627 px per metre): sharp HRC tricolour fairing with a
+  // twin-LED nose, tall screen, gold fork, stepped tail with a plate hanger and a big angled titanium silencer.
+  fireblade: {
+    wheelR: 0.29, rearR: 0.31, front: 0.72, rear: -0.69, frontW: 0.12, rearW: 0.19, spokes: 10, rim: 0x18191b,
+    colors: { a1: 0x1b3aae, a2: 0xf1f1f3 },
+    dims: [2.05, 0.72, 1.13], noMudguard: true, forkTag: 'gold',
+    parts: [
+      // front fender and the nose
+      { tag: 'paint', hw: 0.07, pts: [[0.52, 0.62], [0.62, 0.67], [0.78, 0.67], [0.9, 0.62], [0.97, 0.56], [0.93, 0.54], [0.82, 0.6], [0.68, 0.6], [0.56, 0.55]] },
+      { tag: 'paint', hw: 0.2, pts: [[0.85, 0.78], [0.81, 0.7], [0.7, 0.65], [0.46, 0.63], [0.3, 0.65], [0.2, 0.62], [0.22, 0.67], [0.34, 0.75], [0.42, 0.83], [0.43, 0.98], [0.5, 1.0], [0.6, 0.97], [0.72, 0.9], [0.82, 0.83]] },
+      { tag: 'a1', hw: 0.205, pts: [[0.85, 0.79], [0.81, 0.7], [0.7, 0.65], [0.5, 0.64], [0.36, 0.67], [0.5, 0.71], [0.7, 0.75]] },
+      { tag: 'a2', hw: 0.205, pts: [[0.84, 0.82], [0.78, 0.78], [0.62, 0.74], [0.46, 0.71], [0.5, 0.74], [0.66, 0.79], [0.78, 0.86]] },
+      // lower fairing, belly pan and the white sweep
+      { tag: 'paint', hw: 0.19, pts: [[0.46, 0.62], [0.3, 0.64], [0.22, 0.6], [0.2, 0.5], [0.3, 0.4], [0.1, 0.33], [0.0, 0.3], [-0.1, 0.25], [-0.3, 0.12], [0.0, 0.08], [0.3, 0.05], [0.46, 0.06], [0.45, 0.3]] },
+      { tag: 'a2', hw: 0.195, pts: [[0.2, 0.52], [0.28, 0.64], [0.46, 0.62], [0.5, 0.57], [0.4, 0.52], [0.3, 0.55]] },
+      { tag: 'glass', hw: 0.1, pts: [[0.4, 0.98], [0.45, 1.1], [0.53, 1.13], [0.6, 1.05], [0.7, 0.95], [0.66, 0.93], [0.52, 0.98]] },
+      // tank
+      { tag: 'paint', hw: 0.17, pts: [[-0.1, 0.79], [-0.05, 0.86], [0.0, 0.92], [0.15, 0.935], [0.3, 0.91], [0.42, 0.87], [0.45, 0.85], [0.3, 0.82], [0.2, 0.72], [0.1, 0.67], [-0.1, 0.66], [-0.28, 0.7], [-0.2, 0.76]] },
+      { tag: 'a1', hw: 0.175, pts: [[-0.2, 0.8], [0.0, 0.84], [0.2, 0.86], [0.2, 0.83], [0.0, 0.8], [-0.15, 0.77]] },
+      { tag: 'a2', hw: 0.175, pts: [[-0.2, 0.77], [0.0, 0.8], [0.2, 0.83], [0.2, 0.81], [0.0, 0.77], [-0.18, 0.74]] },
+      // seat, tail and the plate hanger
+      { tag: 'seat', hw: 0.12, pts: [[-0.53, 0.87], [-0.4, 0.84], [-0.25, 0.815], [-0.1, 0.79], [-0.05, 0.8], [-0.1, 0.76], [-0.3, 0.78], [-0.5, 0.82]] },
+      { tag: 'paint', hw: 0.12, pts: [[-0.86, 0.985], [-0.7, 0.95], [-0.56, 0.92], [-0.5, 0.87], [-0.4, 0.82], [-0.2, 0.76], [-0.1, 0.7], [-0.3, 0.68], [-0.45, 0.74], [-0.55, 0.8], [-0.65, 0.88], [-0.78, 0.94]] },
+      { tag: 'a1', hw: 0.125, pts: [[-0.82, 0.975], [-0.7, 0.94], [-0.6, 0.9], [-0.55, 0.84], [-0.58, 0.84], [-0.66, 0.9], [-0.78, 0.95]] },
+      { tag: 'seat', hw: 0.09, pts: [[-0.8, 0.97], [-0.7, 0.985], [-0.6, 0.985], [-0.52, 0.96], [-0.5, 0.92], [-0.55, 0.9], [-0.7, 0.94]] },
+      { tag: 'dark', hw: 0.05, pts: [[-0.55, 0.9], [-0.75, 0.84], [-0.9, 0.83], [-0.92, 0.8], [-0.75, 0.8], [-0.6, 0.82]] },
+      { tag: 'dark', hw: 0.04, pts: [[-0.92, 0.84], [-0.97, 0.83], [-0.99, 0.7], [-1.02, 0.63], [-1.0, 0.62], [-0.95, 0.65], [-0.92, 0.75]] },
+      { tag: 'head', hw: 0.03, pts: [[-0.99, 0.74], [-0.95, 0.74], [-0.95, 0.68], [-0.99, 0.68]] }, // plate reflector
+      // frame, engine and swingarm
+      { tag: 'dark', hw: 0.15, pts: [[0.2, 0.66], [-0.28, 0.7], [-0.12, 0.55], [-0.1, 0.3], [0.1, 0.3], [0.3, 0.5]] },
+      { tag: 'metal', hw: 0.15, pts: [[0.4, 0.6], [0.42, 0.4], [0.32, 0.2], [0.0, 0.2], [-0.12, 0.3], [-0.12, 0.55], [0.1, 0.62]] },
+      { tag: 'dark', hw: 0.1, pts: [[-0.18, 0.5], [-0.3, 0.52], [-0.52, 0.52], [-0.7, 0.38], [-0.72, 0.3], [-0.62, 0.3], [-0.45, 0.36], [-0.2, 0.38]] },
+      { tag: 'metal', hw: 0.12, pts: [[-0.28, 0.45], [-0.12, 0.45], [-0.12, 0.3], [-0.2, 0.3]] },
+      // titanium silencer, right side
+      { tag: 'metal', hw: 0.075, x: -0.17, pts: [[-0.9, 0.66], [-0.8, 0.72], [-0.45, 0.43], [-0.5, 0.36]] },
+    ],
+    tubes: [
+      { tag: 'chrome', a: [-0.46, 0.4], b: [-0.2, 0.25], t: 0.05, x: -0.12 }, // header into the silencer
+      { tag: 'chrome', a: [-0.2, 0.25], b: [-0.05, 0.22], t: 0.05, x: -0.12 },
+    ],
+    fork: [[0.72, 0.3], [0.46, 0.95]], bars: [0.45, 0.97], barW: 0.6,
+    heads: [{ z: 0.85, y: 0.77, x: 0.06, w: 0.08, h: 0.045 }],
+    sigF: [0.78, 0.82],
+    tailLamp: [-0.84, 0.97],
+    mirrors: [0.58, 1.03],
+  },
 };
 
 /** police livery: white bodywork with a black tank, stripe and top case, red and blue lamps front and rear */
@@ -188,7 +235,7 @@ export function buildBike(id: string, color: number, shadows = true, livery?: 'p
   for (const p of d.parts) side(p);
   for (const t of d.tubes ?? []) for (const sx of t.mirror ? [1, -1] : [1]) bar(t.tag, t.a, t.b, sx * t.x, t.t);
   for (const sx of [1, -1]) {
-    bar('chrome', d.fork[0], d.fork[1], sx * 0.09, 0.05);
+    bar(d.forkTag ?? 'chrome', d.fork[0], d.fork[1], sx * 0.09, 0.05);
     bar('dark', [d.bars[0], d.bars[1]], [d.bars[0] - 0.06, d.bars[1] + 0.01], sx * d.barW * 0.4, (d.barT ?? 0.03) + 0.005);
     for (const h of d.heads) box('head', sx * h.x, h.y, h.z, h.w, h.h, 0.03);
     if (d.mirrors) box('dark', sx * 0.24, d.mirrors[1], d.mirrors[0], 0.1, 0.05, 0.03);
@@ -204,7 +251,7 @@ export function buildBike(id: string, color: number, shadows = true, livery?: 'p
   const root = new THREE.Group(), lean = new THREE.Group(), chassis = new THREE.Group();
   root.add(lean); lean.add(chassis);
   if (d.scale) chassis.scale.setScalar(d.scale);
-  const mat = (t: Tag): THREE.Material => t === 'paint' ? paint(color) : t === 'a1' ? paint(d.colors?.a1 ?? color) : t === 'a2' ? paint(d.colors?.a2 ?? color) : t === 'glass' ? MAT.clearGlass : t === 'head' ? MAT.head : t === 'tail' ? MAT.tailOff
+  const mat = (t: Tag): THREE.Material => t === 'paint' ? paint(color) : t === 'a1' ? paint(d.colors?.a1 ?? color) : t === 'a2' ? paint(d.colors?.a2 ?? color) : t === 'gold' ? MAT.gold : t === 'glass' ? MAT.clearGlass : t === 'head' ? MAT.head : t === 'tail' ? MAT.tailOff
     : t === 'chrome' ? MAT.chrome : t === 'metal' ? MAT.engine : t === 'seat' ? MAT.seat : MAT.trim;
   let body: THREE.Mesh | undefined;
   const brake: THREE.Mesh[] = [], heads: THREE.Mesh[] = [];
