@@ -137,11 +137,22 @@ export class UI {
     if (id === 'maps') this.buildMaps();
     if (id === 'models') this.buildModels();
     if (id === 'settings') this.buildSettings();
+    if (id === 'menu') this.rotateTag();
     if (id === 'menu') $('#menuHint').textContent = `${getVehicle(this.save.data.settings.vehicle).name}  ·  ${getMap(this.save.data.settings.map).name}   —   Arrow keys / D-pad + Enter / (A) to navigate`;
     // no highlight until keyboard navigation starts, but with a pad connected start on the first button
     // so the first D-pad press already moves instead of just revealing the highlight
     this.focusIdx = [...(navigator.getGamepads?.() ?? [])].some((g) => g && g.connected) ? 0 : -1;
     this.applyFocus();
+  }
+  private tagIdx = -1;
+  /** the home screen tagline changes at random every time the player comes back to it */
+  private rotateTag() {
+    const phrases = ['Best played using a controller!', "Don't replicate in real life!", 'Drive safe idiot.', 'Reckless driving kills you nincompoop'];
+    let i = Math.floor(Math.random() * phrases.length);
+    if (i === this.tagIdx) i = (i + 1 + Math.floor(Math.random() * (phrases.length - 1))) % phrases.length; // never the same twice in a row
+    this.tagIdx = i;
+    const tag = document.querySelector('#menu .tag');
+    if (tag) tag.textContent = phrases[i];
   }
   get settingsBack() { return this.settingsReturn; }
 
