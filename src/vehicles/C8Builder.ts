@@ -125,10 +125,10 @@ export function buildC8(color: number, shadows = true): VehicleModel {
     addGeo('paint', new THREE.SphereGeometry(1, 16, 10).scale(0.05, 0.065, 0.11).translate(sx * 0.99, 0.95, 0.68));
     box('carbon', sx * 0.9, 0.93, 0.7, 0.14, 0.035, 0.08);
     // rear: bar shaped tail lamps with two fins, mesh vent below, outer side marker
-    // tail lamp drawn by the user: a black housing sloping down towards the centre, a red L along its outer and bottom edges and a red diagonal divider
-    faceSlab('dark', sx, [[0.86, 0.855], [0.205, 0.753], [0.211, 0.613], [0.807, 0.685]], true, 0.022);
-    faceSlab('tail', sx, [[0.83, 0.828], [0.785, 0.821], [0.722, 0.717], [0.53, 0.699], [0.237, 0.66], [0.23, 0.636], [0.245, 0.63], [0.807, 0.689]], true, 0.032);
-    faceSlab('tail', sx, [[0.597, 0.792], [0.555, 0.783], [0.44, 0.681], [0.483, 0.69]], true, 0.032);
+    // tail lamp drawn by the user: a flat black housing, a red L along its outer and bottom edges and a red diagonal divider
+    faceSlab('dark', sx, [[0.86, 0.855], [0.205, 0.855], [0.211, 0.699], [0.807, 0.693]], true, 0.022);
+    faceSlab('tail', sx, [[0.83, 0.832], [0.785, 0.831], [0.722, 0.736], [0.53, 0.745], [0.237, 0.747], [0.23, 0.724], [0.245, 0.716], [0.807, 0.696]], true, 0.032);
+    faceSlab('tail', sx, [[0.597, 0.829], [0.555, 0.826], [0.44, 0.74], [0.483, 0.743]], true, 0.032);
     
     faceSlab('dark', sx, [[0.36, 0.49], [0.82, 0.49], [0.84, 0.61], [0.36, 0.61]], true, 0.022); // fender vent
     for (const y of [0.53, 0.57]) box('carbon', sx * 0.6, y, R - 0.014, 0.44, 0.01, 0.006);
@@ -167,7 +167,7 @@ export function buildC8(color: number, shadows = true): VehicleModel {
   const sg = new THREE.BoxGeometry(0.07, 0.04, 0.03);
   for (const sx of [1, -1]) for (const sz of [1, -1]) {
     const s = new THREE.Mesh(sg, MAT.sigOff);
-    s.position.set(sx * (sz > 0 ? 0.66 : 0.8), sz > 0 ? 0.5 : 0.62, sz * (F - 0.005));
+    s.position.set(sx * (sz > 0 ? 0.66 : 0.8), sz > 0 ? 0.5 : 0.52, sz > 0 ? F - 0.012 : R - 0.004);
     chassis.add(s);
     (sx > 0 ? sigL : sigR).push(s);
   }
