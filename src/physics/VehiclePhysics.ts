@@ -58,6 +58,9 @@ export class VehiclePhysics {
   throttle = 0; brake = 0; frontBrake = 0;
   // ---- bike state ----
   aids: RiderAids = { abs: 2, tc: 2, aw: 1, eb: 1, manual: false };
+  /** cars: both pedals down at low speed = a burnout (0..1, smoothed): the driven tyres spin while the brakes hold the car */
+  burnout = 0;
+  private burnYaw = 0;
   push = 0; // rider weight forward (0..1), smoothed
   pull = 0; // rider weight back (0..1), smoothed
   wheelieT = 0; // seconds with the front up (scoring)
@@ -155,7 +158,7 @@ export class VehiclePhysics {
 
   reset(s: number, d: number, v: number) {
     this.s = s; this.d = d; this.psi = 0; this.v = v; this.vl = 0; this.r = 0;
-    this.steerAngle = 0; this.lean = 0; this.wheelie = 0; this.pitchRate = 0; this.fall = null; this.hang = 0;
+    this.steerAngle = 0; this.burnout = 0; this.lean = 0; this.wheelie = 0; this.pitchRate = 0; this.fall = null; this.hang = 0;
     this.overPull = 0; this.unbalanced = 0; this.washout = 0; this.slideT = 0; this.frontLock = 0; this.rearLock = 0;
     this.gear = 1;
     while (this.gear < this.spec.gears && v > this.gearTop[this.gear - 1] * 0.85) this.gear++;
@@ -223,6 +226,10 @@ export class VehiclePhysics {
     const clutchR = Math.max(rN, 0.3 + 0.35 * c.throttle * (1 - clamp(rN / 0.4, 0, 1))); // slipping clutch at launch
     let Fdrive = 0;
     const reverse = !this.bike && c.brake > 0.5 && c.throttle < 0.1 && v < 1.0;
+    // burnout: throttle and brake together, from (almost) a standstill up to about 25 mph and not on the handbrake
+    const wantBurn = !this.bike && c.throttle > 0.5 && c.brake > 0.5 && av < 11 && !c.handbrake && this.shiftT <= 0.2;
+    this.burnout += clamp((wantBurn ? 1 : 0) - this.burnout, -5 * dt, 6 * dt);
+    const burning = this.burnout > 0.3;
     if (this.shiftT <= 0) Fdrive = c.throttle * this.Fpeak[this.gear - 1] * this.torque(Math.min(1, clutchR));
     // electric motor: flat maximum force up to base speed, then constant power
     if (sp.gears === 1) Fdrive = c.throttle * Math.min(this.m * G * 1.25, this.P / Math.max(1, Math.abs(v)));
@@ -232,7 +239,8 @@ export class VehiclePhysics {
     if (v > this.vLimit && sp.limited) Fdrive *= clamp(1 - (v - this.vLimit) * 0.5, 0, 1); // governor
     if (reverse) Fdrive = -this.m * 3;
     const targetRpm = sp.idleRpm + (sp.redline - sp.idleRpm) * clamp(clutchR, 0, 1.02);
-    this.rpm = lerp(this.rpm, this.shiftT > 0 ? targetRpm * 0.85 : targetRpm, clamp(dt * 18, 0, 1));
+    const burnRpm = sp.redline * (0.96 + 0.03 * Math.sin(this.time * 55)); // bouncing off the limiter
+    this.rpm = lerp(this.rpm, this.shiftT > 0 ? targetRpm * 0.85 : burning ? burnRpm : targetRpm, clamp(dt * 18, 0, 1));
 
     // ---------------- traction per axle ----------------
     const lk = lerp(this.launchK, 1, clamp((av - 25) / 15, 0, 1));
@@ -289,6 +297,7 @@ export class VehiclePhysics {
       const [f1, o1] = distribute(Fdrive * 0.4, capF); const [f2, o2] = distribute(Fdrive * 0.6, capR);
       FxF = f1; FxR = f2; spin = Math.max(o1, o2) * 0.6;
     }
+    if (this.burnout > 0.05) spin = Math.max(spin, 1.5 * this.burnout); // the driven tyres are lit up
     this.wheelspin = lerp(this.wheelspin, clamp(spin, 0, 2), clamp(dt * 10, 0, 1));
 
     const brkAny = Math.max(c.brake, this.frontBrake);
@@ -399,6 +408,7 @@ export class VehiclePhysics {
     const Fx = FxF * cosd - Fyf * sind + FxR - drag + Fgrade;
     let dv = Fx / this.m + this.vl * this.r * lowBlend;
     if (brkAny > 0 && v <= 0.3 && v >= 0 && !reverse) dv = Math.min(dv, 0);
+    if (burning) dv = Math.min(dv, 0); // the brakes hold the car in place while the tyres spin
     this.v += dv * dt;
     if (!reverse && this.v < 0 && brkAny > 0) this.v = Math.max(this.v, 0);
     if (this.v < 0 && Fdrive > 0) this.v += 4 * dt;
@@ -449,6 +459,15 @@ export class VehiclePhysics {
     if (!bikeLat) { this.r = lerp(rKin, this.r, lowBlend); this.vl = lerp(0, this.vl, lowBlend); }
     // reversing: the rear tyres no longer lead, which made the car slide out and steer oddly. Backing up is a slow
     // manoeuvre, so the car simply follows its steering (like a parked car being backed around a corner)
+    // burnout: steering swings the rear round the front tyres (a pivot burnout); the driven axle decides how freely.
+    // (the low speed blend above zeroes the yaw each step, so the swing is kept in burnYaw and put back every step)
+    if (!bk && this.burnout > 0.05 && av < 11) {
+      const k = sp.drive === 'RWD' ? 1 : sp.drive === 'AWD' ? 0.7 : 0.4, w = clamp(this.burnout * 1.5, 0, 1);
+      const rT = c.steer * 1.3 * k * clamp(1 - av / 9, 0, 1);
+      this.burnYaw += (rT - this.burnYaw) * clamp(dt * 5, 0, 1);
+      this.r = lerp(this.r, this.burnYaw, w);
+      this.vl = lerp(this.vl, -this.r * this.a, w);
+    } else this.burnYaw = 0;
     if (!bk && v < -0.5) {
       this.r = lerp(this.r, rKin * 0.8, clamp(dt * 10, 0, 1));
       this.vl *= Math.exp(-10 * dt);

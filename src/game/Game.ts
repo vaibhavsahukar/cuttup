@@ -73,6 +73,8 @@ export class Game {
   stations: StationRenderer;
   /** fuel left, 0..1 (a full tank lasts roughly 7 to 8 miles of hard driving) */
   fuel = 1;
+  /** the tank empties faster on the harder difficulties */
+  private fuelBurn = 1;
   /** what the fuel gauge says at a gas station: filling at the pump, or filled (until you have left the pumps) */
   fuelStatus: 'filling' | 'filled' | null = null;
   private pumpAway = 99; // seconds since the car was last in a pump lane
@@ -91,6 +93,11 @@ export class Game {
   private chunksFork: Fork | null = null;
   private quality!: { chunksAhead: number; propDensity: number; shadows: boolean };
   private skidAcc = 0;
+  /** seconds into the current burnout, and the timer that lays the tyre marks */
+  private burnT = 0;
+  private burnPopped = false;
+  private markT = 0;
+  private tmpF = new THREE.Vector3();
   private tmpV = new THREE.Vector3();
   private lampLights: THREE.PointLight[] = [];
   private hornCd = 0;
@@ -179,6 +186,7 @@ export class Game {
     this.police.onDispatch = (n, kind) => this.onPopup?.({ text: kind === 'interceptor' ? 'INTERCEPTOR DISPATCHED' : this.map.road === 'backroad' ? 'POLICE PURSUIT' : n === 1 ? 'POLICE PURSUIT' : `${n} UNITS IN PURSUIT`, sub: kind === 'interceptor' ? 'Conquette interceptor' : kind === 'samurai' ? 'Samurai motorcycle unit' : kind === 'moto' ? 'Motorcycle unit' : undefined, color: '#ff4040', big: true });
     this.scoring = new Scoring();
     this.scoring.scoreK = difficultyOf(settings.difficulty).scoreK;
+    this.fuelBurn = difficultyOf(settings.difficulty).fuelBurn;
     this.scoring.distK = this.map.road === 'backroad' ? 3 : 1;
     this.scoring.passK = this.map.road === 'backroad' ? 2.5 : 1;
     this.scoring.onPopup = (p) => this.onPopup?.(p);
@@ -304,7 +312,7 @@ export class Game {
       }
     } else this.rig.update(realDt, p, input.lookback, input.lookYaw);
     this.ambient(realDt, ph.s, p.model.root.position);
-    this.audio.update(ph.rpm, this.state === 'driving' ? ph.throttle : 0.2, Math.abs(ph.v), ph.slip + ph.wheelspin * 0.4 + (ph.onGrass ? 0.2 : 0) * 0, this.scrape, this.state !== 'crash' && this.state !== 'done');
+    this.audio.update(ph.rpm, this.state === 'driving' ? ph.throttle : 0.2, Math.abs(ph.v), ph.slip + ph.wheelspin * 0.4 + ph.burnout * 0.5, this.scrape, this.state !== 'crash' && this.state !== 'done');
     // rumble: shake on the grass (not when stopped), grinding along a wall, a juddering slide, and a bike leaning hard
     const live = this.state === 'driving';
     const moving = Math.abs(ph.v) > 2;
@@ -314,8 +322,8 @@ export class Game {
     this.haptics.enabled = this.settings.vibration !== false;
     // everything here is a further 30% down (20% before that) (wall grinding goes with the bumps and stays as it was)
     const brakeK = live && Math.abs(ph.v) > 5 ? clamp(Math.max(input.brake, input.frontBrake), 0, 1) : 0;
-    this.haptics.set(live ? clamp(this.scrape * 0.7 + (ph.onGrass && moving ? 0.14 * spdK : 0) + clamp(ph.slip, 0, 1) * 0.14 + brakeK * 0.021, 0, 1) : 0,
-      live ? clamp((ph.onGrass && moving ? 0.112 * spdK : 0) + (moving ? leanK * 0.196 : 0) + brakeK * 0.035, 0, 0.6) : 0);
+    this.haptics.set(live ? clamp(this.scrape * 0.7 + (ph.onGrass && moving ? 0.14 * spdK : 0) + clamp(ph.slip, 0, 1) * 0.14 + brakeK * 0.021 + ph.burnout * 0.12, 0, 1) : 0,
+      live ? clamp((ph.onGrass && moving ? 0.112 * spdK : 0) + (moving ? leanK * 0.196 : 0) + brakeK * 0.035 + ph.burnout * 0.1, 0, 0.6) : 0);
     this.haptics.update(realDt);
     this.scrape = Math.max(0, this.scrape - realDt * 4);
     return this.state !== 'done';
@@ -394,9 +402,32 @@ export class Game {
     this.driftFx(dt);
   }
 
+  /** a burnout: thick white smoke off the driven tyres, black tyre marks laid on the road, a popup after a moment */
+  private burnoutFx(dt: number) {
+    const ph = this.player.phys, drive = this.player.spec.drive;
+    this.burnT += dt;
+    if (this.burnT > 1.2 && !this.burnPopped) { this.burnPopped = true; this.onPopup?.({ text: 'BURNOUT', color: '#ff9a3d' }); }
+    this.markT -= dt;
+    const mark = this.markT <= 0;
+    if (mark) this.markT = 0.04;
+    const root = this.player.model.root;
+    this.tmpF.set(0, 0, 1).applyQuaternion(root.quaternion);
+    const yaw = Math.atan2(this.tmpF.x, this.tmpF.z);
+    const vel = this.player.worldVel;
+    for (const w of this.player.model.wheels) {
+      if (!(drive === 'AWD' || (drive === 'FWD' ? w.front : !w.front))) continue;
+      w.obj.getWorldPosition(this.tmpV);
+      this.tmpV.y = root.position.y + 0.05;
+      this.particles.smoke(this.tmpV, vel, Math.random() < 0.6 ? 2 : 1, 1.4, 0.4, 4, 0.92);
+      this.particles.darkSpark(this.tmpV, vel, 2, 2.5);
+      if (mark) { this.tmpV.y = root.position.y + 0.02; this.particles.skids.add(this.tmpV, yaw, 0.75, 0.3); }
+    }
+  }
+
   /** tyre smoke and skid marks while the car or bike is sliding sideways (the drift itself is plain physics) */
   private driftFx(dt: number) {
     const ph = this.player.phys;
+    if (ph.burnout > 0.3) this.burnoutFx(dt); else { this.burnT = 0; this.burnPopped = false; }
     const beta = Math.abs(Math.atan2(ph.vl, Math.max(1, Math.abs(ph.v))));
     const thresh = this.player.bike ? 0.12 : 0.15;
     if (beta < thresh || ph.speed < 9 || ph.onGrass) { this.skidAcc = 0; return; }
@@ -431,7 +462,8 @@ export class Game {
     // the pump lane fills the tank quickly at anything under about 50 mph (no need to stop)
     const inLane = this.features.inRefuel(ph.s, ph.d);
     const atPump = inLane && Math.abs(ph.v) < 22;
-    if (!atPump) this.fuel = Math.max(0, this.fuel - (Math.max(0, ds) / range) * (0.5 + 0.8 * ph.throttle) - dt * 0.0003);
+    if (ph.burnout > 0.3) this.fuel = Math.max(0, this.fuel - dt * 0.008 * this.fuelBurn); // a burnout drinks fuel
+    if (!atPump) this.fuel = Math.max(0, this.fuel - (Math.max(0, ds) / range) * (0.5 + 0.8 * ph.throttle) * this.fuelBurn - dt * 0.0003);
     else if (this.fuel < 1) {
       this.fuel = 1; // instant: the tank fills the moment you reach the pumps
       // one TANK FULL per visit to the pumps

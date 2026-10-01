@@ -105,7 +105,7 @@ input[type=range] { width: 260px; accent-color: var(--accent); }
 #hud .fuel.low .bar i { background: #ff4a3a; animation: fuelblink 0.6s steps(1) infinite; }
 #hud .fuel.filling .bar i { background: #4dff88; }
 @keyframes fuelblink { 50% { opacity: 0.3; } }
-#hud .hbind { position: absolute; left: 30px; bottom: 124px; padding: 4px 12px; border-radius: 6px; background: rgba(20,60,160,0.55); border: 1px solid #6ea8ff; color: #bcd8ff; font-size: 13px; font-weight: 800; letter-spacing: 0.2em; }
+#hud .hbind { position: absolute; left: 30px; bottom: 140px; padding: 4px 12px; border-radius: 6px; background: rgba(20,60,160,0.55); border: 1px solid #6ea8ff; color: #bcd8ff; font-size: 13px; font-weight: 800; letter-spacing: 0.2em; }
 #hud .hbind[hidden] { display: none; }
 #hud .stars { position: absolute; left: 30px; bottom: 28px; display: flex; align-items: center; gap: 4px; text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
 #hud .stars span { font-size: 46px; line-height: 1; color: rgba(255,255,255,0.4); -webkit-text-stroke: 1.5px rgba(0,0,0,0.75); text-shadow: 0 2px 6px rgba(0,0,0,0.8); transition: color 0.2s; }
@@ -140,7 +140,7 @@ input[type=range] { width: 260px; accent-color: var(--accent); }
 #results .over { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 17vh 5vw 6vh; }
 #results .top { align-self: center; display: flex; flex-direction: column; align-items: center; gap: 1.2vh; }
 #results .score { font-size: clamp(34px, 5vw, 64px); font-weight: 900; font-style: italic; color: var(--accent); line-height: 1; text-shadow: 0 3px 18px rgba(0,0,0,0.85); }
-#results .phrase {  max-width: min(1100px, 88vw); text-align: center; font-size: clamp(30px, 5vw, 68px); font-weight: 900; font-style: italic; text-transform: uppercase; line-height: 1.08; letter-spacing: 0.01em; color: #f6f6f6; text-shadow: 0 3px 22px rgba(0,0,0,0.9), 0 0 3px #000; }
+#results .phrase {  max-width: min(1100px, 88vw); text-align: center; font-size: clamp(30px, 5vw, 68px); font-weight: 900; font-style: normal; text-transform: uppercase; line-height: 1.08; letter-spacing: 0.01em; color: #f6f6f6; text-shadow: 0 3px 22px rgba(0,0,0,0.9), 0 0 3px #000; }
 #results .bottom { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; }
 #results .kv { display: grid; grid-template-columns: auto auto; column-gap: 22px; row-gap: 6px; font-size: 15px; padding: 14px 20px; border-radius: 10px; background: rgba(12,13,17,0.82); border: 1px solid rgba(255,255,255,0.07); backdrop-filter: blur(6px); }
 #results .kv span { color: var(--dim); }
