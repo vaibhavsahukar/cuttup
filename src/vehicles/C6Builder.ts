@@ -11,9 +11,9 @@ import { loft, ring, lerpK, blueMat, type Tag, type Sec } from './Z350Builder';
 const L = 4.46, F = L / 2, R = -F;
 const AX_F = 1.3, AX_R = -1.39, WR_F = 0.327, WR_R = 0.345, WX = 0.82, G = 0.14;
 
-const DECK: [number, number][] = [[F, 0.56], [2.15, 0.64], [2.0, 0.7], [1.6, 0.78], [1.0, 0.88], [0.5, 0.95], [0, 0.96], [-0.8, 0.97], [-1.4, 0.98], [-1.8, 0.99], [-2.05, 0.96], [R, 0.88]];
+const DECK: [number, number][] = [[F, 0.56], [2.15, 0.64], [2.0, 0.71], [1.6, 0.82], [1.2, 0.88], [0.8, 0.92], [0.4, 0.94], [-0.3, 0.93], [-0.9, 0.95], [-1.4, 1.03], [-1.8, 1.02], [-2.05, 0.97], [R, 0.88]];
 const HW: [number, number][] = [[F, 0.72], [2.15, 0.84], [1.9, 0.93], [1.5, 0.965], [0.9, 0.955], [0.2, 0.94], [-0.5, 0.945], [-1.1, 0.965], [-1.6, 0.965], [-2.0, 0.93], [-2.15, 0.86], [R, 0.76]];
-const ROOF: [number, number][] = [[0.5, 0.95], [0.3, 1.08], [0.1, 1.2], [-0.1, 1.25], [-0.4, 1.25], [-0.8, 1.2], [-1.2, 1.09], [-1.65, 1.0]];
+const ROOF: [number, number][] = [[0.62, 0.95], [0.4, 1.08], [0.15, 1.2], [-0.1, 1.25], [-0.5, 1.25], [-0.9, 1.18], [-1.3, 1.07], [-1.68, 1.01]];
 
 export function buildC6(color: number, shadows = true): VehicleModel {
   const out = new Map<Tag, number[]>();
@@ -42,10 +42,10 @@ export function buildC6(color: number, shadows = true): VehicleModel {
     const chin = G + 0.14 * Math.max(0, 1 - endT / 0.3);
     let arch = chin;
     for (const [wz, r] of [[AX_F, WR_F], [AX_R, WR_R]]) { const dz = (z - wz) / (r * 1.18); if (Math.abs(dz) < 1) arch = Math.max(arch, r + Math.sqrt(1 - dz * dz) * r * 0.8); }
-    const belt = yTop - 0.15, inner = hw * 0.62;
+    const belt = yTop - 0.15, inner = hw * 0.62, crown = 0.07 * Math.min(1, Math.max(0, (z - 0.3) / 0.8));
     secs.push({ z, pts: ring([
       [0, chin, 'dark'], [inner, chin, 'dark'], [inner, arch, 'dark'], [hw, Math.min(arch, belt - 0.1), 'paint'], [hw, belt, 'paint'],
-      [hw * 0.955, yTop - 0.05, 'paint'], [hw * 0.6, yTop - 0.008, 'paint'], [0, yTop - 0.02, 'paint'],
+      [hw * 0.955, yTop - 0.05, 'paint'], [hw * 0.6, yTop - 0.008 - crown * 0.4, 'paint'], [0, yTop - 0.02 - crown, 'paint'],
     ]) });
   }
   loft(secs, out, 'paint', 'paint');
@@ -66,8 +66,7 @@ export function buildC6(color: number, shadows = true): VehicleModel {
   const hwAt = (z: number) => lerpK(HW, z);
   for (const sx of [1, -1]) {
     // exposed teardrop headlamps lying along the front fenders
-    lampOn('head', sx, 2.1, 1.6, () => 0.5, (z) => lerpK([[2.1, 0.8], [2.0, 0.9], [1.8, 0.92], [1.6, 0.74]], z), 0.03);
-    box('head', sx * 0.68, 0.5, F, 0.34, 0.09, 0.04); // lamp wrapping onto the nose
+    lampOn('head', sx, 2.1, 1.5, (z) => lerpK([[2.1, 0.44], [1.98, 0.36], [1.85, 0.4], [1.72, 0.52], [1.5, 0.6]], z), (z) => lerpK([[2.1, 0.52], [2.0, 0.76], [1.88, 0.92], [1.72, 0.92], [1.5, 0.8]], z), 0.03); // teardrop lamp on the fender, pointed towards the nose centre
     box('dark', sx * 0.5, 0.34, F, 0.2, 0.1, 0.04); // fog lamp
     box('amber', sx * (hwAt(1.9) + 0.014), 0.52, 1.9, 0.012, 0.05, 0.16); // side marker
     // side cove behind the front wheel with its gill, rear fender duct, door line, shoulder trim
