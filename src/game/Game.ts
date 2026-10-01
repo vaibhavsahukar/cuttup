@@ -505,6 +505,7 @@ export class Game {
       // the new highway builds further ahead than the road: its far side must already be there when the bridge over the old road is in view
       const cm = new ChunkManager(fk.branch, this.map, this.layout, { ...this.quality, chunksAhead: this.quality.chunksAhead + 10 }, this.features, this.chunkMods(fk));
       cm.minIndex = Math.floor(sF / 64);
+      cm.minS = sF;
       this.branchChunks = cm;
       this.scene.add(cm.root);
       this.applyLight();
@@ -844,6 +845,9 @@ export class Game {
   }
 
   dispose() {
+    // the composer's passes own render targets (the bloom has a dozen): free them explicitly
+    for (const p of this.composer?.passes ?? []) (p as { dispose?: () => void }).dispose?.();
+    this.composer?.renderTarget1.dispose(); this.composer?.renderTarget2.dispose();
     this.composer?.dispose();
     this.audio.stopEngine();
     this.crash.clear();
@@ -852,6 +856,20 @@ export class Game {
     this.traffic.clear();
     for (const cm of this.allChunks()) cm.dispose();
     this.env.dispose();
-    this.scene.traverse((o) => { const m = o as THREE.Mesh; if (m.geometry && !(m as THREE.InstancedMesh).isInstancedMesh) m.geometry.dispose?.(); });
+    // free everything this run uploaded to the GPU (geometries, materials and their textures): left alone it piled up
+    // with every restart until the GPU ran short of memory. Anything shared is simply uploaded again when next used.
+    const seen = new Set<unknown>();
+    const freeMat = (m: THREE.Material) => {
+      if (seen.has(m)) return; seen.add(m);
+      for (const v of Object.values(m)) if (v && (v as THREE.Texture).isTexture) (v as THREE.Texture).dispose();
+      m.dispose();
+    };
+    this.scene.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.geometry && !seen.has(m.geometry)) { seen.add(m.geometry); m.geometry.dispose?.(); }
+      const mat = m.material as THREE.Material | THREE.Material[] | undefined;
+      if (Array.isArray(mat)) mat.forEach(freeMat); else if (mat) freeMat(mat);
+    });
+    this.bridges.forEach((b) => b.g.traverse((o) => { const m = o as THREE.Mesh; m.geometry?.dispose?.(); }));
   }
 }

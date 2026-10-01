@@ -89,6 +89,8 @@ export class ChunkManager {
 
   /** chunks below this index are never built (a fork branch only exists from its start) */
   minIndex = -Infinity;
+  /** nothing exists before this s (a fork branch begins part way into its first chunk) */
+  minS = -Infinity;
   /** a frozen manager keeps what it has built and builds nothing more (the road not taken, on its way out) */
   frozen = false;
 
@@ -279,7 +281,7 @@ export class ChunkManager {
 
   private place(pool: PropPool | undefined, s: number, d: number, yaw: number, sx: number, sy: number, sz: number, c?: THREE.Color, yOff = 0) {
     if (!pool) return;
-    if (this.features?.noProps(s, d) || this.mods.noProps?.(s, d)) return;
+    if (s < this.minS || this.features?.noProps(s, d) || this.mods.noProps?.(s, d)) return;
     if (this.mods.lateral) d = this.mods.lateral(s, d, false);
     this.path.frame(s, fr);
     this.path.toWorld(s, d, this.terrainH(s, d) + yOff, v3, fr);
@@ -293,7 +295,7 @@ export class ChunkManager {
     slot.index = index;
     slot.rocks = [];
     const s0 = index * CHUNK;
-    for (const r of slot.ribbons) r.update(this.path, s0, CHUNK);
+    for (const r of slot.ribbons) { r.opts.sMin = this.minS; r.update(this.path, s0, CHUNK); }
     const si = this.slots.indexOf(slot);
     const rng = mulberry32(Math.floor(hash2(index, this.map.seed) * 4294967296));
     for (const k in this.pools) this.pools[k].begin(si);

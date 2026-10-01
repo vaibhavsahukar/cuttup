@@ -3,6 +3,7 @@ import type { VehicleModel } from './ModelKit';
 import { buildFromShape, getShape } from './ShapeBuilder';
 import { buildPanelCar } from './PanelBuilder';
 import { buildBike } from './BikeBuilder';
+import { buildSchoolBus, BUS_DIMS } from './SchoolBus';
 
 /** cars with hand-made signature details (others get the generic panel build; bikes keep ShapeBuilder) */
 export const DESIGNED = new Set(['zr1', 'm4', 'huracan', 'c63', 'civic', 'tesla']);
@@ -34,7 +35,7 @@ export const TRAFFIC_COLORS = [0xe8e8e8, 0x1b1c1e, 0x8f9499, 0x5a6068, 0x9b1b1f,
 export function buildViewerModel(key: string, drivable: (id: string) => VehicleSpec): VehicleModel {
   const [kind, id] = key.split(':');
   if (kind === 'v') return buildPlayerModel(drivable(id), true);
-  if (kind === 't') return build(TRAFFIC_SHAPES[id as TrafficType], id === 'boxtruck' ? 0xeeeeee : id === 'schoolbus' ? 0xf2b400 : 0x8f9499, false, true);
+  if (kind === 't') return id === 'schoolbus' ? buildSchoolBus(0xf2b400, true) : build(TRAFFIC_SHAPES[id as TrafficType], id === 'boxtruck' ? 0xeeeeee : 0x8f9499, false, true);
   const cop = id as CopType;
   if (cop === 'cop_moto') return buildBike('cbr650', COP_MOTO_COLOR, true, 'police');
   if (cop === 'cop_samurai') return buildBike('zx6r', COP_MOTO_COLOR, true, 'police');
@@ -42,10 +43,12 @@ export function buildViewerModel(key: string, drivable: (id: string) => VehicleS
 }
 
 export function buildTrafficModel(type: TrafficType, color = 0xffffff, _shadows = false): VehicleModel {
+  if (type === 'schoolbus') return buildSchoolBus(color);
   const m = build(TRAFFIC_SHAPES[type], type === 'boxtruck' ? 0xeeeeee : color, true, false);
   return m;
 }
 export function trafficDims(type: TrafficType) {
+  if (type === 'schoolbus') return BUS_DIMS;
   const s = getShape(TRAFFIC_SHAPES[type])!;
   return { length: s.length, width: s.width, height: s.height };
 }

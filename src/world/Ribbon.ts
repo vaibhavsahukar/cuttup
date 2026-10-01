@@ -8,6 +8,8 @@ export interface RibbonOpts {
   colorFn?: (s: number, d: number, h: number, out: THREE.Color) => void;
   /** maps a profile column's d to the real lateral position at s (for strips that wander, like a ramp lane) */
   lateralFn?: (s: number, d: number) => number;
+  /** rows before this s are squashed onto it (zero area): a road that begins part way into a chunk */
+  sMin?: number;
 }
 
 const tmpV = new THREE.Vector3();
@@ -53,7 +55,7 @@ export class Ribbon {
     const cols = profile.length;
     const vs = opts.vScale ?? 12;
     for (let r = 0; r < rows; r++) {
-      const s = s0 + (len * r) / (rows - 1);
+      const s = Math.max(opts.sMin ?? -Infinity, s0 + (len * r) / (rows - 1));
       path.frame(s, fr);
       const v = (((s % VREP) + VREP) % VREP) / vs;
       const vFix = r === rows - 1 && v === 0 ? VREP / vs : v; // keep last row continuous at wrap
