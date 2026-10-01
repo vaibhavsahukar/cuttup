@@ -29,6 +29,8 @@ export interface VehicleSpec {
   launchMu: number; // longitudinal grip multiplier for driven wheels (tire width)
   frontGrip: number; // >1 more front grip (oversteer), <1 understeer
   rearGrip: number;
+  /** bikes: how readily the front lifts and how long a wheelie holds (1 = a sport bike, a supermoto is well above) */
+  wheelieK?: number;
   powerOversteer: number; // how much wheelspin kills rear lateral grip (0..1.5)
   cgHeight: number; // m
   wheelbase: number; // m
@@ -82,6 +84,14 @@ export const VEHICLES: VehicleSpec[] = [
     rollFactor: 0, pitchFactor: 0.045, brakeG: 1.15, downforce: 0.02, steerLock: 0.5, steerSpeed: 3.7, highSpeedSteer: 0.2,
     stability: 0.96, yawInertia: 0.9,
     dims: { length: 2.03, width: 0.72, height: 1.11 }, engine: { cylinders: 4, tone: 1.5, roughness: 0.12 } },
+  { ...base, id: 'fs450', name: 'husky sf450', kind: 'bike', model: 'fs450', color: 0xf1f3f5, electronics: { abs: 1, tc: 0, aw: 1 },
+    hp: 63, massKg: 115 + 75, drive: 'RWD', zeroSixty: 3.6, topSpeedMph: 110,
+    character: 'Supermoto: featherweight, the quickest to flick side to side, wheelies on a whim, rear steps out when you ask it to',
+    gears: 5, redline: 11500, idleRpm: 1900, torquePeak: 0.55, torqueFlat: 0.55, wheelieK: 2.4,
+    tireMu: 1.22, frontGrip: 1.04, powerOversteer: 0.6, cgHeight: 0.86, wheelbase: 1.48, frontWeight: 0.44, track: 0.2,
+    rollFactor: 0, pitchFactor: 0.075, brakeG: 1.15, downforce: 0.01, steerLock: 0.55, steerSpeed: 5.4, highSpeedSteer: 0.24,
+    stability: 0.66, yawInertia: 0.62,
+    dims: { length: 2.1, width: 0.82, height: 1.2 }, engine: { cylinders: 1, tone: 1.0, roughness: 0.5 } },
   { ...base, id: 'zr1', name: 'Conquette', kind: 'car', model: 'zr1', color: 0x0c0c0e,
     hp: 638, massKg: 1530, drive: 'RWD', zeroSixty: 3.3, topSpeedMph: 205,
     character: 'Brutal supercharged torque, tail-happy on throttle, stable at speed',

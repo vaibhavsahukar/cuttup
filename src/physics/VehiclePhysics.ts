@@ -86,6 +86,8 @@ export class VehiclePhysics {
   readonly Iz: number; readonly P: number; readonly cD: number; readonly vTop: number; readonly vLimit: number;
   readonly gearTop: number[]; readonly Fpeak: number[];
   readonly bike: boolean;
+  /** how readily the front lifts and how long a wheelie holds (spec.wheelieK, 1 for a sport bike) */
+  readonly wheelieK: number;
   private K = 1;
   private time = 0;
   /** launch factor (auto-calibrated so 0-60 matches spec.zeroSixty); fades out above ~35 m/s */
@@ -94,6 +96,7 @@ export class VehiclePhysics {
 
   constructor(public spec: VehicleSpec, calibrate = true) {
     this.bike = spec.kind === 'bike';
+    this.wheelieK = spec.wheelieK ?? 1;
     this.m = spec.massKg;
     this.L = spec.wheelbase;
     this.b = this.L * spec.frontWeight; // cg -> rear axle
@@ -259,7 +262,7 @@ export class VehiclePhysics {
       if (this.clutchT > 0) {
         this.clutchT -= dt;
         Fdrive *= 1 + 0.25 * clamp(1 - av / 30, 0, 1); // revs dumped through the clutch
-        if (this.wheelie <= 0.001) this.pitchRate = Math.max(this.pitchRate, 0.45 * clamp(1 - av / 35, 0, 1) * c.throttle * (1 - this.push));
+        if (this.wheelie <= 0.001) this.pitchRate = Math.max(this.pitchRate, 0.45 * this.wheelieK * clamp(1 - av / 35, 0, 1) * c.throttle * (1 - this.push));
       }
     }
     if (bk && Fdrive > 0) {
@@ -274,9 +277,9 @@ export class VehiclePhysics {
         // when the rider asks for a wheelie, levels 1 / 2 only stop a loop-out; 3 keeps it tiny
         // hold the wheelie and the assist slowly loses the front (quicker the slower you go, never above 75 mph),
         // so a held wheelie eventually loops; letting go of the pull brings the front down again
-        if (this.pull > 0.3 && this.wheelie > 0.25 && av < LOOP_V) this.overPull += 0.32 * (1 - av / LOOP_V) * dt;
+        if (this.pull > 0.3 && this.wheelie > 0.25 && av < LOOP_V) this.overPull += (0.32 * (1 - av / LOOP_V) * dt) / this.wheelieK; // a supermoto holds it longer
         else this.overPull = Math.max(0, this.overPull - 0.6 * dt);
-        const cap = this.pull > 0.3 ? [0, 0.55, 0.35, 0.08][awLvl] + this.overPull : [0, 0.1, 0.04, 0][awLvl], t = Math.max(0, this.wheelie);
+        const cap = this.pull > 0.3 ? [0, 0.55, 0.35, 0.08][awLvl] * (1 + 0.3 * (this.wheelieK - 1)) + this.overPull : [0, 0.1 * (1 + 0.8 * (this.wheelieK - 1)), 0.04 * (1 + 0.8 * (this.wheelieK - 1)), 0][awLvl], t = Math.max(0, this.wheelie); // a supermoto pops its front on the throttle alone
         const bw = this.bEff;
         const hE = this.h * Math.cos(t) + bw * Math.sin(t), bE = bw * Math.cos(t) - this.h * Math.sin(t);
         const accWant = -14 * (t - cap * 0.8) - 5 * this.pitchRate;
@@ -515,7 +518,9 @@ export class VehiclePhysics {
     } else { this.pitchRate = 0; }
     // the rider heaves on the bars when a wheelie is asked for: extra lift that fades with speed, so a wheelie is
     // possible from a standstill up to roughly 100 mph (engine torque alone only lifts the front at low speed)
-    if (this.pull > 0.5 && this.throttle > 0.5 && th >= 0) acc += 3 * this.pull * clamp(1 - th / 0.4, 0, 1) * clamp(1 - av / 55, 0, 1) * (this.aids.manual ? 0.6 : 1);
+    if (this.pull > 0.5 && this.throttle > 0.5 && th >= 0) acc += 3 * this.wheelieK * this.pull * clamp(1 - th / 0.4, 0, 1) * clamp(1 - av / 55, 0, 1) * (this.aids.manual ? 0.6 : 1);
+    // a supermoto's wheelie is easy to take far: an assisted rider balances it before it can loop (manual riding is on you)
+    if (this.wheelieK > 1 && !this.aids.manual && this.pull > 0.3 && th > 0.62) acc -= 30 * (th - 0.62) + 4 * Math.max(0, this.pitchRate);
     // weight over the front pushes it down: a lifted front settles quickly
     if (this.push > 0.05 && th > 0) acc -= 9 * this.push;
     if (acc !== 0 || th !== 0 || this.pitchRate !== 0) {
