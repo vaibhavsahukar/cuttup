@@ -43,7 +43,7 @@ export class UI {
       <div id="menu" class="screen">
         <div class="col">
           <div class="logo">RECKLESS DRIVING:<span>THE GAME</span></div>
-          <div class="tag">ENDLESS TRAFFIC · NO BRAKES ON FUN</div>
+          <div class="tag"></div>
           <button data-a="play" class="primary">Play</button>
           <button data-a="garage">Vehicle Select</button>
           <button data-a="maps">Map Select</button>
