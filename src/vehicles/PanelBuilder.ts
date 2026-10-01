@@ -354,6 +354,12 @@ const PROFILES: Record<string, { centre: [number, number][]; belt: [number, numb
     belt: [[0, 0.8], [0.1, 1.0], [0.3, 1.0], [0.5, 0.98], [0.75, 0.97], [0.9, 0.9], [1, 0.76]],
     roof: 0.74,
   },
+  // Model S (player Tesla): long sloping liftback, shallow glass roof, low smooth nose
+  models: {
+    centre: [[0, 0.8], [0.03, 1.0], [0.08, 1.1], [0.2, 1.28], [0.32, 1.4], [0.45, 1.43], [0.58, 1.4], [0.68, 1.18], [0.74, 1.0], [0.82, 0.93], [0.92, 0.84], [0.97, 0.74], [1, 0.62]],
+    belt: [[0, 0.82], [0.1, 1.0], [0.3, 1.0], [0.5, 0.97], [0.75, 0.93], [0.9, 0.85], [1, 0.65]],
+    roof: 0.72,
+  },
   // Huracán: very low wedge, flat engine deck, cabin well forward of the rear axle, long raked screen, low beak
   huracan: {
     centre: [[0, 0.86], [0.05, 0.96], [0.3, 1.0], [0.4, 1.07], [0.47, 1.13], [0.56, 1.11], [0.7, 0.86], [0.8, 0.75], [0.93, 0.64], [1, 0.5]],
@@ -361,7 +367,7 @@ const PROFILES: Record<string, { centre: [number, number][]; belt: [number, numb
   },
 };
 
-const ROOF: Record<string, Tag> = { zr1: 'carbon', c8: 'carbon', m4: 'carbon', tesla: 'roofglass' };
+const ROOF: Record<string, Tag> = { zr1: 'carbon', c8: 'carbon', m4: 'carbon', tesla: 'roofglass', models: 'roofglass' };
 
 /** what a hand-made design gets: body measurements along z plus the part tools */
 interface DesignCtx {
@@ -552,6 +558,25 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     box('dark', 0, c.tailH - 0.1, R + 0.012, c.tailW * 1.4, 0.07, 0.04);
     box('dark', 0, ground + 0.3, R + 0.02, c.tailW * 1.9, 0.5, 0.06);
     box('carbon', 0, ground + 0.12, R + 0.05, c.tailW * 1.8, 0.2, 0.12);
+  },
+  // Tesla Model S: slim swept lamps, smooth grille-less nose with a small T badge and a low slatted intake, glass roof,
+  // slim wraparound tail lamps either side of a black strip, thin boot spoiler, wide black lower valance.
+  models(c) {
+    const { L, ground, box } = c;
+    const F = L / 2, R = -L / 2;
+    for (const sx of [1, -1]) {
+      const [lx, ly, lz] = c.onTop(sx * c.hwAt(F - 0.3) * 0.68, F - 0.3, 0.02);
+      box('dark', lx, ly - 0.005, lz - 0.01, 0.42, 0.08, 0.26);
+      box('head', lx, ly + 0.01, lz + 0.01, 0.36, 0.05, 0.2);
+      box('dark', sx * c.noseW * 0.7, ground + 0.17, F - 0.02, c.noseW * 0.38, 0.12, 0.06); // fog intake
+      box('tail', sx * c.tailW * 0.74, c.tailH - 0.1, R + 0.004, c.tailW * 0.46, 0.07, 0.05);
+      box('carbon', sx * (c.hwAt(0) - 0.02), ground + 0.06, 0, 0.04, 0.05, L * 0.4);
+    }
+    box('dark', 0, ground + 0.15, F - 0.02, c.noseW * 0.95, 0.1, 0.06); // lower intake
+    box('chrome', 0, c.noseH - 0.1, F + 0.005, 0.1, 0.04, 0.02); // T badge
+    box('dark', 0, c.tailH - 0.1, R + 0.008, c.tailW * 1.9, 0.03, 0.04); // black strip between the lamps
+    box('dark', 0, ground + 0.12, R + 0.04, c.tailW * 1.9, 0.2, 0.1); // black valance
+    box('paint', 0, c.deckAt(R + 0.12) + 0.014, R + 0.12, c.tailW * 1.8, 0.025, 0.12); // boot spoiler
   },
   // Lamborghini Huracán: slim Y headlamps, wide three-part mouth, hexagon side intakes,
   // louvred engine cover, Y tail lamps, twin exhausts in the diffuser.
