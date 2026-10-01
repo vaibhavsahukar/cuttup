@@ -237,7 +237,9 @@ export class Fork {
   branchLift(s: number, d: number) {
     // a few centimetres under the old road's ground wherever the two overlap (so it is the old road's that shows)
     const r = this.rise(s - this.sF);
-    const a = Math.abs(d) - (this.layout.roadHalfWidth - 1);
+    // distance from the road's real edges at s (while it is folded, its left edge is the ramp's left edge, not -E)
+    const E = this.layout.roadHalfWidth - 1, left = this.fold(s, -E);
+    const a = d < left ? left - d : d > E ? d - E : 0;
     return -0.04 - (r > 0 ? r * smoothstep(1.85, 1.95, a) : 0);
   }
   /** main road: keep its right side clear where the ramp tapers out of it */
