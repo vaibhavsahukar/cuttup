@@ -7,7 +7,7 @@ import { AudioEngine } from './audio/AudioEngine';
 import { UI, RELEASE } from './ui/UI';
 import { PreviewStage } from './ui/PreviewStage';
 import { Game } from './game/Game';
-import { getVehicle, VEHICLES } from './data/vehicles';
+import { getVehicle, VEHICLES, colorSel } from './data/vehicles';
 import { clamp } from './core/math';
 
 const params = new URLSearchParams(location.search);
@@ -30,6 +30,7 @@ async function boot() {
   const loadingEl = document.getElementById('loading');
   // saved vehicle may no longer exist (roster changed)
   if (!VEHICLES.some((v) => v.id === st.vehicle)) st.vehicle = 'zr1';
+  Object.assign(colorSel, st.colorways ?? {});
   loadingEl?.remove();
 
   const pmrem = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;

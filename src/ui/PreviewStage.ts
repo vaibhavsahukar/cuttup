@@ -54,12 +54,13 @@ export class PreviewStage {
 
   show(id: string) {
     const spec = getVehicle(id);
-    let m = this.models.get(id);
+    const mk = `${id}:${spec.color}:${spec.paint?.a1 ?? ''}:${spec.paint?.a2 ?? ''}`;
+    let m = this.models.get(mk);
     if (!m) {
       m = buildPlayerModel(spec, true);
       m.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
       m.root.position.y = 0.12;
-      this.models.set(id, m);
+      this.models.set(mk, m);
     }
     if (this.current) this.table.remove(this.current.root);
     this.table.add(m.root);
@@ -69,9 +70,11 @@ export class PreviewStage {
 
   /** show any model of the catalog ('v:<vehicle>', 't:<traffic>', 'c:<cop>') */
   showModel(key: string) {
+    // a vehicle shows in the colorway picked in the garage
+    if (key.startsWith('v:')) { const sp = getVehicle(key.slice(2)); key = `${key}:${sp.color}:${sp.paint?.a1 ?? ''}:${sp.paint?.a2 ?? ''}`; }
     let m = this.models.get(key);
     if (!m) {
-      m = buildViewerModel(key, getVehicle);
+      m = buildViewerModel(key.split(':').slice(0, 2).join(':'), getVehicle);
       m.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
       m.root.position.y = 0.12;
       this.models.set(key, m);

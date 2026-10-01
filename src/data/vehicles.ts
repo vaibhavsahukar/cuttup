@@ -3,6 +3,7 @@
  * Units: SI (kg, m, W, m/s). Real-world numbers are tuning inputs; the physics
  * converts them consistently. See README "Tuning knobs".
  */
+import { COLORWAYS } from './colorways';
 export type Drive = 'RWD' | 'FWD' | 'AWD';
 export type Kind = 'car' | 'bike';
 
@@ -12,6 +13,8 @@ export interface VehicleSpec {
   kind: Kind;
   model: string; // procedural model key
   color: number;
+  /** bike accent paints of the chosen colorway (see colorways.ts) */
+  paint?: { a1?: number; a2?: number };
   hp: number;
   massKg: number;
   drive: Drive;
@@ -177,7 +180,18 @@ export const VEHICLES: VehicleSpec[] = [
 
 ];
 
-export const getVehicle = (id: string) => VEHICLES.find((v) => v.id === id) ?? VEHICLES.find((v) => v.id === 'zr1')!;
+/** the colorway picked per vehicle (index into COLORWAYS[id]; missing = stock), kept in sync with the save by the UI */
+export const colorSel: Record<string, number> = {};
+const resolved = new Map<string, VehicleSpec>();
+export const getVehicle = (id: string): VehicleSpec => {
+  const v = VEHICLES.find((x) => x.id === id) ?? VEHICLES.find((x) => x.id === 'zr1')!;
+  const i = colorSel[v.id] ?? 0, cw = COLORWAYS[v.id]?.[i];
+  if (!cw || i === 0) return v;
+  const key = `${v.id}:${i}`;
+  let r = resolved.get(key);
+  if (!r) { r = { ...v, color: cw.color, paint: { a1: cw.a1, a2: cw.a2 } }; resolved.set(key, r); }
+  return r;
+};
 
 /** Stats for menu bars, normalised 0..1 across the roster. */
 export function statBars(v: VehicleSpec) {

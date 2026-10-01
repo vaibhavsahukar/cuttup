@@ -17,7 +17,7 @@ const build = (id: string, color: number, lite: boolean, shadows: boolean, liver
  * reference models the user supplied (src/data/shapes/*.json). Nothing is loaded at runtime.
  */
 export function buildPlayerModel(spec: VehicleSpec, shadows = true): VehicleModel {
-  if (spec.kind === 'bike') return buildBike(spec.model, spec.color, shadows);
+  if (spec.kind === 'bike') return buildBike(spec.model, spec.color, shadows, undefined, spec.paint);
   return build(spec.model, spec.color, false, shadows, undefined, true);
 }
 

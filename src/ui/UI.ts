@@ -1,4 +1,5 @@
-import { VEHICLES, getVehicle, statBars } from '../data/vehicles';
+import { VEHICLES, getVehicle, statBars, colorSel } from '../data/vehicles';
+import { COLORWAYS } from '../data/colorways';
 import { MAPS, getMap } from '../data/maps';
 import { modelCatalog } from '../data/modelCatalog';
 import { TIME_CHOICES, type TimeChoice } from '../world/TimeOfDay';
@@ -100,6 +101,16 @@ export class UI {
       if (a === 'play') this.h.play(); else if (a === 'garage') this.h.garage(); else if (a === 'maps') this.h.maps(); else if (a === 'models') this.h.models();
       else if (a === 'settings') { this.settingsReturn = 'menu'; this.h.settings(); } else if (a === 'quit') this.h.quit();
     });
+    $('#garage .info').addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest('button.sw') as HTMLElement | null;
+      if (!b) return;
+      this.h.click();
+      const st = this.save.data.settings;
+      colorSel[this.previewId] = +b.dataset.cw!;
+      (st.colorways ??= {})[this.previewId] = +b.dataset.cw!;
+      this.save.persist();
+      this.preview(this.previewId);
+    });
     $('#garage .actions').addEventListener('click', (e) => {
       const a = (e.target as HTMLElement).dataset.a;
       this.h.click();
@@ -173,6 +184,18 @@ export class UI {
     };
     this.preview(sel);
   }
+  /** colour picker row: one swatch per colorway of the vehicle (two or three tone schemes show their colours side by side) */
+  private swatches(id: string) {
+    const list = COLORWAYS[id];
+    if (!list || list.length < 2) return '';
+    const hex = (c: number) => '#' + c.toString(16).padStart(6, '0');
+    const cur = colorSel[id] ?? 0;
+    return `<div class="cways"><span>COLOUR</span>${list.map((c, i) => {
+      const cols = [c.color, c.a1, c.a2].filter((x): x is number => x !== undefined);
+      const bg = cols.length > 1 ? `linear-gradient(135deg, ${cols.map((x, k) => `${hex(x)} ${Math.round(k * 100 / cols.length)}% ${Math.round((k + 1) * 100 / cols.length)}%`).join(', ')})` : hex(c.color);
+      return `<button class="sw ${i === cur ? 'sel' : ''}" data-cw="${i}" title="${esc(c.name)}" style="background:${bg}"></button>`;
+    }).join('')}<em>${esc(list[cur]?.name ?? '')}</em></div>`;
+  }
   preview(id: string) {
     this.previewId = id;
     document.querySelectorAll('#garage .list button').forEach((b) => b.classList.toggle('sel', (b as HTMLElement).dataset.v === id));
@@ -181,6 +204,7 @@ export class UI {
     const bar = (label: string, x: number) => `<div class="stat"><span>${label}</span><div class="bar"><i style="width:${Math.round(x * 100)}%"></i></div></div>`;
     $('#garage .info').innerHTML = `
       <div class="name">${esc(v.name)}</div><div class="char">${esc(v.character)}</div>
+      ${this.swatches(id)}
       ${bar('TOP SPEED', s.speed)}${bar('ACCEL', s.accel)}${bar('HANDLING', s.handling)}${bar('BRAKING', s.braking)}${bar('CONTROL', s.control)}
       ${v.kind === 'bike' ? `<div class="char">Stock electronics: ABS ${v.electronics?.abs ? 'level ' + v.electronics.abs : 'none'} · Traction control ${v.electronics?.tc ? 'level ' + v.electronics.tc : 'none'} · Anti-wheelie ${v.electronics?.aw ? 'level ' + v.electronics.aw : 'none'}</div>` : ''}
       <div class="specs">

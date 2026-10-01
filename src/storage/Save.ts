@@ -22,6 +22,8 @@ export interface Settings {
   /** gamepad rumble (missing in older saves = on) */
   vibration?: boolean;
   vehicle: string;
+  /** chosen colorway per vehicle id (index into colorways.ts; missing = stock) */
+  colorways?: Record<string, number>;
   map: string;
 }
 export interface RunEntry { score: number; distance: number; topSpeed: number; nearMisses: number; vehicle: string; date: number }

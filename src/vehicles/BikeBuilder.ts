@@ -208,8 +208,9 @@ function policeLivery(d: BikeDesign): BikeDesign {
   };
 }
 
-export function buildBike(id: string, color: number, shadows = true, livery?: 'police'): VehicleModel {
+export function buildBike(id: string, color: number, shadows = true, livery?: 'police', paintOv?: { a1?: number; a2?: number }): VehicleModel {
   let d = DESIGNS[id] ?? DESIGNS.cbr650;
+  if (paintOv && (paintOv.a1 !== undefined || paintOv.a2 !== undefined)) d = { ...d, colors: { ...d.colors, ...(paintOv.a1 !== undefined ? { a1: paintOv.a1 } : {}), ...(paintOv.a2 !== undefined ? { a2: paintOv.a2 } : {}) } };
   if (livery === 'police') d = policeLivery(d);
   const out = new Map<Tag, THREE.BufferGeometry[]>();
   const add = (tag: Tag, g: THREE.BufferGeometry) => { let a = out.get(tag); if (!a) out.set(tag, (a = [])); a.push(g.index ? g.toNonIndexed() : g); };
