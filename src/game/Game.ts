@@ -58,6 +58,7 @@ export class Game {
   gameTime = 0;
   private bumpCd = 0;
   highBeamOn = false;
+  private headBase = 0;
   /** seconds the player has been scraping a highway wall; five in a row wrecks the run */
   private wallT = 0;
   private wallContact = false;
@@ -105,7 +106,9 @@ export class Game {
       if (cm.buildingMaterial) cm.buildingMaterial.emissiveIntensity = 0.25 + 0.6 * n;
     }
     for (const l of this.lampLights) l.intensity = 160 * Math.max(0, n - 0.3) / 0.7;
-    if (this.player.headlight) this.player.headlight.intensity = (this.map.id === 'forest' ? 220 : 0) + 950 * n;
+    // headlights: 30% dimmer than they were; the high beam replaces them while it is on
+    this.headBase = ((this.map.id === 'forest' ? 220 : 0) + 950 * n) * 0.7;
+    if (this.player.headlight) this.player.headlight.intensity = this.highBeamOn && this.state === 'driving' ? 0 : this.headBase;
     this.nightNow = n;
     // fewer cars on the road at night (new spawns; cars already out there drive on)
     this.traffic.density = 1 - 0.4 * n;
@@ -375,6 +378,7 @@ export class Game {
     if (this.state === 'driving' && this.input.pressed('highbeam')) this.highBeamOn = !this.highBeamOn;
     const hb = this.highBeamOn && this.state === 'driving';
     if (this.player.highBeam) this.player.highBeam.intensity = hb ? 1500 : 0;
+    if (this.player.headlight) this.player.headlight.intensity = hb ? 0 : this.headBase;
     this.traffic.highBeam = hb;
     // scraping a highway wall for five seconds in a row wrecks you (touching it for a moment does not)
     if (this.map.road === 'highway' && this.state === 'driving' && this.wallContact && ph.speed > 6) {

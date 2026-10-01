@@ -36,9 +36,9 @@ export class Player {
     h.position.set(0, 0.8, spec.dims.length / 2);
     h.target.position.set(0, 0, spec.dims.length / 2 + 30);
     h.castShadow = false;
-    const hb = new THREE.SpotLight(0xe8f0ff, 0, 280, 0.2, 0.35, 1.6);
+    const hb = new THREE.SpotLight(0xe8f0ff, 0, 280, 0.45, 0.5, 1.6); // same width as the headlights, but it reaches further
     hb.position.set(0, 0.9, spec.dims.length / 2);
-    hb.target.position.set(0, 0.6, spec.dims.length / 2 + 60);
+    hb.target.position.set(0, 0, spec.dims.length / 2 + 30);
     hb.castShadow = false;
     this.model.root.add(h, h.target, hb, hb.target);
     this.headlight = h; this.highBeam = hb;
