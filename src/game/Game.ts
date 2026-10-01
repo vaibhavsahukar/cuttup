@@ -298,12 +298,15 @@ export class Game {
     } else this.rig.update(realDt, p, input.lookback, input.lookYaw);
     this.ambient(realDt, ph.s, p.model.root.position);
     this.audio.update(ph.rpm, this.state === 'driving' ? ph.throttle : 0.2, Math.abs(ph.v), ph.slip + ph.wheelspin * 0.4 + (ph.onGrass ? 0.2 : 0) * 0, this.scrape, this.state !== 'crash' && this.state !== 'done');
-    // rumble: a faint engine hum, a rough shake on the grass, grinding along a wall, a juddering slide
+    // rumble: shake on the grass (not when stopped), grinding along a wall, a juddering slide, and a bike leaning hard
     const live = this.state === 'driving';
-    const spdK = clamp(Math.abs(ph.v) / 45, 0, 1);
+    const moving = Math.abs(ph.v) > 2;
+    const spdK = clamp(Math.abs(ph.v) / 45, 0.25, 1);
+    // lean: nothing until it is well past a normal corner, then rising with the angle
+    const leanK = ph.bike ? clamp((Math.abs(ph.bikeLean) - 0.5) / 0.45, 0, 1) : 0;
     this.haptics.enabled = this.settings.vibration !== false;
-    this.haptics.set(live ? clamp(this.scrape * 0.7 + (ph.onGrass ? 0.25 * spdK : 0) + clamp(ph.slip, 0, 1) * 0.25, 0, 1) : 0,
-      live ? clamp(0.05 + 0.1 * (ph.rpm / this.spec.redline) * (ph.throttle > 0.1 ? 1 : 0.4) + ph.wheelspin * 0.15 + (ph.onGrass ? 0.2 * spdK : 0), 0, 0.6) : 0);
+    this.haptics.set(live ? clamp(this.scrape * 0.7 + (ph.onGrass && moving ? 0.25 * spdK : 0) + clamp(ph.slip, 0, 1) * 0.25, 0, 1) : 0,
+      live ? clamp((ph.onGrass && moving ? 0.2 * spdK : 0) + (moving ? leanK * 0.35 : 0), 0, 0.6) : 0);
     this.haptics.update(realDt);
     this.scrape = Math.max(0, this.scrape - realDt * 4);
     return this.state !== 'done';
@@ -801,7 +804,6 @@ export class Game {
           // very rarely, the driver you just carved up snaps and comes after you
           if ((cut || insane) && c.dir > 0 && !c.cop && Math.random() < 0.012) this.police.startRage(c);
           this.audio.whoosh(relSpeed / 30);
-          this.haptics.pulse(0.1, clamp(0.4 + relSpeed / 80, 0, 0.9), 0.1);
           this.rig.addShake(0.25);
         }
       }
