@@ -22,7 +22,7 @@ interface BikeDesign {
   tubes?: { tag: Tag; a: P; b: P; t: number; x: number; mirror?: boolean }[]; // frame tubes and pipes
   parts: Part[];
   fork: [P, P]; // bottom (axle) and top (clamp)
-  bars: P; barW: number;
+  bars: P; barW: number; barT?: number; // handlebar width and tube thickness (default 0.03)
   heads: { z: number; y: number; x: number; w: number; h: number }[];
   tailLamp: P;
   exhaust?: { from: P; to: P; r: number; x: number };
@@ -111,14 +111,14 @@ const DESIGNS: Record<string, BikeDesign> = {
   fs450: {
     wheelR: 0.3, rearR: 0.312, front: 0.74, rear: -0.74, frontW: 0.12, rearW: 0.16, spokes: 18, rim: 0x1b1c1f,
     colors: { a1: 0xe4ec1c, a2: 0x1d2d66 },
-    dims: [2.1, 0.82, 1.2], noMudguard: true,
+    dims: [2.1, 0.7, 1.2], noMudguard: true,
     parts: [
       // front fender, arched high over the wheel, and the number plate on the fork
       { tag: 'paint', hw: 0.075, pts: [[1.0, 0.57], [0.94, 0.66], [0.83, 0.72], [0.69, 0.74], [0.56, 0.71], [0.5, 0.67], [0.6, 0.65], [0.74, 0.66], [0.88, 0.62]] },
       { tag: 'a1', hw: 0.05, pts: [[0.7, 0.76], [0.62, 0.755], [0.58, 0.72], [0.66, 0.72]] },
       { tag: 'paint', hw: 0.08, pts: [[0.5, 1.15], [0.62, 1.0], [0.64, 0.88], [0.55, 0.85], [0.46, 1.0], [0.43, 1.13]] },
       // hand guards
-      { tag: 'dark', hw: 0.03, x: 0.4, mirror: true, pts: [[0.64, 1.2], [0.64, 1.12], [0.4, 1.1], [0.33, 1.16], [0.4, 1.22]] },
+      { tag: 'dark', hw: 0.03, x: 0.33, mirror: true, pts: [[0.64, 1.2], [0.64, 1.12], [0.4, 1.1], [0.33, 1.16], [0.4, 1.22]] },
       // shrouds and tank, flowing back into the seat
       { tag: 'paint', hw: 0.19, pts: [[0.46, 1.0], [0.5, 0.92], [0.42, 0.78], [0.3, 0.66], [0.1, 0.64], [-0.02, 0.74], [0.0, 0.9], [0.18, 0.98], [0.34, 1.02]] },
       { tag: 'paint', hw: 0.12, pts: [[0.46, 1.05], [0.5, 0.94], [0.1, 0.9], [0.0, 0.93], [0.14, 1.01], [0.3, 1.06]] },
@@ -142,7 +142,7 @@ const DESIGNS: Record<string, BikeDesign> = {
       { tag: 'chrome', a: [0.22, 0.72], b: [-0.2, 0.74], t: 0.05, x: -0.17 },
       { tag: 'chrome', a: [-0.2, 0.76], b: [-0.78, 0.9], t: 0.11, x: -0.19 },
     ],
-    fork: [[0.74, 0.3], [0.44, 1.06]], bars: [0.4, 1.14], barW: 0.8,
+    fork: [[0.74, 0.3], [0.44, 1.06]], bars: [0.4, 1.14], barW: 0.64, barT: 0.055,
     heads: [{ z: 0.62, y: 1.0, x: 0.0, w: 0.1, h: 0.08 }],
     sigF: [0.56, 1.06],
     tailLamp: [-1.0, 0.96],
@@ -188,11 +188,11 @@ export function buildBike(id: string, color: number, shadows = true, livery?: 'p
   for (const t of d.tubes ?? []) for (const sx of t.mirror ? [1, -1] : [1]) bar(t.tag, t.a, t.b, sx * t.x, t.t);
   for (const sx of [1, -1]) {
     bar('chrome', d.fork[0], d.fork[1], sx * 0.09, 0.05);
-    bar('dark', [d.bars[0], d.bars[1]], [d.bars[0] - 0.06, d.bars[1] + 0.01], sx * d.barW * 0.4, 0.035);
+    bar('dark', [d.bars[0], d.bars[1]], [d.bars[0] - 0.06, d.bars[1] + 0.01], sx * d.barW * 0.4, (d.barT ?? 0.03) + 0.005);
     for (const h of d.heads) box('head', sx * h.x, h.y, h.z, h.w, h.h, 0.03);
     if (d.mirrors) box('dark', sx * 0.24, d.mirrors[1], d.mirrors[0], 0.1, 0.05, 0.03);
   }
-  box('dark', 0, d.bars[1] + 0.005, d.bars[0], d.barW, 0.03, 0.03); // top clamp / bars
+  box('dark', 0, d.bars[1] + 0.005, d.bars[0], d.barW, d.barT ?? 0.03, d.barT ?? 0.03); // top clamp / bars
   box('chrome', 0, d.wheelR, d.front, 0.22, 0.06, 0.06); // front axle
   if (d.exhaust) bar('chrome', d.exhaust.from, d.exhaust.to, d.exhaust.x, d.exhaust.r * 2);
   box('tail', 0, d.tailLamp[1], d.tailLamp[0], 0.12, 0.04, 0.03);

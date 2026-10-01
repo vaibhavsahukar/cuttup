@@ -91,7 +91,7 @@ export const VEHICLES: VehicleSpec[] = [
     tireMu: 1.22, frontGrip: 1.04, powerOversteer: 0.6, cgHeight: 0.86, wheelbase: 1.48, frontWeight: 0.44, track: 0.2,
     rollFactor: 0, pitchFactor: 0.075, brakeG: 1.15, downforce: 0.01, steerLock: 0.55, steerSpeed: 5.4, highSpeedSteer: 0.24,
     stability: 0.66, yawInertia: 0.62,
-    dims: { length: 2.1, width: 0.82, height: 1.2 }, engine: { cylinders: 1, tone: 1.0, roughness: 0.5 } },
+    dims: { length: 2.1, width: 0.7, height: 1.2 }, engine: { cylinders: 1, tone: 1.0, roughness: 0.5 } },
   { ...base, id: 'zr1', name: 'Conquette', kind: 'car', model: 'zr1', color: 0x0c0c0e,
     hp: 638, massKg: 1530, drive: 'RWD', zeroSixty: 3.3, topSpeedMph: 205,
     character: 'Brutal supercharged torque, tail-happy on throttle, stable at speed',
