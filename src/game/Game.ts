@@ -410,7 +410,7 @@ export class Game {
     const atPump = inLane && Math.abs(ph.v) < 22;
     if (!atPump) this.fuel = Math.max(0, this.fuel - (Math.max(0, ds) / range) * (0.5 + 0.8 * ph.throttle) - dt * 0.0003);
     else if (this.fuel < 1) {
-      this.fuel = Math.min(1, this.fuel + dt * 0.55);
+      this.fuel = 1; // instant: the tank fills the moment you reach the pumps
       // one TANK FULL per visit to the pumps
       if (this.fuel >= 1 && !this.tankFullShown) { this.tankFullShown = true; this.onPopup?.({ text: 'TANK FULL', color: '#4dff88' }); }
     }
