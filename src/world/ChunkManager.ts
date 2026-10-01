@@ -62,6 +62,8 @@ export class ChunkManager {
   private pools: Record<string, PropPool> = {};
   private behind = 2;
   lampMaterial: THREE.MeshStandardMaterial;
+  /** the asphalt (wet in the rain: darker and glossier) */
+  roadMat!: THREE.MeshStandardMaterial;
   buildingMaterial?: THREE.MeshStandardMaterial;
   private edge: number;
 
@@ -114,7 +116,7 @@ export class ChunkManager {
     }
 
     // ---- ribbon materials ----
-    const roadMat = hw
+    const roadMat = this.roadMat = hw
       ? new THREE.MeshStandardMaterial({ map: highwayTexture(layout.medianHalf, layout.roadHalfWidth - 1, [0, 1, 2, 3, 4, 5].map((i) => layout.laneCenter(0) - layout.laneWidth / 2 + i * layout.laneWidth), layout.laneCenter(4) + layout.laneWidth / 2), roughness: 0.92 })
       : new THREE.MeshStandardMaterial({ map: backroadTexture(layout.roadHalfWidth - 1, layout.laneWidth), roughness: 0.9 });
     const concrete = new THREE.MeshStandardMaterial({ map: concreteTexture(), roughness: 0.95, side: THREE.DoubleSide });

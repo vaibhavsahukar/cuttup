@@ -76,6 +76,8 @@ export class Traffic {
   diff: Difficulty;
   /** the player's high beam is on: close cars ahead get rattled */
   highBeam = false;
+  /** rain (0..1): everyone drives a little slower */
+  wet = 0;
   onHonk: ((car: TrafficCar, intensity: number) => void) | null = null;
   obstacles: Obstacle[] = []; // wrecks etc.
   spawnAhead: number;
@@ -280,6 +282,7 @@ export class Traffic {
       // nobody holds an exact speed: cruise drifts a few percent over tens of seconds
       let v0 = Math.min(c.v0 * (1 + 0.03 * Math.sin(this.time * 0.17 + c.wanderPhase * 3)), Math.sqrt(2.6 / Math.max(1e-5, kMax)));
       if (c.freezeT > 0) { c.freezeT -= dt; v0 *= 0.45; }
+      v0 *= 1 - 0.12 * this.wet;
 
       // ------------- scared driver reactions -------------
       const relS = (player.s - c.s) * c.dir; // >0 player ahead of car (in car's direction)

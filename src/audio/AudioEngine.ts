@@ -11,6 +11,7 @@ export class AudioEngine {
   private noise: AudioBuffer;
   private eng?: { o1: OscillatorNode; o2: OscillatorNode; o3: OscillatorNode; lp: BiquadFilterNode; g: GainNode; am: GainNode; lfo: OscillatorNode; lfoG: GainNode; nG: GainNode; nf: BiquadFilterNode; spec: VehicleSpec };
   private wind: GainNode; private windF: BiquadFilterNode;
+  private rainG!: GainNode;
   private squeal: GainNode;
   private scrape: GainNode;
   volumes = { master: 0.8, engine: 0.8, sfx: 0.8 };
@@ -47,7 +48,23 @@ export class AudioEngine {
     const sc = c.createBiquadFilter(); sc.type = 'highpass'; sc.frequency.value = 2500;
     this.scrape = c.createGain(); this.scrape.gain.value = 0;
     this.loopNoise().connect(sc).connect(this.scrape).connect(this.sfx);
+    // rain: a hiss of high noise over a soft low patter
+    this.rainG = c.createGain(); this.rainG.gain.value = 0;
+    const rh = c.createBiquadFilter(); rh.type = 'highpass'; rh.frequency.value = 1800;
+    const rl = c.createBiquadFilter(); rl.type = 'lowpass'; rl.frequency.value = 600;
+    const rlG = c.createGain(); rlG.gain.value = 0.6;
+    this.loopNoise().connect(rh).connect(this.rainG);
+    this.loopNoise().connect(rl).connect(rlG).connect(this.rainG);
+    this.rainG.connect(this.sfx);
     this.applyVolumes();
+  }
+  /** rain loudness 0..1 */
+  rain(level: number) { this.rainG.gain.setTargetAtTime(level * 0.22, this.ctx.currentTime, 0.3); }
+  /** a distant thunder roll */
+  thunder() {
+    const d = Math.random() * 1.5;
+    this.burst(3.5, 120, 'lowpass', 0.9, d, 0.7);
+    this.burst(1.2, 300, 'lowpass', 0.5, d + 0.1);
   }
 
   private loopNoise() {

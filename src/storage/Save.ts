@@ -1,4 +1,5 @@
 import type { TimeChoice } from '../world/TimeOfDay';
+import type { WeatherChoice } from '../world/Weather';
 import { DEFAULT_BINDINGS, DEFAULT_PAD, type Bindings, type PadBindings } from '../input/Input';
 
 export type QualityName = 'low' | 'medium' | 'high' | 'ultra';
@@ -11,6 +12,7 @@ export interface Settings {
   camera: 'chase' | 'hood';
   difficulty: number; // 0 easy .. 3 insane
   timeOfDay: TimeChoice;
+  weather: WeatherChoice;
   bindings: Bindings;
   padBindings: PadBindings;
   /** bike rider aids: abs 0..2, tc 0..3, aw 0..3 (0 = off), eb 0..2 engine braking low / medium / high */
@@ -33,7 +35,7 @@ export const QUALITY: Record<QualityName, { pixelRatio: number; shadows: boolean
 const defaults = (): SaveData => ({
   settings: {
     quality: 'high', resolution: 'native', fullscreen: false,
-    volumes: { master: 0.8, engine: 0.8, sfx: 0.8 }, units: 'mph', camera: 'chase', difficulty: 1, timeOfDay: 'auto',
+    volumes: { master: 0.8, engine: 0.8, sfx: 0.8 }, units: 'mph', camera: 'chase', difficulty: 1, timeOfDay: 'auto', weather: 'changing',
     bindings: structuredClone(DEFAULT_BINDINGS), padBindings: structuredClone(DEFAULT_PAD),
     aids: { abs: 2, tc: 2, aw: 1, eb: 1 }, ridingStyle: 'assisted', showFps: false, vehicle: 'zr1', map: 'city',
   },

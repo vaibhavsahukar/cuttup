@@ -24,6 +24,9 @@ export class Environment {
   rate = 1 / 15;
   /** 0 = full day .. 1 = full night */
   nightFactor = 0;
+  /** rain (0..1): greys the sky, pulls the fog in and dims the sun */
+  wet = 0;
+  private fogBase: [number, number] = [0, 0];
   private keys: { h: number; sky: THREE.Color; hor: THREE.Color; fog: THREE.Color; sun: THREE.Color; sunI: number; amb: number }[];
   private backMats: { m: THREE.MeshBasicMaterial; base: THREE.Color }[] = [];
 
@@ -45,6 +48,7 @@ export class Environment {
     this.night = tod === 'night';
     const sunC = C(map.sunColor), sunI = map.sunIntensity, amb = map.ambient;
     this.fog = new THREE.Fog(fogC, map.fogNear * drawScale, map.fogFar * drawScale);
+    this.fogBase = [this.fog.near, this.fog.far];
     scene.fog = this.fog;
     scene.background = fogC.clone();
 
@@ -112,8 +116,23 @@ export class Environment {
     const az = ((h - 6) / 12) * Math.PI;
     const dir = el > 0.05 ? new THREE.Vector3(Math.cos(az), Math.max(0.12, el), 0.35) : new THREE.Vector3(-0.3, 0.8, 0.4);
     this.sun.userData.dir = dir.normalize();
-    // night factor from sun intensity curve
+    // night factor from sun intensity curve (before the rain dims the sun)
     this.nightFactor = Math.min(1, Math.max(0, (1.3 - this.sun.intensity) / 1.05));
+    // rain: an overcast grey sky, closer fog, a weak sun and flatter light
+    const w = this.wet;
+    if (w > 0) {
+      const lum = (c: THREE.Color) => (c.r + c.g + c.b) / 3;
+      for (const c of [u.top.value as THREE.Color, u.horizon.value as THREE.Color, u.fogC.value as THREE.Color]) {
+        const l = lum(c) * 0.75;
+        c.lerp(new THREE.Color(l * 0.95, l, l * 1.06), w * 0.85);
+      }
+      this.fog.color.copy(u.fogC.value);
+      (this.scene.background as THREE.Color).copy(u.fogC.value);
+      this.sun.intensity *= 1 - 0.7 * w;
+      this.hemi.intensity *= 1 - 0.25 * w;
+    }
+    this.fog.near = this.fogBase[0] * (1 - 0.5 * w);
+    this.fog.far = this.fogBase[1] * (1 - 0.4 * w);
     this.night = this.nightFactor > 0.6;
     const bright = 1 - this.nightFactor * 0.85;
     for (const bm of this.backMats) bm.m.color.copy(bm.base).multiplyScalar(bright).lerp(this.fog.color, 0.2);

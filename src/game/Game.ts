@@ -18,6 +18,7 @@ import { clamp } from '../core/math';
 import { Police } from '../traffic/Police';
 import { randomCrashMessage } from '../data/crashMessages';
 import { difficultyOf } from '../data/difficulty';
+import { Weather } from '../world/Weather';
 import { timeSetting } from '../world/TimeOfDay';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -58,6 +59,7 @@ export class Game {
   private fireT = 0;
   private boomT = 99;
   private boomLight = new THREE.PointLight(0xff7a22, 0, 90, 2);
+  weather: Weather;
   private skidAcc = 0;
   private tmpV = new THREE.Vector3();
   private lampLights: THREE.PointLight[] = [];
@@ -88,6 +90,8 @@ export class Game {
     this.path = new RoadPath(this.map);
     const tod = timeSetting(settings.timeOfDay, this.map.id);
     this.env = new Environment(this.scene, this.map, tod.hour, tod.cycle, q.shadows, q.drawDist);
+    this.weather = new Weather(settings.weather ?? 'changing');
+    this.scene.add(this.weather.lines);
     const night = this.env.night;
     this.scene.environment = pmrem;
     this.chunks = new ChunkManager(this.path, this.map, this.layout, { chunksAhead: Math.ceil((this.map.fogFar * q.drawDist) / 64) + 1, propDensity: q.propDensity, shadows: q.shadows });
@@ -242,7 +246,20 @@ export class Game {
       }
     } else this.rig.update(realDt, p, input.lookback, input.lookYaw);
     this.env.tick(realDt);
-    if (this.env.cycle) this.applyLight();
+    // weather: rain builds and eases off; grip, sky, fog, the road surface and the sound all follow it
+    this.weather.update(realDt, this.camera.position, this.player.worldVel, () => this.audio.thunder());
+    const w = this.weather.wet;
+    if (Math.abs(w - this.env.wet) > 0.002 || this.weather.flash > 0) {
+      this.env.wet = w;
+      this.env.applyHour();
+      this.env.hemi.intensity += this.weather.flash * 2.5;
+      const rm = this.chunks.roadMat;
+      rm.roughness = 0.92 - 0.5 * w; rm.metalness = 0.12 * w; rm.color.setScalar(1 - 0.3 * w);
+      this.applyLight();
+    } else if (this.env.cycle) this.applyLight();
+    this.player.phys.gripScale = this.weather.grip;
+    this.traffic.wet = w;
+    this.audio.rain(this.state === 'done' ? 0 : w);
     this.env.update(this.camera.position, p.model.root.position);
     if (this.lampLights.length) {
       const first = Math.floor((ph.s - 10 - 8) / 32) + 1;

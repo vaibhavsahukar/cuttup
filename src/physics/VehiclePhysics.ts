@@ -56,6 +56,8 @@ export class VehiclePhysics {
   aids: RiderAids = { abs: 2, tc: 2, aw: 1, eb: 1, manual: false };
   pull = 0; // rider weight back (0..1), smoothed
   wheelieT = 0; // seconds with the front up (scoring)
+  /** road surface grip multiplier (rain) */
+  gripScale = 1;
   private pullPrev = 0; private clutchT = 0;
   /** extra front lift the rider adds by holding the wheelie too long: the assist slowly loses the front (rad) */
   private overPull = 0;
@@ -188,7 +190,7 @@ export class VehiclePhysics {
     const av = Math.abs(v);
     const bk = this.bike, A = this.aids;
     this.absOn = false; this.tcOn = false; this.awOn = false;
-    const mu = sp.tireMu * (this.onGrass ? 0.55 : 1) * (bk ? this.tyreGrip : 1);
+    const mu = sp.tireMu * (this.onGrass ? 0.55 : 1) * (bk ? this.tyreGrip : 1) * this.gripScale;
     // bikes lean on the tyres: what the turn uses laterally is not available for braking / drive
     const latUse = bk ? Math.min(0.95, Math.abs(Math.tan(this.lean)) / (mu * ARCADE_GRIP)) : 0;
     const longK = Math.sqrt(1 - latUse * latUse);
