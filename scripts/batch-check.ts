@@ -85,7 +85,7 @@ await page.evaluate(() => {
   const a = (window as any).__app, g = a.game; g.startCrash = () => undefined;
   for (const c of g.traffic.cars) c.s += 8000;
   const ph = g.player.phys;
-  for (let i = 0; i < 45; i++) { ph.v = 38; ph.vl = 9; ph.psi = 0.25; ph.r = 0; ph.fall = null; ph.d = g.layout.laneCenter(2); a.advance(1 / 30, 1 / 30); }
+  for (let i = 0; i < 30; i++) { ph.v = 38; ph.vl = 9; ph.psi = 0.25; ph.r = 0; ph.fall = null; ph.d = g.layout.laneCenter(2); a.advance(1 / 30, 1 / 30); }
 });
 await page.waitForTimeout(300);
 await page.screenshot({ path: `${out}/drift.png` });

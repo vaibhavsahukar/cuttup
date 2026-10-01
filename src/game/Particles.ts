@@ -80,6 +80,10 @@ export class Particles {
   readonly skids = new SkidMarks();
   root = new THREE.Group();
   private sparks: P[] = [];
+  /** black sparks (tyres): same motion as the wall scrape sparks, drawn dark instead of glowing */
+  private darks: P[] = [];
+  private darkGeo = new THREE.BufferGeometry();
+  private darkPts!: THREE.Points;
   private chunks: P[] = [];
   private sparkGeo: THREE.BufferGeometry;
   private sparkPts: THREE.Points;
@@ -104,7 +108,10 @@ export class Particles {
     this.chunkMesh.count = 0;
     this.chunkMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.chunkMesh.setColorAt(0, new THREE.Color());
-    this.root.add(this.sparkPts, this.chunkMesh, this.smokes.pts, this.flames.pts, this.skids.mesh);
+    this.darkGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.SMAX * 3), 3));
+    this.darkPts = new THREE.Points(this.darkGeo, new THREE.PointsMaterial({ size: 0.09, color: 0x070707, transparent: true, opacity: 0.95, depthWrite: false }));
+    this.darkPts.frustumCulled = false;
+    this.root.add(this.darkPts, this.sparkPts, this.chunkMesh, this.smokes.pts, this.flames.pts, this.skids.mesh);
   }
 
   /** soft grey smoke: tyre smoke when drifting, wreck smoke */
@@ -139,6 +146,15 @@ export class Particles {
     this.debris(pos, new THREE.Vector3(), Math.round(30 * power), 0x222222, false, 0.3);
   }
 
+  darkSpark(pos: THREE.Vector3, baseVel: THREE.Vector3, n: number, spread = 6) {
+    for (let i = 0; i < n; i++) {
+      if (this.darks.length >= this.SMAX) this.darks.shift();
+      const v = baseVel.clone().multiplyScalar(0.4 + Math.random() * 0.5).add(new THREE.Vector3((Math.random() - 0.5) * spread, Math.random() * spread * 0.7, (Math.random() - 0.5) * spread));
+      const life = 0.3 + Math.random() * 0.6;
+      this.darks.push({ pos: pos.clone(), vel: v, life, max: life, rot: new THREE.Euler(), spin: new THREE.Vector3(), scale: 1, color: new THREE.Color(0, 0, 0) });
+    }
+  }
+
   spark(pos: THREE.Vector3, baseVel: THREE.Vector3, n: number, spread = 6) {
     for (let i = 0; i < n; i++) {
       if (this.sparks.length >= this.SMAX) this.sparks.shift();
@@ -165,6 +181,16 @@ export class Particles {
 
   update(dt: number) {
     this.flames.update(dt); this.smokes.update(dt);
+    const da = this.darkGeo.attributes.position as THREE.BufferAttribute;
+    let dn = 0;
+    for (const p of this.darks) {
+      p.life -= dt; p.vel.y -= 9.8 * dt; p.pos.addScaledVector(p.vel, dt);
+      const g = this.groundY(p.pos);
+      if (p.pos.y < g) { p.pos.y = g; p.vel.y *= -0.3; p.vel.x *= 0.7; p.vel.z *= 0.7; }
+      da.setXYZ(dn++, p.pos.x, p.pos.y, p.pos.z);
+    }
+    this.darks = this.darks.filter((p) => p.life > 0);
+    this.darkGeo.setDrawRange(0, dn); da.needsUpdate = true;
     const pa = this.sparkGeo.attributes.position as THREE.BufferAttribute;
     const ca = this.sparkGeo.attributes.color as THREE.BufferAttribute;
     let n = 0;

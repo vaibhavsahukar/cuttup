@@ -285,18 +285,13 @@ export class Game {
     if (beta < thresh || ph.speed < 9 || ph.onGrass) { this.skidAcc = 0; return; }
     const amount = Math.min(1, (beta - thresh) / 0.25 + 0.3);
     const rear = this.player.model.wheels.filter((w) => !w.front);
-    this.skidAcc += ph.speed * dt;
-    const mark = this.skidAcc > 0.6;
-    if (mark) this.skidAcc = 0;
     const vel = this.player.worldVel;
-    const yaw = Math.atan2(vel.x, vel.z);
     for (const w of rear) {
       w.obj.getWorldPosition(this.tmpV);
       const gy = this.player.model.root.position.y;
       this.tmpV.y = gy + 0.05;
-      this.particles.smoke(this.tmpV, vel, 2, 1.6, 0.45 + 0.25 * amount, 3.4, 0.95);
-      if (Math.random() < amount * 25 * dt) this.particles.spark(this.tmpV, vel, 1, 2.5);
-      if (mark) { this.tmpV.y = gy + 0.03; this.particles.skids.add(this.tmpV, yaw, 0.9 + ph.speed * 0.03, this.player.bike ? 0.14 : 0.3); }
+      // black sparks flying off the tyres, the same spray as scraping a wall but dark
+      this.particles.darkSpark(this.tmpV, vel, Math.round(1 + amount * 3), 3.5);
     }
   }
 
