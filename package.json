@@ -17,7 +17,8 @@
     "check:traffic": "tsx scripts/traffic-check.ts",
     "check:features": "tsx scripts/features-check.ts",
     "dist:dir": "npm run build && electron-builder --win dir --x64",
-    "artifact": "npm run build && node scripts/make-artifact.mjs"
+    "artifact": "npm run build && node scripts/make-artifact.mjs",
+    "release:html": "VITE_RELEASE=1 npm run build && node scripts/make-artifact.mjs release/Reckless-Driving-The-Game.html"
   },
   "build": {
     "appId": "com.cutup.game",

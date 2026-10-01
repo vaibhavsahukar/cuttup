@@ -12,6 +12,8 @@ import { MPH, KPH } from '../core/math';
 const $ = <T extends HTMLElement = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector(sel) as T;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
+/** the packaged HTML build (VITE_RELEASE=1) leaves out the model viewer and dev mode */
+export const RELEASE = import.meta.env.VITE_RELEASE === '1';
 export type ScreenId = 'menu' | 'garage' | 'models' | 'maps' | 'settings' | 'hud' | 'pause' | 'results' | 'crashui';
 
 export interface UIHandlers {
@@ -44,7 +46,7 @@ export class UI {
           <button data-a="play" class="primary">Play</button>
           <button data-a="garage">Vehicle Select</button>
           <button data-a="maps">Map Select</button>
-          <button data-a="models">Model Viewer</button>
+          ${RELEASE ? '' : '<button data-a="models">Model Viewer</button>'}
           <button data-a="settings">Settings</button>
           <button data-a="quit">Quit</button>
         </div>
@@ -85,7 +87,7 @@ export class UI {
       <div id="pause" class="screen"><div class="panel center">
         <h2>Paused</h2>
         <button data-a="resume" class="primary">Resume</button><button data-a="restart">Restart</button>
-        <button data-a="settings">Settings</button><button data-a="dev">Dev mode: fly camera</button><button data-a="menu">Quit to menu</button></div></div>
+        <button data-a="settings">Settings</button>${RELEASE ? '' : '<button data-a="dev">Dev mode: fly camera</button>'}<button data-a="menu">Quit to menu</button></div></div>
       <div id="results" class="screen"><div class="over"></div></div>
       <div id="flash"></div>`);
 

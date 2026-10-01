@@ -4,7 +4,7 @@ import './ui/style.css';
 import { Save, QUALITY } from './storage/Save';
 import { Input } from './input/Input';
 import { AudioEngine } from './audio/AudioEngine';
-import { UI } from './ui/UI';
+import { UI, RELEASE } from './ui/UI';
 import { PreviewStage } from './ui/PreviewStage';
 import { Game } from './game/Game';
 import { getVehicle, VEHICLES } from './data/vehicles';
@@ -139,7 +139,7 @@ async function boot() {
     }
   });
   // DEV MODE: F2 toggles the free flying camera during a run
-  addEventListener('keydown', (e) => { if (e.code === 'F2' && !e.repeat && mode === 'game' && game) { game.setDev(!game.dev); ui.devMode(game.dev); e.preventDefault(); } });
+  if (!RELEASE) addEventListener('keydown', (e) => { if (e.code === 'F2' && !e.repeat && mode === 'game' && game) { game.setDev(!game.dev); ui.devMode(game.dev); e.preventDefault(); } });
   // crash screen: stays until the player presses Enter or the gamepad A button
   addEventListener('keydown', (e) => { if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !e.repeat && mode === 'game' && game?.state === 'crash') { game.continueCrash(); e.preventDefault(); } });
   let padAHeld = true; // a fresh press is needed: A held while driving must not count
