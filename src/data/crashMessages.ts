@@ -9,6 +9,7 @@
  *   truck                 what was hit is a truck, van or pickup
  *   cop                   what was hit is a police car
  *   rage                  the car was a road rager chasing you (only rage lines are used then)
+ *   fuel / free           ran out of gas (free: nobody was chasing you; with caught: the police were)
  *   bus                   what was hit is a school bus (only bus lines are used then)
  *   caught                a police car got you (the only tag such lines need: they replace the hit / solo lines)
  *   wanted                you crashed with a wanted level active (police stars); shown only some of the time
@@ -162,6 +163,20 @@ rage|He was having a bad day. You made it worse, and he returned the favour
 rage|Next time, maybe do not carve up a stranger at 150 mph
 rage|You made an enemy and he drove like he meant it
 rage|An angry commuter just out-drove you. Let that sink in
+fuel,free|You were fast, furious and on empty
+fuel,free|All that speed and you forgot the one thing every car needs
+fuel,free|The gas light was on for miles. It was not a suggestion
+fuel,free|Zero to sixty in three seconds, sixty to zero in one empty tank
+fuel,free|Somewhere a gas station attendant is shaking his head
+fuel,free|You did not crash. You just stopped. Somehow that is worse
+fuel,free|The good news: nobody got hurt. The bad news: you have to walk
+fuel,free|Running on fumes is not a strategy
+fuel,caught|You ran out of gas in a police chase. That is a new one for the officers
+fuel,caught|The cops did not even have to try. Your tank did all the work
+fuel,caught|Out of gas and out of luck. Hands where they can see them
+fuel,caught|Most people get caught at a roadblock. You got caught by a gas gauge
+fuel,caught|The officer would like to thank your empty tank for its cooperation
+fuel,caught|You had a plan for the cops. You did not have a plan for fuel
 caught|Congratulations, you outran nobody. The officer would like a word
 caught|Nice run. The officer had a full tank, a siren and absolutely nothing better to do
 caught|You have the right to remain silent. Your driving already said plenty
@@ -226,6 +241,8 @@ const TRUCKS = new Set(['boxtruck', 'van', 'pickup']);
 /** the facts about a crash that messages are matched against */
 export function crashFacts(c: CrashContext) {
   const hit = c.kind === 'car' || c.kind === 'headon';
+  // running out of gas has its own lines (with the police, or without)
+  if (c.kind === 'fuel') return new Set<string>(['fuel', c.cop ? 'caught' : 'free', c.map, c.bike ? 'bike' : 'car']);
   // a police car catching you gets its own set of lines
   if (hit && c.cop) return new Set<string>(['caught', c.map, c.bike ? 'bike' : 'car']);
   const f = new Set<string>([c.map, c.kind, c.bike ? 'bike' : 'car']);

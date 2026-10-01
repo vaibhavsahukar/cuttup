@@ -66,6 +66,7 @@ export class UI {
       <div id="hud" class="screen">
         <div class="copvig"><i></i></div>
         <div class="hbind" hidden>HIGH BEAM</div>
+        <div class="fuel"><label>FUEL</label><div class="bar"><i></i></div><span class="nx"></span></div>
         <div class="stars" title="Wanted level"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
         <div class="score"><div class="v">0</div><div class="m">x1.0</div><div class="combo"><i></i></div></div>
         <div class="fps" hidden></div>
@@ -360,6 +361,20 @@ export class UI {
     i.style.background = temp < 0.75 ? '#5ab0ff' : temp < 1.1 ? '#4dff88' : '#ff5a4d';
     i.style.opacity = String(1 - wear * 0.5);
   }
+  private lastFuel = '';
+  /** fuel gauge (bottom left) with the distance to the next gas station */
+  fuel(level: number, toNext: number, units: 'mph' | 'kph', filling: boolean) {
+    const dist = units === 'mph' ? `${(Math.max(0, toNext) / 1609.34).toFixed(1)} mi` : `${(Math.max(0, toNext) / 1000).toFixed(1)} km`;
+    const key = `${Math.round(level * 200)}|${dist}|${filling}`;
+    if (key === this.lastFuel) return;
+    this.lastFuel = key;
+    const el = $('#hud .fuel');
+    const i = el.querySelector('i') as HTMLElement;
+    i.style.width = `${Math.round(level * 100)}%`;
+    el.classList.toggle('low', level < 0.2);
+    el.classList.toggle('filling', filling);
+    (el.querySelector('.nx') as HTMLElement).textContent = filling ? 'FILLING' : level <= 0 ? 'EMPTY' : `GAS ${dist}`;
+  }
   highBeam(on: boolean) { const e = $('#hud .hbind'); if (e.hidden === on) e.hidden = !on; }
   private lastVig = -1;
   /** red vignette round the screen border while a cop is near; `level` 0..1 grows as the nearest cop closes in */
@@ -393,9 +408,9 @@ export class UI {
     this.h.click();
     if (a === 'retry') this.h.restart(); else if (a === 'vehicle') this.h.garage(); else if (a === 'map') this.h.maps(); else this.h.toMenu();
   }
-  crashMessage(text: string, caught = false) {
+  crashMessage(text: string, caught = false, banner?: string) {
     const e = $('#crashui .shame'); e.textContent = text; e.hidden = !text;
-    const w = $('#crashui .wreck'); w.textContent = caught ? 'CAUGHT' : 'WRECKED'; w.classList.toggle('caught', caught);
+    const w = $('#crashui .wreck'); w.textContent = banner ?? (caught ? 'CAUGHT' : 'WRECKED'); w.classList.toggle('caught', caught);
     // restart the banner animation for this crash
     w.style.animation = 'none'; void w.offsetWidth; w.style.animation = '';
   }
@@ -406,7 +421,7 @@ export class UI {
     const k = units === 'mph' ? MPH : KPH;
     const board = this.save.data.leaderboard[mapId] ?? [];
     const dist = units === 'mph' ? `${(r.distance / 1609.34).toFixed(2)} mi` : `${(r.distance / 1000).toFixed(2)} km`;
-    const how = r.caught ? 'Caught by the police' : { car: 'Rear-ended / side-swiped traffic', headon: 'Head-on collision', barrier: 'Hit the barrier', tree: 'Left the road', rock: 'Hit a rock', lowside: 'Lowside: the bike slid out from under you', highside: 'Highside: the rear grabbed and threw you', looped: 'Looped it: flipped over backwards', endo: 'Went over the bars', tipover: 'Fell over' }[r.crashKind];
+    const how = r.crashKind === 'fuel' ? (r.caught ? 'Ran out of gas and got caught' : 'Ran out of gas') : r.caught ? 'Caught by the police' : { car: 'Rear-ended / side-swiped traffic', headon: 'Head-on collision', barrier: 'Hit the barrier', tree: 'Left the road', rock: 'Hit a rock', lowside: 'Lowside: the bike slid out from under you', highside: 'Highside: the rear grabbed and threw you', looped: 'Looped it: flipped over backwards', endo: 'Went over the bars', tipover: 'Fell over', fuel: 'Ran out of gas' }[r.crashKind];
     $('#results .panel').innerHTML = `
       <div>
         <h2>Run over · ${esc(getMap(mapId).name)}</h2>

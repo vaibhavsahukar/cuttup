@@ -19,6 +19,8 @@ import { Police } from '../traffic/Police';
 import { randomCrashMessage } from '../data/crashMessages';
 import { difficultyOf } from '../data/difficulty';
 import { Weather } from '../world/Weather';
+import { Features } from '../world/Features';
+import { StationRenderer } from '../world/Stations';
 import { timeSetting } from '../world/TimeOfDay';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -60,6 +62,15 @@ export class Game {
   private boomT = 99;
   private boomLight = new THREE.PointLight(0xff7a22, 0, 90, 2);
   weather: Weather;
+  features: Features;
+  stations: StationRenderer;
+  /** fuel left, 0..1 (a full tank lasts roughly 3 to 4 miles of hard driving) */
+  fuel = 1;
+  refueling = false;
+  private lowFuelWarned = false;
+  private stallT = 0;
+  /** the run ended because the tank ran dry (the car just sits there; no crash cinematic) */
+  stalled = false;
   private skidAcc = 0;
   private tmpV = new THREE.Vector3();
   private lampLights: THREE.PointLight[] = [];
@@ -94,21 +105,30 @@ export class Game {
     this.scene.add(this.weather.lines);
     const night = this.env.night;
     this.scene.environment = pmrem;
-    this.chunks = new ChunkManager(this.path, this.map, this.layout, { chunksAhead: Math.ceil((this.map.fogFar * q.drawDist) / 64) + 1, propDensity: q.propDensity, shadows: q.shadows });
+    // where the run starts: on the city shoulder, at a gas station on the countryside highway, in a roadside lot on the backroad
+    const startAtStation = this.map.id !== 'city';
+    this.features = new Features(this.map, this.layout, null);
+    const startPose = startAtStation ? this.features.startPose({ s0: 0, ramp: this.map.road === 'highway' }) : null;
+    if (startPose) this.features = new Features(this.map, this.layout, -startPose.x);
+    this.stations = new StationRenderer(this.path, this.features);
+    this.scene.add(this.stations.root);
+    this.chunks = new ChunkManager(this.path, this.map, this.layout, { chunksAhead: Math.ceil((this.map.fogFar * q.drawDist) / 64) + 1, propDensity: q.propDensity, shadows: q.shadows }, this.features);
     this.scene.add(this.chunks.root);
     for (let i = 0; i < 40; i++) this.chunks.update(0);
 
     this.player = new Player(this.spec, this.path, true, q.shadows);
     this.player.model.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = q.shadows; });
     this.scene.add(this.player.model.root);
-    const startLane = this.map.road === 'highway' ? 2 : 0;
-    this.player.phys.reset(0, this.layout.laneCenter(startLane), 22);
+    // a standing start
+    const startD = startPose ? startPose.d : this.layout.playerMax - 1.6;
+    this.player.phys.reset(0, startD, 0);
     this.player.phys.setAids({ ...settings.aids, manual: settings.ridingStyle === 'manual' });
 
     this.traffic = new Traffic(this.path, this.map, this.layout, settings.difficulty, q.drawDist);
     this.traffic.night = night;
     this.scene.add(this.traffic.root);
-    this.proxy = { s: 0, d: this.player.phys.d, v: 22, L: this.player.collL, W: this.player.collW, alive: true };
+    this.stations.update(0);
+    this.proxy = { s: 0, d: this.player.phys.d, v: 0, L: this.player.collL, W: this.player.collW, alive: true };
     this.traffic.populate(0);
     this.traffic.prewarm(this.map.road === 'highway' ? 12 : 4);
     this.traffic.onHonk = (c, intensity) => {
@@ -189,9 +209,11 @@ export class Game {
       const bike = p.bike;
       const keyPull = bike && input.throttle > 0.5 && input.brakeKey > 0.5;
       const c: Controls = this.state === 'countdown'
-        ? { throttle: 0.35, brake: 0, steer: 0, handbrake: false }
+        ? { throttle: 0, brake: 0.45, frontBrake: 0.45, steer: 0, handbrake: false } // held on the brakes (a full pedal at a standstill would select reverse)
         : {
-          throttle: input.throttle, brake: keyPull ? input.brakePad : input.brake, frontBrake: input.frontBrake, steer: input.steer, handbrake: input.handbrake,
+          throttle: this.fuel > 0 ? input.throttle : 0,
+          // parked with no pedal pressed: the brakes hold the car (no rolling back down a slope)
+          ...(input.throttle < 0.05 && input.brake < 0.05 && Math.abs(ph.v) < 1 ? { brake: 0.35 } : {}), brake: keyPull ? input.brakePad : input.brake, frontBrake: input.frontBrake, steer: input.steer, handbrake: input.handbrake,
           hang: input.hang, pull: bike ? Math.max(input.wheelie, keyPull ? 1 : 0) : 0,
         };
       // Split the frame into equal sub-steps that add up to exactly this frame's time. A fixed step with a
@@ -216,10 +238,12 @@ export class Game {
       this.horn(dt);
       this.bumpCd -= dt;
       this.driverAids(dt, realDt);
+      this.fuelStep(dt, ds);
     } else if (this.state === 'crash') {
       this.crashFx(dt);
       this.proxy.alive = false;
-      this.crash.update(dt, this.traffic);
+      if (!this.stalled) this.crash.update(dt, this.traffic);
+      else this.stallWait(dt);
       this.crashTimer += realDt;
       // The wreck plays out and the crash screen stays until the player continues (A or Enter, see continueCrash)
     }
@@ -227,12 +251,13 @@ export class Game {
     this.traffic.update(dt, this.proxy, this.scoring.distance);
     this.police.update(dt, this.proxy, ph.dDot, this.scoring.score, this.state === 'driving');
     this.audio.siren(this.police.cops.length > 0 && this.state !== 'done' && !(this.state === 'crash' && this.crashTimer > 6) ? clamp(1 - this.police.nearest(ph.s) / 250, 0.1, 1) : 0);
-    this.chunks.update(this.state === 'crash' ? this.crash.wrecks[0]?.s ?? ph.s : ph.s);
+    this.chunks.update(this.state === 'crash' && !this.stalled ? this.crash.wrecks[0]?.s ?? ph.s : ph.s);
+    this.stations.update(ph.s);
     if (this.state !== 'crash') p.sync(dt);
     this.traffic.sync(dt, ph.s);
     this.particles.update(dt);
 
-    if (this.state === 'crash') {
+    if (this.state === 'crash' && !this.stalled) {
       this.rig.crash(realDt, this.crash.focus, this.crash.camAngle, this.crash.t, this.groundAt(this.crash.focus), this.crash.camSide);
       // keep the cinematic camera on the player's side of the barriers (never inside walls / pillars)
       const pr = projectToRoad(this.path, this.camera.position, this.crash.focus ? this.crash.wrecks[0]?.s ?? ph.s : ph.s);
@@ -324,13 +349,55 @@ export class Game {
     }
   }
 
+  /** fuel use, refuelling in the pump lane, the low fuel warning, and running dry */
+  private fuelStep(dt: number, ds: number) {
+    const ph = this.player.phys;
+    if (this.state !== 'driving') return;
+    const range = this.player.bike ? 4800 : 6200; // metres on a tank at a steady cruise
+    this.fuel = Math.max(0, this.fuel - (Math.max(0, ds) / range) * (0.5 + 0.8 * ph.throttle) - dt * 0.0003);
+    this.refueling = this.features.inRefuel(ph.s, ph.d) && Math.abs(ph.v) < 13.4;
+    if (this.refueling && this.fuel < 1) {
+      const before = this.fuel;
+      this.fuel = Math.min(1, this.fuel + dt * 0.25);
+      if (before < 1 && this.fuel >= 1) this.onPopup?.({ text: 'TANK FULL', color: '#4dff88' });
+    }
+    if (this.fuel > 0.4) this.lowFuelWarned = false;
+    if (!this.lowFuelWarned && this.fuel < 0.25) {
+      this.lowFuelWarned = true;
+      this.onPopup?.({ text: 'LOW FUEL', sub: 'take the next gas station exit', color: '#ffb020', big: true });
+    }
+    // out of gas: the engine cuts and the car coasts (a dead engine drags it down within about 20 seconds); once it
+    // stops the run is over (the cops collect you if you are wanted)
+    if (this.fuel <= 0) ph.v = Math.sign(ph.v) * Math.max(0, Math.abs(ph.v) - 1.1 * dt);
+    if (this.fuel <= 0 && Math.abs(ph.v) < 0.8) {
+      if (this.police.wanted <= 0) this.stall(false);
+      else { this.stallT += dt; if (this.police.nearest(ph.s) < 14 || this.stallT > 25) this.stall(true); }
+    }
+  }
+  /** while stalled with a wanted level the run waits for a cop to roll up (handled in stall itself) */
+  private stallWait(dt: number) { void dt; }
+  private stall(caught: boolean) {
+    if (this.state !== 'driving') return;
+    this.state = 'crash';
+    this.stalled = true;
+    this.crashTimer = 0;
+    this.audio.stopEngine();
+    const message = randomCrashMessage({ map: this.map.id, kind: 'fuel', cop: caught, bike: this.player.bike, wanted: caught });
+    this.onCrash?.(message, caught, caught ? 'CAUGHT' : 'OUT OF GAS');
+    this.result = {
+      score: Math.round(this.scoring.score), distance: this.scoring.distance, topSpeed: this.player.topSpeed,
+      nearMisses: this.scoring.nearMisses, cutUps: this.scoring.cutUps, time: this.scoring.time, crashKind: 'fuel', message, caught, prevBest: this.prevBest,
+    };
+  }
+
   /** barriers / road edges */
   private edges() {
     const ph = this.player.phys;
     const L = this.layout;
     const half = this.player.collW / 2;
-    ph.onGrass = ph.d < L.softMin || ph.d > L.softMax;
-    const lo = L.playerMin + half, hi = L.playerMax - half;
+    ph.onGrass = (ph.d < L.softMin || ph.d > L.softMax) && !this.features.paved(ph.s, ph.d);
+    const lim = this.features.limits(ph.s, ph.d, L.playerMin, L.playerMax);
+    const lo = (lim ? lim.lo : L.playerMin) + half, hi = (lim ? lim.hi : L.playerMax) - half;
     if (ph.d <= lo + 0.1 || ph.d >= hi - 0.1) this.wallContact = true;
     if (ph.d < lo || ph.d > hi) {
       const side = ph.d < lo ? -1 : 1;
@@ -431,6 +498,8 @@ export class Game {
       const rel = Math.hypot(rvS, rvD);
       // only a hard hit wrecks: a gentle nudge or a low speed scrape is a bump (and resets the combo)
       if (vn > (c.wrecked ? 9 : 6.5) || (!c.wrecked && (rel > 15 || (c.dir < 0 && rel > 12)))) {
+        // out of gas and a cop rolls up: that is the end of the road, not a crash
+        if (c.cop && this.fuel <= 0) { this.stall(true); return; }
         this.startCrash(c.dir < 0 ? 'headon' : 'car', Math.max(vn, rel * 0.8), c);
         return;
       }
@@ -520,14 +589,14 @@ export class Game {
     // hitting traffic gets a line about the other people; a solo crash gets one about you
     const message = randomCrashMessage({ map: this.map.id, kind, victim: hit?.type, cop: !!hit?.cop, rage: !!hit?.rage, wanted: this.police.wanted > 0, bike: this.player.bike });
     const caught = !!hit?.cop && (kind === 'car' || kind === 'headon');
-    this.onCrash?.(message, caught);
+    this.onCrash?.(message, caught, caught ? 'CAUGHT' : 'WRECKED');
     this.result = {
       score: Math.round(this.scoring.score), distance: this.scoring.distance, topSpeed: this.player.topSpeed,
       nearMisses: this.scoring.nearMisses, cutUps: this.scoring.cutUps, time: this.scoring.time, crashKind: kind, message, caught, prevBest: this.prevBest,
     };
     void ph;
   }
-  onCrash: ((message: string, caught: boolean) => void) | null = null;
+  onCrash: ((message: string, caught: boolean, banner: string) => void) | null = null;
 
   finish() { this.state = 'done'; }
   /** the player pressed A / Enter on the crash screen; ignored for the first moments so a mashed button cannot skip the impact */

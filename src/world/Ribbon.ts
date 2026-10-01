@@ -6,6 +6,8 @@ export interface RibbonOpts {
   vScale?: number; // metres per texture v unit
   heightFn?: (s: number, d: number) => number;
   colorFn?: (s: number, d: number, h: number, out: THREE.Color) => void;
+  /** maps a profile column's d to the real lateral position at s (for strips that wander, like a ramp lane) */
+  lateralFn?: (s: number, d: number) => number;
 }
 
 const tmpV = new THREE.Vector3();
@@ -57,13 +59,14 @@ export class Ribbon {
       const vFix = r === rows - 1 && v === 0 ? VREP / vs : v; // keep last row continuous at wrap
       for (let c = 0; c < cols; c++) {
         const p = profile[c];
-        const h = p.h + (opts.heightFn ? opts.heightFn(s, p.d) : 0);
-        path.toWorld(s, p.d, h, tmpV, fr);
+        const dd = opts.lateralFn ? opts.lateralFn(s, p.d) : p.d;
+        const h = p.h + (opts.heightFn ? opts.heightFn(s, dd) : 0);
+        path.toWorld(s, dd, h, tmpV, fr);
         const i = r * cols + c;
         this.pos[i * 3] = tmpV.x; this.pos[i * 3 + 1] = tmpV.y; this.pos[i * 3 + 2] = tmpV.z;
         this.uv[i * 2] = p.u; this.uv[i * 2 + 1] = vFix;
         if (this.col && opts.colorFn) {
-          opts.colorFn(s, p.d, h, tmpC);
+          opts.colorFn(s, dd, h, tmpC);
           this.col[i * 3] = tmpC.r; this.col[i * 3 + 1] = tmpC.g; this.col[i * 3 + 2] = tmpC.b;
         }
       }

@@ -75,7 +75,7 @@ async function boot() {
     input.captureCb = null; input.padCaptureCb = null;
     game = new Game(renderer, audio, input, st, mapId, vehicleId, pmrem);
     game.onPopup = (p) => ui.popup(p);
-    game.onCrash = (msg, caught) => { ui.crashMessage(msg, caught); ui.show('crashui'); flashT = 0.6; };
+    game.onCrash = (msg, caught, banner) => { ui.crashMessage(msg, caught, banner); ui.show('crashui'); flashT = 0.6; };
     game.resize(innerWidth, innerHeight);
     input.clearPressed();
     ui.show('hud');
@@ -210,6 +210,7 @@ async function boot() {
         ui.bikeHud(game.player.bike, ph.absOn, ph.tcOn, ph.awOn, ph.tyreTemp, ph.tyreWear);
         ui.hud(ph.v, ph.gear, ph.rpm / game.spec.redline, game.scoring.score, game.scoring.multiplier, Math.max(0, game.scoring.comboTimer / game.scoring.COMBO_TIME), game.state === 'countdown' ? game.countdown : 0, st.units);
         ui.highBeam(game.highBeamOn);
+        { const nx = game.features.next(ph.s); ui.fuel(game.fuel, nx.s0 + (nx.ramp ? 260 : 100) - ph.s, st.units, game.refueling); }
         ui.stars(game.police.wanted, game.police.cops.length > 0, game.police.fleeing);
         ui.copVignette(game.police.cops.length ? clamp((150 - game.police.nearest(ph.s)) / 130, 0, 1) : 0);
         if (!alive) endGame();

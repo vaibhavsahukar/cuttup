@@ -4,6 +4,7 @@ import { Ribbon, outline, type ProfilePt } from './Ribbon';
 import type { MapSpec, Layout } from '../data/maps';
 import { groundDetailTexture, highwayTexture, backroadTexture, concreteTexture, windowTextures } from './Textures';
 import * as P from './Props';
+import type { Features } from './Features';
 import { mulberry32, noise2, hash2, smoothstep, clamp, range, type Rng } from '../core/math';
 
 export const CHUNK = 64;
@@ -67,7 +68,7 @@ export class ChunkManager {
   buildingMaterial?: THREE.MeshStandardMaterial;
   private edge: number;
 
-  constructor(public path: RoadPath, public map: MapSpec, public layout: Layout, public quality: Quality) {
+  constructor(public path: RoadPath, public map: MapSpec, public layout: Layout, public quality: Quality, public features?: Features) {
     const nSlots = quality.chunksAhead + this.behind + 1;
     const hw = map.road === 'highway';
     this.edge = layout.roadHalfWidth - 1;
@@ -125,6 +126,8 @@ export class ChunkManager {
     const medianMat = new THREE.MeshStandardMaterial({ color: map.id === 'city' ? 0x55565a : 0x4d6a2c, roughness: 1 });
     const wireMat = new THREE.LineBasicMaterial({ color: 0x222222 });
 
+    // right hand barrier: sunk out of sight where a gas station ramp opens off the highway
+    const drop = (s: number) => this.features?.barrierDrop(s) ?? 0;
     for (let i = 0; i < nSlots; i++) {
       const group = new THREE.Group();
       const ribbons: Ribbon[] = [];
@@ -139,12 +142,12 @@ export class ChunkManager {
         // jersey barrier
         add(new Ribbon(outline([[-0.4, 0], [-0.3, 0.25], [-0.12, 0.95], [0.12, 0.95], [0.3, 0.25], [0.4, 0]]), ROWS, concrete, { vScale: 4 }), true);
         if (map.id === 'city') {
-          const wallL = add(new Ribbon(outline([[0, 0], [0, 4.2], [0.35, 4.2], [0.35, 0]], E + 1.2), ROWS, concrete, { vScale: 4 }), true);
+          const wallL = add(new Ribbon(outline([[0, 0], [0, 4.2], [0.35, 4.2], [0.35, 0]], E + 1.2), ROWS, concrete, { vScale: 4, heightFn: drop }), true);
           const wallR = add(new Ribbon(outline([[0, 0], [0, 4.2], [0.35, 4.2], [0.35, 0]], -E - 1.55), ROWS, concrete, { vScale: 4 }), true);
           walls.push(wallL.mesh, wallR.mesh);
         } else {
           const rail: [number, number][] = [[0, 0.55], [0.05, 0.62], [0.02, 0.7], [0.05, 0.78], [0, 0.85]];
-          add(new Ribbon(outline(rail, E + 0.2), ROWS, metal, { vScale: 4 }));
+          add(new Ribbon(outline(rail, E + 0.2), ROWS, metal, { vScale: 4, heightFn: drop }));
           add(new Ribbon(outline(rail, -E - 0.2, true), ROWS, metal, { vScale: 4 }));
         }
       } else {
@@ -174,6 +177,11 @@ export class ChunkManager {
 
   /** terrain height relative to road height at s; continuous everywhere. */
   terrainH(s: number, d: number) {
+    const f = this.features?.flatten(s, d) ?? 0;
+    const h = this.terrainRaw(s, d);
+    return f > 0 ? h + (-0.06 - h) * f : h;
+  }
+  private terrainRaw(s: number, d: number) {
     const a = Math.abs(d) - this.edge;
     const seed = this.map.seed;
     if (this.map.id === 'city') return -0.05 + smoothstep(8, 30, a) * 0.3;
@@ -233,6 +241,7 @@ export class ChunkManager {
 
   private place(pool: PropPool | undefined, s: number, d: number, yaw: number, sx: number, sy: number, sz: number, c?: THREE.Color, yOff = 0) {
     if (!pool) return;
+    if (this.features?.noProps(s, d)) return;
     this.path.frame(s, fr);
     this.path.toWorld(s, d, this.terrainH(s, d) + yOff, v3, fr);
     eul.set(0, fr.heading + yaw, 0);
@@ -329,7 +338,7 @@ export class ChunkManager {
         const s2 = range(rng, 0.5, 2);
         const rs = s0 + rng() * CHUNK, rd = side() * (E + 2.5 + rng() * 25);
         this.place(this.pools.rock, rs, rd, rng() * 6, s2, s2, s2, col, -0.1);
-        slot.rocks.push({ s: rs, d: rd, r: 1.15 * s2 });
+        if (!this.features?.noProps(rs, rd)) slot.rocks.push({ s: rs, d: rd, r: 1.15 * s2 });
       }
     }
     for (const k in this.pools) this.pools[k].finish();
