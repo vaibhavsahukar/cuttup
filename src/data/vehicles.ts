@@ -84,7 +84,7 @@ export const VEHICLES: VehicleSpec[] = [
     rollFactor: 0, pitchFactor: 0.045, brakeG: 1.15, downforce: 0.02, steerLock: 0.5, steerSpeed: 3.7, highSpeedSteer: 0.2,
     stability: 0.96, yawInertia: 0.9,
     dims: { length: 2.03, width: 0.72, height: 1.11 }, engine: { cylinders: 4, tone: 1.5, roughness: 0.12 } },
-  { ...base, id: 'fs450', name: 'husky sf450', kind: 'bike', model: 'fs450', color: 0xf1f3f5, electronics: { abs: 1, tc: 0, aw: 1 },
+  { ...base, id: 'fs450', name: 'Husky SF450', kind: 'bike', model: 'fs450', color: 0xf1f3f5, electronics: { abs: 1, tc: 0, aw: 1 },
     hp: 63, massKg: 115 + 75, drive: 'RWD', zeroSixty: 3.6, topSpeedMph: 110,
     character: 'Supermoto: featherweight, the quickest to flick side to side, wheelies on a whim, rear steps out when you ask it to',
     gears: 5, redline: 11500, idleRpm: 1900, torquePeak: 0.55, torqueFlat: 0.55, wheelieK: 2.4,
