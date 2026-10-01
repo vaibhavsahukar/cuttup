@@ -75,7 +75,10 @@ export function buildC6(color: number, shadows = true): VehicleModel {
   for (const sx of [1, -1]) {
     // exposed teardrop headlamps lying along the front fenders
     // C6 lamps: flush teardrop units on the front corners of the nose, wide at the nose and tapering back and inwards
-    lampOn('head', sx, 2.17, 1.45, (z) => lerpK([[2.17, 0.74], [1.9, 0.5], [1.45, 0.3]], z), (z) => lerpK([[2.17, 0.9], [2.0, 0.9], [1.75, 0.76], [1.45, 0.5]], z), 0.025); // long slim lamp sweeping back and inwards from the nose corner
+    { // oval lamp sitting on the front corner where the nose meets the fender, tilted so its inner end dips (per the mockup)
+      const g = new THREE.SphereGeometry(1, 20, 12).scale(0.2, 0.05, 0.17).rotateZ(sx * 0.2).translate(sx * 0.7, 0.605, F - 0.2);
+      addGeo('head', g);
+    }
     box('dark', sx * 0.5, 0.34, F, 0.2, 0.1, 0.04); // fog lamp
     box('amber', sx * (hwAt(1.9) + 0.014), 0.52, 1.9, 0.012, 0.05, 0.16); // side marker
     // side cove behind the front wheel with its gill, rear fender duct, door line, shoulder trim
