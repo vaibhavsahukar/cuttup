@@ -18,7 +18,7 @@ export class Scoring {
   cutUps = 0;
   onPopup: ((p: Popup) => void) | null = null;
   readonly COMBO_TIME = 5;
-  /** per map multiplier on distance points (the backroad's winding, slow roads need a boost to keep pace) */
+  /** per map multiplier on distance points, only while at 75 mph or more (the backroad's winding, slow roads need a boost to keep pace) */
   distK = 1;
   /** per map multiplier on near miss points */
   passK = 1;
@@ -29,7 +29,7 @@ export class Scoring {
     this.time += dt;
     if (ds > 0) this.distance += ds;
     const speedK = speed < 20 ? 0.2 : (speed / 30) ** 1.6;
-    this.score += (Math.max(0, ds) * speedK * this.multiplier * 0.5 * this.distK) * this.scoreK;
+    this.score += (Math.max(0, ds) * speedK * this.multiplier * 0.5 * (speed >= 33.5 ? this.distK : 1)) * this.scoreK;
     // sustained speed (> ~100 mph)
     if (speed > 44.7) {
       this.highSpeedTime += dt;
