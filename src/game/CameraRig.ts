@@ -64,8 +64,9 @@ export class CameraRig {
     } else {
       const dist = (bike ? 3.1 : 3.6 + p.spec.dims.length * 0.22) + clamp(spd / 80, 0, 1) * 0.3; // close, barely pulls back with speed
       const height = (bike ? 1.35 : 1.1 + h * 0.45);
-      // free look orbits the camera around the vehicle: to the right when lk > 0, and the view settles on the vehicle itself
-      const cfo = lk === 0 ? cf : cf.clone().applyAxisAngle(up, lk);
+      // free look orbits the camera around the vehicle so the view turns to the right when lk > 0 (the camera swings
+      // round to the vehicle's left), and the view settles on the vehicle itself
+      const cfo = lk === 0 ? cf : cf.clone().applyAxisAngle(up, -lk);
       const focus = 6 * (1 - clamp(Math.abs(lk) / 0.6, 0, 1));
       desiredPos = root.position.clone().addScaledVector(cfo, -dist).addScaledVector(up, height);
       desiredLook = root.position.clone().addScaledVector(cf, focus).addScaledVector(up, bike ? 0.9 : h * 0.6);
