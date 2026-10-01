@@ -114,31 +114,31 @@ export function buildZ350(color: number, shadows = true): VehicleModel {
   // ---- front: teardrop headlamps, nose badge, mesh grille, side intakes ----
   for (const sx of [1, -1]) {
     lampOn('head', sx, 2.1, 1.5, () => 0.46, (z) => lerpK([[2.12, 0.8], [2.0, 0.87], [1.8, 0.87], [1.6, 0.74], [1.5, 0.56]], z));
-    box('dark', sx * 0.72, 0.36, F - 0.02, 0.1, 0.17, 0.05); // side intake slot
-    box('dark', sx * 0.4, 0.34, F - 0.02, 0.3, 0.14, 0.05); // lower fog / duct
-    box('dark', sx * (lerpK(HW, 1.2) + 0.004), 0.58, 1.18, 0.012, 0.13, 0.06); // fender gill
+    box('dark', sx * 0.72, 0.36, F + 0.01, 0.1, 0.17, 0.05); // side intake slot
+    box('dark', sx * 0.4, 0.34, F + 0.01, 0.3, 0.14, 0.05); // lower fog / duct
+    box('dark', sx * (lerpK(HW, 1.2) + 0.014), 0.58, 1.18, 0.012, 0.13, 0.06); // fender gill
     box('chrome', sx * (lerpK(HW, 1.2) + 0.008), 0.62, 1.18, 0.008, 0.07, 0.015);
-    box('dark', sx * (lerpK(HW, 0.1) + 0.004), 0.7, 0.1, 0.01, 0.014, 1.25); // door shut line
-    box('dark', sx * (lerpK(HW, 0.0) + 0.004), 0.93, -0.62, 0.014, 0.055, 0.16); // door handle recess
+    box('dark', sx * (lerpK(HW, 0.1) + 0.014), 0.7, 0.1, 0.01, 0.014, 1.25); // door shut line
+    box('dark', sx * (lerpK(HW, 0.0) + 0.014), 0.93, -0.62, 0.014, 0.055, 0.16); // door handle recess
     box('blue', sx * (lerpK(HW, 0) - 0.012), 0.2, 0.0, 0.04, 0.05, 1.5); // blue side skirt
     ball('paint', sx * 0.95, 1.02, 0.5, 0.06, 0.07, 0.13); // mirror
     box('paint', sx * 0.84, 0.99, 0.55, 0.2, 0.05, 0.1); // stalk joining it to the door
   }
-  box('dark', 0, 0.38, F - 0.05, 1.0, 0.16, 0.05); // mesh grille
+  box('dark', 0, 0.38, F + 0.0, 1.0, 0.16, 0.05); // mesh grille
   box('blue', 0, 0.27, F - 0.06, 1.3, 0.03, 0.1); // front lip
-  box('chrome', 0, 0.57, F - 0.075, 0.12, 0.075, 0.02); // badge
-  box('dark', -0.12, 0.47, F - 0.04, 0.36, 0.1, 0.03); // plate recess
+  box('chrome', 0, 0.57, F - 0.03, 0.12, 0.075, 0.02); // badge
+  box('dark', -0.12, 0.47, F + 0.0, 0.36, 0.1, 0.03); // plate recess
 
   // ---- rear: wrap tail lamps, ducktail, plate recess, bumper, twin tips ----
   for (const sx of [1, -1]) {
     lampOn('tail', sx, -2.15, -1.64, (z) => lerpK([[-1.6, 0.8], [-1.64, 0.78], [-1.9, 0.62], [-2.15, 0.5]], z), (z) => lerpK([[-1.6, 0.8], [-1.64, 0.82], [-1.9, 0.9], [-2.15, 0.82]], z));
-    box('tail', sx * 0.7, 0.4, R + 0.01, 0.2, 0.05, 0.05); // lower reflector
+    box('tail', sx * 0.7, 0.4, R - 0.01, 0.2, 0.05, 0.05); // lower reflector
     box('chrome', sx * 0.22, 0.26, R - 0.02, 0.1, 0.1, 0.12);
-    box('dark', sx * 0.44, 0.3, R + 0.02, 0.1, 0.1, 0.04);
+    box('dark', sx * 0.44, 0.3, R - 0.01, 0.1, 0.1, 0.04);
   }
-  box('dark', 0, 0.92, R + 0.07, 0.48, 0.016, 0.04); // light strip
-  box('dark', 0, 0.58, R + 0.02, 1.2, 0.12, 0.04); // plate recess
-  box('dark', 0, 0.3, R + 0.02, 1.35, 0.16, 0.06); // diffuser band
+  box('dark', 0, 0.92, R + 0.02, 0.48, 0.016, 0.04); // light strip
+  box('dark', 0, 0.58, R - 0.01, 1.2, 0.12, 0.04); // plate recess
+  box('dark', 0, 0.3, R - 0.01, 1.35, 0.16, 0.06); // diffuser band
   box('blue', 0, 0.27, R + 0.05, 1.3, 0.03, 0.1); // rear lip
   box('paint', 0, 1.0, -1.87, 1.5, 0.045, 0.2); // ducktail
 

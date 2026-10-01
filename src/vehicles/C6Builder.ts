@@ -66,29 +66,30 @@ export function buildC6(color: number, shadows = true): VehicleModel {
   const hwAt = (z: number) => lerpK(HW, z);
   for (const sx of [1, -1]) {
     // exposed teardrop headlamps lying along the front fenders
-    lampOn('head', sx, 2.12, 1.5, (z) => lerpK([[2.12, 0.6], [1.5, 0.62]], z), (z) => lerpK([[2.12, 0.86], [1.95, 0.93], [1.7, 0.9], [1.5, 0.72]], z));
-    box('dark', sx * 0.5, 0.34, F - 0.03, 0.2, 0.1, 0.04); // fog lamp
-    box('amber', sx * (hwAt(1.9) + 0.003), 0.52, 1.9, 0.012, 0.05, 0.16); // side marker
+    lampOn('head', sx, 2.1, 1.6, () => 0.5, (z) => lerpK([[2.1, 0.8], [2.0, 0.9], [1.8, 0.92], [1.6, 0.74]], z), 0.03);
+    box('head', sx * 0.68, 0.5, F, 0.34, 0.09, 0.04); // lamp wrapping onto the nose
+    box('dark', sx * 0.5, 0.34, F, 0.2, 0.1, 0.04); // fog lamp
+    box('amber', sx * (hwAt(1.9) + 0.014), 0.52, 1.9, 0.012, 0.05, 0.16); // side marker
     // side cove behind the front wheel with its gill, rear fender duct, door line, shoulder trim
-    box('dark', sx * (hwAt(0.85) + 0.004), 0.7, 0.85, 0.012, 0.15, 0.34);
-    box('chrome', sx * (hwAt(0.85) + 0.007), 0.66, 0.85, 0.008, 0.015, 0.3);
-    box('dark', sx * (hwAt(-1.1) + 0.004), 0.7, -1.1, 0.012, 0.14, 0.2);
-    box('dark', sx * (hwAt(-0.3) + 0.004), 0.7, -0.3, 0.01, 0.014, 1.0);
+    box('dark', sx * (hwAt(0.85) + 0.014), 0.7, 0.85, 0.012, 0.15, 0.34);
+    box('chrome', sx * (hwAt(0.85) + 0.018), 0.66, 0.85, 0.008, 0.015, 0.3);
+    box('dark', sx * (hwAt(-1.1) + 0.014), 0.7, -1.1, 0.012, 0.14, 0.2);
+    box('dark', sx * (hwAt(-0.3) + 0.014), 0.7, -0.3, 0.01, 0.014, 1.0);
     box('carbon', sx * (hwAt(-0.2) - 0.012), 0.2, -0.2, 0.05, 0.05, 1.7); // side sill
     ball('paint', sx * 0.98, 1.0, 0.42, 0.06, 0.07, 0.12); // mirror
     box('paint', sx * 0.86, 0.97, 0.47, 0.22, 0.05, 0.1); // stalk
     // four round tail lamps, quad tips
-    ball('tail', sx * 0.78, 0.82, R + 0.06, 0.1, 0.1, 0.05);
-    ball('tail', sx * 0.52, 0.82, R + 0.05, 0.1, 0.1, 0.05);
-    box('chrome', sx * 0.3, 0.2, R - 0.02, 0.11, 0.11, 0.12);
-    box('chrome', sx * 0.5, 0.2, R - 0.02, 0.11, 0.11, 0.12);
+    ball('tail', sx * 0.76, 0.84, R + 0.0, 0.1, 0.1, 0.05);
+    ball('tail', sx * 0.5, 0.84, R - 0.005, 0.1, 0.1, 0.05);
+    box('chrome', sx * 0.3, 0.2, R - 0.04, 0.11, 0.11, 0.12);
+    box('chrome', sx * 0.5, 0.2, R - 0.04, 0.11, 0.11, 0.12);
   }
-  box('dark', 0, 0.36, F - 0.05, 1.15, 0.2, 0.05); // mesh grille
-  box('carbon', 0, 0.22, F - 0.08, 1.5, 0.04, 0.18); // splitter
-  box('chrome', 0, 0.56, F - 0.07, 0.12, 0.06, 0.02); // crossed flags badge
+  box('dark', 0, 0.36, F + 0.0, 1.15, 0.2, 0.05); // mesh grille
+  box('carbon', 0, 0.22, F - 0.04, 1.5, 0.04, 0.18); // splitter
+  box('chrome', 0, 0.56, F - 0.02, 0.12, 0.06, 0.02); // crossed flags badge
   box('dark', 0.0, 0.88, 1.3, 0.34, 0.012, 0.2); // bonnet vent
-  box('dark', 0, 0.55, R + 0.03, 0.65, 0.14, 0.04); // number plate recess
-  box('carbon', 0, 0.28, R + 0.05, 1.7, 0.2, 0.12); // diffuser
+  box('dark', 0, 0.55, R - 0.01, 0.65, 0.14, 0.04); // number plate recess
+  box('carbon', 0, 0.28, R + 0.0, 1.7, 0.2, 0.12); // diffuser
   box('paint', 0, 0.99, -1.95, 1.4, 0.04, 0.2); // tail lip
 
   const root = new THREE.Group(), chassis = new THREE.Group();
