@@ -7,6 +7,7 @@ import { buildZ350 } from './Z350Builder';
 import { buildC6 } from './C6Builder';
 import { buildCivic } from './CivicBuilder';
 import { buildM4 } from './M4Builder';
+import { buildC8 } from './C8Builder';
 import { buildSchoolBus, BUS_DIMS } from './SchoolBus';
 
 /** cars with hand-made signature details (others get the generic panel build; bikes keep ShapeBuilder) */
@@ -26,6 +27,7 @@ export function buildPlayerModel(spec: VehicleSpec, shadows = true): VehicleMode
   if (spec.id === 'zr1') return buildC6(spec.color, shadows);
   if (spec.id === 'civic') return buildCivic(spec.color, shadows);
   if (spec.id === 'm4') return buildM4(spec.color, shadows);
+  if (spec.id === 'c8') return buildC8(spec.color, shadows);
   return build(spec.model, spec.color, false, shadows, undefined, true);
 }
 
