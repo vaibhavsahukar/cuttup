@@ -176,7 +176,7 @@ export const VEHICLES: VehicleSpec[] = [
     tireMu: 1.06, launchMu: 1.0, frontGrip: 1.03, rearGrip: 0.97, powerOversteer: 1.15,
     cgHeight: 0.52, wheelbase: 2.84, frontWeight: 0.55, track: 1.6, rollFactor: 0.05,
     brakeG: 1.12, downforce: 0.3, steerLock: 0.54, steerSpeed: 2.7, stability: 0.45, yawInertia: 1.05,
-    dims: { length: 4.75, width: 1.84, height: 1.43 }, engine: { cylinders: 8, tone: 0.82, roughness: 0.5 } },
+    dims: { length: 4.75, width: 2.0, height: 1.4 }, engine: { cylinders: 8, tone: 0.82, roughness: 0.5 } },
 
 ];
 

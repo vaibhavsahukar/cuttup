@@ -320,11 +320,11 @@ const PROFILES: Record<string, { centre: [number, number][]; belt: [number, numb
     centre: [[0, 0.58], [0.03, 0.76], [0.1, 0.79], [0.18, 0.83], [0.3, 1.1], [0.42, 1.3], [0.54, 1.3], [0.64, 1.17], [0.73, 0.94], [0.84, 0.9], [0.95, 0.78], [1, 0.64]],
     belt: [[0, 0.68], [0.15, 0.78], [0.35, 0.9], [0.5, 0.94], [0.75, 0.9], [1, 0.76]],
   },
-  // C63 (W205): long bonnet, upright grille nose, cabin set back, distinct boot lid with a short rear window
+  // C63 S coupe (W205): long bonnet, upright grille nose, cabin set back with a short coupe roof, high short boot
   c63: {
-    centre: [[0, 0.64], [0.03, 0.78], [0.12, 0.82], [0.22, 0.85], [0.3, 1.1], [0.37, 1.27], [0.42, 1.32], [0.54, 1.32], [0.6, 1.27], [0.68, 1.02], [0.74, 0.98], [0.86, 0.97], [0.95, 0.92], [0.985, 0.84], [1, 0.7]],
-    belt: [[0, 0.72], [0.15, 0.82], [0.35, 0.92], [0.5, 0.97], [0.75, 0.97], [1, 0.84]],
-    roof: 0.72,
+    centre: [[0, 0.78], [0.03, 0.98], [0.1, 1.0], [0.2, 1.04], [0.28, 1.22], [0.36, 1.36], [0.48, 1.4], [0.58, 1.36], [0.66, 1.15], [0.72, 1.0], [0.8, 0.98], [0.9, 0.94], [0.97, 0.86], [1, 0.7]],
+    belt: [[0, 0.8], [0.1, 1.0], [0.3, 1.0], [0.5, 0.98], [0.75, 0.97], [1, 0.82]],
+    roof: 0.7,
   },
   // Corvette C8: cab forward mid-engine wedge, long raked screen, roof peak just ahead of the axle line, high haunches
   // running back into a short, raised engine deck, low pointed nose
@@ -615,7 +615,8 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     box('chrome', 0, gy, F + 0.045, 0.17, 0.17, 0.02); // star badge
     box('chrome', 0, gy + 0.17, F + 0.02, 0.86, 0.03, 0.04); // upper chrome edge
     for (const sx of [1, -1]) {
-      c.lamp(sx, F - 0.05, F - 0.46, 0.5, 0.93, 0.72, 0.98);
+      { const [lx, ly, lz] = c.onTop(sx * c.hwAt(F - 0.3) * 0.7, F - 0.3, 0.02); box('dark', lx, ly - 0.005, lz - 0.01, 0.42, 0.09, 0.26); box('head', lx, ly + 0.01, lz + 0.01, 0.36, 0.05, 0.2); } // swept lamp
+      box('dark', sx * c.noseW * 0.7, c.noseH - 0.1, F - 0.015, c.noseW * 0.46, 0.13, 0.05); box('head', sx * c.noseW * 0.7, c.noseH - 0.1, F + 0.005, c.noseW * 0.4, 0.07, 0.04); // lamp on the front face
       box('dark', sx * c.noseW * 0.74, ground + 0.17, F - 0.02, c.noseW * 0.42, 0.22, 0.06); // big corner intakes
       box('tail', sx * c.tailW * 0.74, c.tailH - 0.06, R + 0.004, c.tailW * 0.5, 0.09, 0.05);
       for (const dx of [0.6, 0.82]) box('chrome', sx * c.tailW * dx, ground + 0.15, R - 0.01, 0.1, 0.1, 0.09); // quad exhausts
