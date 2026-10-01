@@ -59,11 +59,14 @@ export class Fork {
   private H = CLEARANCE;
   /** after this x the ramp is far off the highway (exiting traffic leaves the main road's books here) */
   readonly releaseX: number;
+  /** x (m along the ramp) where the ramp has pulled clear of the highway's wall: before it the two are joined (wall sunk, you can cross) */
+  sepX = 0;
 
   constructor(readonly main: RoadPath, readonly map: MapSpec, readonly layout: Layout, readonly sF: number, roadMat?: THREE.Material) {
     const L = layout;
     this.dC = L.laneCenter(4) - L.laneWidth / 2;
-    this.uA = sF + JOIN_H2 - 40; this.uB = sF + JOIN_H2 + 120;
+    // the other lanes open out right where the ramp becomes the new highway's right lane (the bridge deck ends at that line)
+    this.uA = sF + JOIN_H2 - 4; this.uB = sF + JOIN_H2 + 4;
     // build once, measure how high the deck sits over the old road, correct the climb and build again
     this.branch = this.build();
     for (let it = 0; it < 2; it++) {
@@ -75,6 +78,7 @@ export class Fork {
     // where the ramp is, seen from the main road
     let sg = sF;
     let rel = Infinity;
+    const E = L.roadHalfWidth - 1;
     for (let s = sF; s <= sF + JOIN_H2; s += STEP) {
       this.branch.toWorld(s, this.dC, 0, v3);
       const pin = projectToRoad(main, v3, sg);
@@ -85,6 +89,8 @@ export class Fork {
       if (!isFinite(rel) && pin.d > L.roadHalfWidth + 26) rel = s - sF;
     }
     this.releaseX = isFinite(rel) ? rel : 400;
+    this.sepX = JOIN_H2;
+    for (let i = 0; i < this.mIn.length; i++) if (this.mIn[i] > E + 2.2) { this.sepX = i * STEP; break; }
     this.buildSeams();
     this.buildBridge(roadMat);
   }
@@ -96,7 +102,7 @@ export class Fork {
     const { main, sF, layout: L } = this;
     main.frame(sF, fr);
     // the branch's lane 4 starts right outside the main shoulder: its centre line sits that far left of it
-    const rampC = L.playerMax + 0.4 + L.laneWidth / 2;
+    const rampC = L.laneCenter(4) + L.laneWidth + 0.1;
     const d0 = rampC - L.laneCenter(4);
     main.toWorld(sF, d0, 0, v3, fr);
     const heading0 = fr.heading;
@@ -149,6 +155,9 @@ export class Fork {
       if (x >= TAPER || (!terrain && d > this.dC + 12)) return d;
       return terrain ? (x < 0 ? this.dC : this.dC + (d - this.dC) * (x >= TAPER - 8 ? 1 : 0)) : this.dC + (d - this.dC) * smoothstep(0, TAPER, x);
     }
+    const edge = this.layout.roadHalfWidth - 1;
+    // the ground beside the new highway's left edge travels with that edge as it opens out (it is not stretched across the lanes)
+    if (terrain && d <= -edge + 0.001) return this.dC + (-edge - this.dC) * this.unfold(s) + (d + edge);
     return this.dC + (d - this.dC) * this.unfold(s);
   }
   /** interpolate a main road coordinate table at main road s */
@@ -183,7 +192,7 @@ export class Fork {
         if (d === E + 2) gb = p.s;
         const db = p.d > bHi ? p.d - bHi : p.d < bLo(p.s) ? bLo(p.s) - p.d : 0;
         const dm = d - E;
-        if (db <= (this.unfold(p.s) > 0.02 ? dm : 0.5)) { lim = Math.max(E + 2, d - (db > 0 ? 2.5 : 5)); break; }
+        if (db <= (this.unfold(p.s) > 0.02 ? dm : 0.5)) { lim = Math.max(E + 2, d); break; }
       }
       this.seamM.push(lim);
     }
@@ -196,7 +205,7 @@ export class Fork {
         const p = projectToRoad(m, v3, gm);
         if (d === lo - 2) gm = p.s;
         const dm = Math.max(0, Math.abs(p.d) - E);
-        if (dm <= lo - d) { lim = Math.min(lo - 2, d + 2.5); break; }
+        if (dm <= lo - d) { lim = Math.min(lo - 2, d); break; }
       }
       this.seamB.push(lim);
     }
@@ -220,7 +229,7 @@ export class Fork {
     if (!isFinite(lim)) return 0;
     // the ramp's rise beside this point of the main road
     const r = this.lookup(this.mRise, s);
-    return r * smoothstep(lim - 40, lim - 1, d) * smoothstep(JOIN_X, JOIN_X + 60, x);
+    return r * smoothstep(lim - 40, lim - 1, d) * smoothstep(this.sepX, this.sepX + 60, x);
   }
   /** branch ground falls away from the raised ramp and road to the old road's level */
   branchLift(s: number, d: number) {
@@ -236,13 +245,16 @@ export class Fork {
   /** main road: the right barrier is open where the ramp touches the highway */
   mainBarrierDrop(s: number) {
     const x = s - this.sF;
-    if (x < -8 || x > JOIN_X + 12) return 0;
-    return -7 * Math.min(1, smoothstep(-8, 0, x) * (1 - smoothstep(JOIN_X - 6, JOIN_X + 8, x)));
+    if (x < -8 || x > this.sepX + 12) return 0;
+    return -7 * Math.min(1, smoothstep(-8, 0, x) * (1 - smoothstep(this.sepX - 6, this.sepX + 8, x)));
   }
   /** branch: its median barrier (the ramp's inner rail while folded) is sunk where the ramp still touches the highway */
   branchMedianDrop(s: number) {
     const x = s - this.sF;
-    return x < JOIN_X + 10 ? -7 * (1 - smoothstep(JOIN_X - 4, JOIN_X + 10, x)) : 0;
+    const joined = x < this.sepX + 10 ? -7 * (1 - smoothstep(this.sepX - 4, this.sepX + 10, x)) : 0;
+    // the ramp's left barrier ends just before the join; the highway's own median starts right after
+    const wedge = -7 * smoothstep(this.uA - 10, this.uA - 4, s) * (1 - smoothstep(this.uB + 4, this.uB + 10, s));
+    return Math.min(joined, wedge);
   }
   /** branch coordinates: lowest drivable d at s (the folded left side is not there yet) */
   branchMin(s: number) { return this.fold(s, this.layout.playerMin); }
@@ -259,7 +271,7 @@ export class Fork {
     // distance back from the join to the far side of the old road
     const cx = this.main.frame(this.sX);
     const back = (o.x - cx.x) * fx + (o.z - cx.z) * fz;
-    const t0 = -(back + E + 150), t1 = 140;
+    const t0 = -(back + E + 150), t1 = 6;
     const ground = cx.y;
     const g = this.bridge;
     const put = (geo: THREE.BufferGeometry, mat: THREE.Material, t: number, d: number, y: number, pitch = 0) => {
@@ -293,7 +305,10 @@ export class Fork {
     }
     put(new THREE.BoxGeometry(2 * M, 0.06, len), dark, tm, 0, yTop + 0.01);
     put(new THREE.BoxGeometry(0.7, 0.95, len), concrete, tm, 0, yTop + 0.48);
-    for (const d of [-(E + 1.0), E + 0.9]) put(new THREE.BoxGeometry(0.4, 1.1, len), concrete, tm, d, yTop + 0.55);
+    put(new THREE.BoxGeometry(0.4, 1.1, len), concrete, tm, -(E + 1.0), yTop + 0.55);
+    // the ramp comes in alongside the right edge: no parapet there for the last stretch
+    const rEnd = t1 - 60;
+    put(new THREE.BoxGeometry(0.4, 1.1, rEnd - t0), concrete, (t0 + rEnd) / 2, E + 0.9, yTop + 0.55);
     // down to the ground on the far side
     const rampLen = 140, drop = yTop - ground + 0.3;
     const pitch = Math.atan2(drop, rampLen);

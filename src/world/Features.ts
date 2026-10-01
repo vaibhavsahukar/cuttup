@@ -89,7 +89,7 @@ export class Features {
   // ---------------- queries used by the world, physics and props ----------------
   /** right hand barrier hidden (sunk into the ground) here: the ramp openings */
   barrierDrop(s: number) {
-    const fk = this.fork && this.fork.state === 'open' ? this.fork.mainBarrierDrop(s) : 0;
+    const fk = this.fork && this.fork.state !== 'branch' ? this.fork.mainBarrierDrop(s) : 0;
     if (fk) return fk;
     const st = this.at(s, 5);
     if (!st || !st.ramp) return 0;

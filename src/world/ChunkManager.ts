@@ -60,6 +60,8 @@ export interface ChunkMods {
   noOverpass?: (s: number) => boolean;
   /** raise or lower the ground beside the road (m) */
   lift?: (s: number, d: number) => number;
+  /** raise the carriageway surface a hair (m): where it lies over another road's surface */
+  roadLift?: (s: number) => number;
 }
 
 const m4 = new THREE.Matrix4();
@@ -159,8 +161,9 @@ export class ChunkManager {
         const M = layout.medianHalf;
         // an extra column at the right lane's inner edge, so a fork's ramp (everything left of it folded away) keeps one lane's markings
         const d4 = layout.laneCenter(4) - layout.laneWidth / 2;
-        add(new Ribbon([{ d: M, h: 0, u: 0 }, { d: d4, h: 0, u: (d4 - M) / (E - M) }, { d: E, h: 0, u: 1 }], ROWS, roadMat));
-        add(new Ribbon([{ d: -E, h: 0, u: 1 }, { d: -M, h: 0, u: 0 }], ROWS, roadMat));
+        const rl = (s: number) => this.mods.roadLift?.(s) ?? 0;
+        add(new Ribbon([{ d: M, h: 0, u: 0 }, { d: d4, h: 0, u: (d4 - M) / (E - M) }, { d: E, h: 0, u: 1 }], ROWS, roadMat, { heightFn: rl }));
+        add(new Ribbon([{ d: -E, h: 0, u: 1 }, { d: -M, h: 0, u: 0 }], ROWS, roadMat, { heightFn: rl }));
         add(new Ribbon([{ d: -M, h: -0.02, u: 0 }, { d: M, h: -0.02, u: 1 }], ROWS, medianMat));
         // jersey barrier
         add(new Ribbon(outline([[-0.4, 0], [-0.3, 0.25], [-0.12, 0.95], [0.12, 0.95], [0.3, 0.25], [0.4, 0]]), ROWS, concrete, { vScale: 4, heightFn: (s) => this.mods.medianDrop?.(s) ?? 0 }), true);

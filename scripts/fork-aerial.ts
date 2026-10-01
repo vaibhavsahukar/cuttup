@@ -17,18 +17,19 @@ await page.evaluate(() => {
   while (ph.s < sF - 60) { ph.v = 30; ph.psi = 0; ph.vl = 0; ph.d = g.layout.laneCenter(2); a.advance(1 / 30, 1 / 30); }
 });
 const views: [string, number, number, number, number, number][] = [
-  // name, main s offset for target, target d, cam height, cam back, cam side
-  ['r1', 60, 26, 14, 50, -6],
-  ['r2', 180, 34, 14, 50, -6],
-  ['r3', 300, 50, 18, 60, -10],
-  ['r4', 120, 30, 60, 120, -60],
+  // targets are metres along the ramp (branch s from the fork); camera is behind and above in the branch's own frame
+  ['j1', 720, 0, 90, 1, 0],
+  ['j2', 720, 0, 50, 90, 40],
+  ['j3', 640, 10, 25, 70, 20],
+  ['j4', 760, 0, 40, 60, -30],
 ];
 for (const [name, ts, td, h, back, side] of views) {
   await page.evaluate(([ts, td, h, back, side]) => {
     const a = (window as any).__app, g = a.game, sF = (window as any).__sF;
     const T = (window as any).THREE ?? null;
-    const tgt = g.path.toWorld(sF + ts, td, 0, g.player.model.root.position.clone());
-    const pos = g.path.toWorld(sF + ts - back, td + side, h, tgt.clone());
+    const fk = g.fork;
+    const tgt = fk.branch.toWorld(sF + ts, td, 0, g.player.model.root.position.clone());
+    const pos = fk.branch.toWorld(sF + ts - back, td + side, h, tgt.clone());
     const cam = g.camera;
     g.rig.update = () => undefined;
     g.scene.fog = null; g.applyLight = () => undefined;

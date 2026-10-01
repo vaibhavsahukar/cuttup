@@ -21,7 +21,7 @@ import { difficultyOf } from '../data/difficulty';
 import { Weather } from '../world/Weather';
 import { Features } from '../world/Features';
 import { StationRenderer } from '../world/Stations';
-import { Fork, FORK_SPAN, COMMIT_X, JOIN_X } from '../world/Fork';
+import { Fork, FORK_SPAN, COMMIT_X } from '../world/Fork';
 import { FlyCam } from '../dev/FlyCam';
 import { type ChunkMods } from '../world/ChunkManager';
 import { timeSetting } from '../world/TimeOfDay';
@@ -458,9 +458,11 @@ export class Game {
         return dd;
       },
       medianDrop: own ? (s) => own.branchMedianDrop(s) : undefined,
+      roadLift: own ? (s) => (s - own.sF < 260 ? 0.02 : 0) : undefined,
       // the new highway's far side wall only rises once its lanes have unfolded (folded, it would wall off the ramp)
       leftDrop: own ? (s) => -7 * (1 - Math.min(1, Math.max(0, (own.unfold(s) - 0.85) / 0.15))) : undefined,
       noProps: (s, d) => {
+        if (own && Math.abs(d) < 6 && own.unfold(s) < 1) return true; // the median (lamp posts) is not there yet while the road is folded
         if (own && d < 0 && (own.unfold(s) < 1 || d < own.midBranch(s) + 24)) return true;
         const f = ahead();
         return !!f && ((d > 0 && d > f.midMain(s) - 24) || f.underBridge(s) || f.taperClear(s, d));
@@ -491,7 +493,8 @@ export class Game {
       this.bridges.push({ g: fk.bridge, until: sF + FORK_SPAN });
       this.fork = fk;
       this.features.fork = fk;
-      const cm = new ChunkManager(fk.branch, this.map, this.layout, this.quality, this.features, this.chunkMods(fk));
+      // the new highway builds further ahead than the road: its far side must already be there when the bridge over the old road is in view
+      const cm = new ChunkManager(fk.branch, this.map, this.layout, { ...this.quality, chunksAhead: this.quality.chunksAhead + 10 }, this.features, this.chunkMods(fk));
       cm.minIndex = Math.floor(sF / 64);
       this.branchChunks = cm;
       this.scene.add(cm.root);
@@ -512,7 +515,7 @@ export class Game {
     if (fk.state !== 'branch') for (const c of this.traffic.cars) if (c.exitFork && c.s > fk.sF + fk.releaseX) this.traffic.release(c);
     if (fk.state === 'open' && (this.state === 'driving' || view)) {
       if (!view && x > COMMIT_X && pd > this.layout.playerMax + 0.5) this.takeFork(fk);
-      else if (x > JOIN_X + 30 && pd <= this.layout.playerMax + 0.5) {
+      else if (x > Math.max(fk.sepX + 30, 130) && pd <= this.layout.playerMax + 0.5) {
         // stayed on the main road: the branch drifts off and goes when it is out of sight
         fk.state = 'main';
         // cars that took the ramp keep following it until they are gone
@@ -574,8 +577,8 @@ export class Game {
     if (fk && fk.state === 'open') {
       // the fork's ramp: open to the highway at first, then walled off behind its island
       const x = ph.s - fk.sF;
-      if (x > 0 && x < JOIN_X) rhi = Math.max(rhi, fk.rampOut(ph.s));
-      else if (x >= JOIN_X && x < FORK_SPAN && ph.d > L.playerMax + 0.5) { rlo = fk.rampIn(ph.s); rhi = fk.rampOut(ph.s); }
+      if (x > 0 && x < fk.sepX) rhi = Math.max(rhi, fk.rampOut(ph.s));
+      else if (x >= fk.sepX && x < FORK_SPAN && ph.d > L.playerMax + 0.5) { rlo = fk.rampIn(ph.s); rhi = fk.rampOut(ph.s); }
     }
     // the new highway's folded up left side is not drivable yet
     if (this.chunksFork && ph.s < this.chunksFork.uB + 20 && ph.s > this.chunksFork.sF) rlo = Math.max(rlo, this.chunksFork.branchMin(ph.s));
