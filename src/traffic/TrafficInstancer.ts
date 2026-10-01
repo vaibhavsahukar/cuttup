@@ -7,7 +7,7 @@ import { buildTrafficModel, trafficDims, TRAFFIC_SHAPES, type TrafficType } from
  * car via instance colour), one instanced wheel set, and instanced lamps whose per-instance colour
  * switches brake lights and indicators. Draw calls stay constant however many cars are on the road.
  */
-interface TypeBatch { body: THREE.InstancedMesh; wheels?: THREE.InstancedMesh; head?: THREE.InstancedMesh; tail?: THREE.InstancedMesh; sigL: THREE.InstancedMesh; sigR: THREE.InstancedMesh; n: number; size: { length: number; width: number; height: number } }
+interface TypeBatch { body: THREE.InstancedMesh; wheels?: THREE.InstancedMesh; head?: THREE.InstancedMesh; tail?: THREE.InstancedMesh; sigL: THREE.InstancedMesh; sigR: THREE.InstancedMesh; n: number; /** cars close enough to get wheels and indicators */ nn: number; size: { length: number; width: number; height: number } }
 
 const CAP = 96;
 const TAIL_ON = new THREE.Color(3, 0.15, 0.12), TAIL_OFF = new THREE.Color(0.45, 0.03, 0.03);
@@ -65,29 +65,31 @@ export class TrafficInstancer {
     return {
       body, wheels, head: lamp(model.heads), tail: lamp(model.brake),
       sigL: this.inst(box, lampMat, CAP * 2, true), sigR: this.inst(box, lampMat, CAP * 2, true),
-      n: 0, size: trafficDims(type),
+      n: 0, nn: 0, size: trafficDims(type),
     };
   }
 
-  begin() { for (const b of this.batches.values()) b.n = 0; }
+  begin() { for (const b of this.batches.values()) { b.n = 0; b.nn = 0; } }
 
   /** add one car this frame (root = its world transform) */
-  add(type: TrafficType, root: THREE.Object3D, color: number, braking: boolean, sigLeft: boolean, sigRight: boolean) {
+  add(type: TrafficType, root: THREE.Object3D, color: number, braking: boolean, sigLeft: boolean, sigRight: boolean, near = true) {
     const b = this.batches.get(type)!;
     if (b.n >= CAP) return;
     root.updateMatrix();
     const i = b.n++;
     b.body.setMatrixAt(i, root.matrix);
     b.body.setColorAt(i, col.setHex(color));
-    b.wheels?.setMatrixAt(i, root.matrix);
     if (b.head) { b.head.setMatrixAt(i, root.matrix); b.head.setColorAt(i, HEAD); }
     if (b.tail) { b.tail.setMatrixAt(i, root.matrix); b.tail.setColorAt(i, braking ? TAIL_ON : TAIL_OFF); }
+    if (!near) return; // far away the wheels and indicators are a few pixels: not worth their triangles
+    const j = b.nn++;
+    b.wheels?.setMatrixAt(j, root.matrix);
     const { length: L, width: W, height: H } = b.size;
     for (const [im, sx, on] of [[b.sigL, 1, sigLeft], [b.sigR, -1, sigRight]] as const) {
       for (const [k, sz] of [[0, 1], [1, -1]] as const) {
         m4.multiplyMatrices(root.matrix, lm.makeTranslation(sx * W * 0.4, H * 0.45, sz * (L / 2 - 0.04)));
-        im.setMatrixAt(i * 2 + k, m4);
-        im.setColorAt(i * 2 + k, on ? SIG_ON : SIG_OFF);
+        im.setMatrixAt(j * 2 + k, m4);
+        im.setColorAt(j * 2 + k, on ? SIG_ON : SIG_OFF);
       }
     }
   }
@@ -96,11 +98,11 @@ export class TrafficInstancer {
     for (const b of this.batches.values()) {
       for (const im of [b.body, b.wheels, b.head, b.tail]) {
         if (!im) continue;
-        im.count = b.n;
+        im.count = im === b.wheels ? b.nn : b.n;
         im.instanceMatrix.needsUpdate = true;
         if (im.instanceColor) im.instanceColor.needsUpdate = true;
       }
-      for (const im of [b.sigL, b.sigR]) { im.count = b.n * 2; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; }
+      for (const im of [b.sigL, b.sigR]) { im.count = b.nn * 2; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; }
     }
   }
 }

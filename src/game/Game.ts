@@ -191,7 +191,7 @@ export class Game {
     this.applyLight();
     if (settings.quality !== 'low') {
       const size = renderer.getSize(new THREE.Vector2());
-      const rt = new THREE.WebGLRenderTarget(size.x * renderer.getPixelRatio(), size.y * renderer.getPixelRatio(), { type: THREE.HalfFloatType, samples: 4 });
+      const rt = new THREE.WebGLRenderTarget(size.x * renderer.getPixelRatio(), size.y * renderer.getPixelRatio(), { type: THREE.HalfFloatType, samples: settings.quality === 'medium' ? 2 : 4 });
       this.composer = new EffectComposer(renderer, rt);
       this.composer.addPass(new RenderPass(this.scene, this.camera));
       this.bloom = new UnrealBloomPass(size, night ? 0.3 : 0.12, 0.35, night ? 1.8 : 3);

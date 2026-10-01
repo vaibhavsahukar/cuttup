@@ -563,7 +563,7 @@ export class Traffic {
       m.root.quaternion.setFromEuler(eul);
       if (m.proxy) {
         const sigOn = blink && c.signal !== 0;
-        this.instancer.add(c.type, m.root, c.color ?? 0xffffff, c.braking, sigOn && c.signal === -1, sigOn && c.signal === 1);
+        this.instancer.add(c.type, m.root, c.color ?? 0xffffff, c.braking, sigOn && c.signal === -1, sigOn && c.signal === 1, Math.abs(c.s - playerS) < 220);
         continue;
       }
       // body dive under braking, squat on accel

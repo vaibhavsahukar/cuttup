@@ -31,7 +31,7 @@ export const QUALITY: Record<QualityName, { pixelRatio: number; shadows: boolean
   low: { pixelRatio: 0.75, shadows: false, chunksAhead: 6, propDensity: 0.5, drawDist: 0.75, antialias: false },
   medium: { pixelRatio: 1, shadows: false, chunksAhead: 8, propDensity: 0.75, drawDist: 0.9, antialias: true },
   high: { pixelRatio: 1, shadows: true, chunksAhead: 10, propDensity: 1, drawDist: 1, antialias: true },
-  ultra: { pixelRatio: 1.5, shadows: true, chunksAhead: 12, propDensity: 1.25, drawDist: 1.15, antialias: true },
+  ultra: { pixelRatio: 1.25, shadows: true, chunksAhead: 12, propDensity: 1.25, drawDist: 1.15, antialias: true },
 };
 
 const defaults = (): SaveData => ({

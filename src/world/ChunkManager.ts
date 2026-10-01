@@ -12,26 +12,40 @@ const ROWS = 17;
 
 class PropPool {
   mesh: THREE.InstancedMesh;
+  /** each slot (one chunk) keeps its own instances; they are packed end to end so only real instances are drawn */
+  private slotMat: Float32Array[] = [];
+  private slotCol: Float32Array[] = [];
+  private slotN: number[] = [];
   private cur = 0;
-  private end = 0;
-  private static zero = new THREE.Matrix4().makeScale(0, 0, 0);
-  constructor(geo: THREE.BufferGeometry, mat: THREE.Material, public slots: number, public cap: number, colored = false) {
+  private n = 0;
+  constructor(geo: THREE.BufferGeometry, mat: THREE.Material, public slots: number, public cap: number, private colored = false) {
     this.mesh = new THREE.InstancedMesh(geo, mat, slots * cap);
     this.mesh.frustumCulled = false;
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    for (let i = 0; i < slots * cap; i++) this.mesh.setMatrixAt(i, PropPool.zero);
-    if (colored) for (let i = 0; i < slots * cap; i++) this.mesh.setColorAt(i, new THREE.Color(1, 1, 1));
+    if (colored) { this.mesh.setColorAt(0, new THREE.Color(1, 1, 1)); this.mesh.instanceColor!.setUsage(THREE.DynamicDrawUsage); }
+    for (let i = 0; i < slots; i++) { this.slotMat.push(new Float32Array(cap * 16)); this.slotCol.push(new Float32Array(cap * 3).fill(1)); this.slotN.push(0); }
+    this.mesh.count = 0;
   }
-  begin(slot: number) { this.cur = slot * this.cap; this.end = this.cur + this.cap; }
+  begin(slot: number) { this.cur = slot; this.n = 0; }
   add(m: THREE.Matrix4, c?: THREE.Color) {
-    if (this.cur >= this.end) return false;
-    this.mesh.setMatrixAt(this.cur, m);
-    if (c && this.mesh.instanceColor) this.mesh.setColorAt(this.cur, c);
-    this.cur++;
+    if (this.n >= this.cap) return false;
+    m.toArray(this.slotMat[this.cur], this.n * 16);
+    if (c) { const a = this.slotCol[this.cur], o = this.n * 3; a[o] = c.r; a[o + 1] = c.g; a[o + 2] = c.b; }
+    this.n++;
     return true;
   }
   finish() {
-    while (this.cur < this.end) this.mesh.setMatrixAt(this.cur++, PropPool.zero);
+    this.slotN[this.cur] = this.n;
+    const mat = this.mesh.instanceMatrix.array as Float32Array, col = this.mesh.instanceColor?.array as Float32Array | undefined;
+    let total = 0;
+    for (let i = 0; i < this.slots; i++) {
+      const k = this.slotN[i];
+      if (!k) continue;
+      mat.set(k === this.cap ? this.slotMat[i] : this.slotMat[i].subarray(0, k * 16), total * 16);
+      if (col) col.set(k === this.cap ? this.slotCol[i] : this.slotCol[i].subarray(0, k * 3), total * 3);
+      total += k;
+    }
+    this.mesh.count = total;
     this.mesh.instanceMatrix.needsUpdate = true;
     if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
   }
@@ -68,6 +82,9 @@ export interface ChunkMods {
   roadSink?: (s: number, d: number) => number;
 }
 
+/** props too small or too low to be worth a place in the shadow pass */
+const NO_SHADOW = new Set(['lamp', 'sign', 'pole', 'bush', 'fence', 'bale', 'rock', 'streetlight']);
+
 const m4 = new THREE.Matrix4();
 const q = new THREE.Quaternion();
 const v3 = new THREE.Vector3();
@@ -102,7 +119,7 @@ export class ChunkManager {
     const vcMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
     const pool = (name: string, geo: THREE.BufferGeometry, cap: number, mat: THREE.Material = vcMat, colored = false) => {
       const p = new PropPool(geo, mat, nSlots, cap, colored);
-      p.mesh.castShadow = quality.shadows;
+      p.mesh.castShadow = quality.shadows && !NO_SHADOW.has(name);
       p.mesh.receiveShadow = false;
       this.pools[name] = p;
       this.root.add(p.mesh);
@@ -415,7 +432,7 @@ export class ChunkManager {
   }
 
   setShadows(on: boolean) {
-    for (const k in this.pools) this.pools[k].mesh.castShadow = on;
+    for (const k in this.pools) this.pools[k].mesh.castShadow = on && !NO_SHADOW.has(k);
   }
 
   dispose() {

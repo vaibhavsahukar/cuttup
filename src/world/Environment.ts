@@ -73,7 +73,7 @@ export class Environment {
     this.sun.userData.dir = dir.normalize();
     this.sun.castShadow = shadows;
     if (shadows) {
-      this.sun.shadow.mapSize.set(2048, 2048);
+      this.sun.shadow.mapSize.set(1536, 1536); // 120 m across: still about 8 cm a texel
       const c = this.sun.shadow.camera;
       c.left = -60; c.right = 60; c.top = 60; c.bottom = -60; c.near = 1; c.far = 400;
       this.sun.shadow.bias = -0.0005;
