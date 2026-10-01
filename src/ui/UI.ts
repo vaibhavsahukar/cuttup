@@ -235,6 +235,7 @@ export class UI {
       this.h.selectMap(card.dataset.m!);
       this.buildMaps();
     };
+    this.applyFocus(); // the rebuild dropped the highlight
   }
 
   // ---------------- settings ----------------
@@ -478,7 +479,7 @@ export class UI {
   private buttons() {
     const scr = document.getElementById(this.current);
     if (!scr) return [];
-    return [...scr.querySelectorAll('button, .card')].filter((b) => (b as HTMLElement).offsetParent !== null) as HTMLElement[];
+    return [...scr.querySelectorAll('button, .card')].filter((b) => (b as HTMLElement).getClientRects().length > 0) as HTMLElement[];
   }
   private applyFocus() {
     const bs = this.buttons();
