@@ -121,8 +121,8 @@ export function buildZ350(color: number, shadows = true): VehicleModel {
     box('dark', sx * (lerpK(HW, 0.1) + 0.004), 0.7, 0.1, 0.01, 0.014, 1.25); // door shut line
     box('dark', sx * (lerpK(HW, 0.0) + 0.004), 0.93, -0.62, 0.014, 0.055, 0.16); // door handle recess
     box('blue', sx * (lerpK(HW, 0) - 0.012), 0.2, 0.0, 0.04, 0.05, 1.5); // blue side skirt
-    ball('paint', sx * 1.0, 1.0, 0.46, 0.06, 0.07, 0.13); // mirror
-    box('dark', sx * 0.945, 1.0, 0.46, 0.03, 0.03, 0.08);
+    ball('paint', sx * 0.95, 1.02, 0.5, 0.06, 0.07, 0.13); // mirror
+    box('paint', sx * 0.84, 0.99, 0.55, 0.2, 0.05, 0.1); // stalk joining it to the door
   }
   box('dark', 0, 0.38, F - 0.05, 1.0, 0.16, 0.05); // mesh grille
   box('blue', 0, 0.27, F - 0.06, 1.3, 0.03, 0.1); // front lip
