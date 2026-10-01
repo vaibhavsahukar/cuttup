@@ -83,10 +83,11 @@ export function buildM4(color: number, shadows = true): VehicleModel {
     faceSlab('carbon', sx, [[0.015, 0.325], [0.255, 0.335], [0.3, 0.635], [0.015, 0.635]], false, 0.022);
     faceSlab('dark', sx, [[0.035, 0.35], [0.24, 0.355], [0.275, 0.615], [0.035, 0.615]], false, 0.036);
     for (const y of [0.42, 0.485, 0.55]) box('carbon', sx * 0.15, y, F + 0.012, 0.19, 0.016, 0.01);
-    // slim hockey stick headlamp: dark housing, white lamp and the amber light line, running out to the corner
-    faceSlab('dark', sx, [[0.38, 0.655], [0.6, 0.6], [0.77, 0.585], [0.8, 0.64], [0.77, 0.69], [0.6, 0.7], [0.4, 0.715]], false, 0.02);
-    faceSlab('head', sx, [[0.4, 0.665], [0.6, 0.615], [0.76, 0.6], [0.78, 0.64], [0.75, 0.67], [0.6, 0.68], [0.42, 0.705]], false, 0.03);
-    faceSlab('amber', sx, [[0.42, 0.674], [0.6, 0.628], [0.74, 0.616], [0.75, 0.628], [0.6, 0.642], [0.43, 0.688]], false, 0.036);
+    // slim headlamp sweeping up and out from the kidney: dark housing, white lens, amber DRL along the top and a hook down at the inner end
+    faceSlab('dark', sx, [[0.33, 0.585], [0.38, 0.67], [0.6, 0.675], [0.78, 0.725], [0.805, 0.7], [0.76, 0.595], [0.52, 0.575]], false, 0.02);
+    faceSlab('head', sx, [[0.355, 0.605], [0.395, 0.655], [0.6, 0.66], [0.765, 0.705], [0.785, 0.685], [0.74, 0.607], [0.52, 0.592]], false, 0.03);
+    faceSlab('amber', sx, [[0.42, 0.642], [0.6, 0.646], [0.75, 0.69], [0.76, 0.678], [0.6, 0.633], [0.44, 0.63]], false, 0.036);
+    faceSlab('amber', sx, [[0.37, 0.64], [0.405, 0.64], [0.4, 0.595], [0.368, 0.6]], false, 0.036);
     // wide lower intake with a divider, and the tall angled corner intakes
     faceSlab('dark', sx, [[0.0, 0.2], [0.56, 0.2], [0.56, 0.31], [0.0, 0.31]], false, 0.022);
     box('carbon', sx * 0.28, 0.255, F + 0.01, 0.56, 0.014, 0.01);
