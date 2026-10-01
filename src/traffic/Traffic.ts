@@ -51,6 +51,7 @@ export interface TrafficCar {
   nearMissed: boolean;
   alive: boolean;
   cop?: boolean; // driven by the Police controller, not by the traffic AI
+  rage?: boolean; // road rage: chasing the player, also driven by the Police controller
   color?: number; // paint colour
 }
 
@@ -271,7 +272,7 @@ export class Traffic {
     const r = this.rng;
     const hw = this.map.road === 'highway';
     for (const c of this.cars) {
-      if (!c.alive || c.wrecked || c.cop) continue;
+      if (!c.alive || c.wrecked || c.cop || c.rage) continue;
       const lanes = this.lanesFor(c.dir);
       // curve speed: look ahead for the tightest curvature
       let kMax = 0;

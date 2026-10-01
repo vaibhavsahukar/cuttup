@@ -37,6 +37,7 @@ export function buildViewerModel(key: string, drivable: (id: string) => VehicleS
   if (kind === 't') return build(TRAFFIC_SHAPES[id as TrafficType], id === 'boxtruck' ? 0xeeeeee : id === 'schoolbus' ? 0xf2b400 : 0x8f9499, false, true);
   const cop = id as CopType;
   if (cop === 'cop_moto') return buildBike('cbr650', COP_MOTO_COLOR, true, 'police');
+  if (cop === 'cop_samurai') return buildBike('zx6r', COP_MOTO_COLOR, true, 'police');
   return build(COP_SHAPES[cop], COP_COLORS[cop], false, true, 'police');
 }
 
@@ -49,18 +50,19 @@ export function trafficDims(type: TrafficType) {
   return { length: s.length, width: s.width, height: s.height };
 }
 
-export type CopType = 'cop_basic' | 'cop_charger' | 'cop_moto';
+export type CopType = 'cop_basic' | 'cop_charger' | 'cop_moto' | 'cop_samurai';
 /** the slower patrol car is a hatchback, the fast interceptor is built on the Conquette; both black with white doors */
-const COP_SHAPES: Record<Exclude<CopType, 'cop_moto'>, string> = { cop_basic: 't_hatch', cop_charger: 'zr1' };
-const COP_COLORS: Record<Exclude<CopType, 'cop_moto'>, number> = { cop_basic: 0x17191c, cop_charger: 0x101114 };
+const COP_SHAPES: Record<'cop_basic' | 'cop_charger', string> = { cop_basic: 't_hatch', cop_charger: 'zr1' };
+const COP_COLORS: Record<'cop_basic' | 'cop_charger', number> = { cop_basic: 0x17191c, cop_charger: 0x101114 };
 /** the police motorcycle is the CCR650 in white and black */
 const COP_MOTO_COLOR = 0xf0f1f3;
 export function buildCopModel(type: CopType): VehicleModel {
   if (type === 'cop_moto') return buildBike('cbr650', COP_MOTO_COLOR, false, 'police');
+  if (type === 'cop_samurai') return buildBike('zx6r', COP_MOTO_COLOR, false, 'police');
   return build(COP_SHAPES[type], COP_COLORS[type], true, false, 'police');
 }
 export function copDims(type: CopType) {
-  if (type === 'cop_moto') return { length: 2.03, width: 0.7, height: 1.13 };
+  if (type === 'cop_moto' || type === 'cop_samurai') return { length: 2.03, width: 0.72, height: 1.13 };
   const s = getShape(COP_SHAPES[type])!;
   return { length: s.length, width: s.width, height: s.height };
 }

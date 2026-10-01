@@ -18,11 +18,16 @@ export function copsForScore(score: number) {
   return n;
 }
 
-interface Cop { car: TrafficCar; red: THREE.Mesh; blue: THREE.Mesh; skill: number; vMax: number; charger: boolean; moto: boolean; dSm: number; laneT: number; stuckT: number; slot: number }
+export type UnitKind = 'patrol' | 'moto' | 'samurai' | 'interceptor';
+interface Cop { kind: UnitKind; smart: boolean; retiring: number; car: TrafficCar; red?: THREE.Mesh; blue?: THREE.Mesh; skill: number; vMax: number; charger: boolean; moto: boolean; dSm: number; laneT: number; stuckT: number; slot: number }
 /** where each cop in the pack aims relative to the player until it closes in (fans out instead of queueing in one line) */
 const SLOT_OFFSET = [0, -2.7, 2.7, -5.4, 5.4];
 /** how far a cop is behind the player (m) */
 const pl_rel = (cop: { car: TrafficCar }, player: PlayerProxy) => player.s - cop.car.s;
+/** backroad: one unit per star level, each tier sends a stronger one */
+const BACKROAD_TIERS: UnitKind[] = ['patrol', 'moto', 'samurai', 'interceptor'];
+const RANK: Record<UnitKind, number> = { patrol: 0, moto: 1, samurai: 2, interceptor: 3 };
+const VTOP: Record<UnitKind, number> = { patrol: 55, moto: 58, samurai: 72, interceptor: 95 };
 interface Wreck { car: TrafficCar; body: RigidBody; age: number }
 
 /**
@@ -33,6 +38,9 @@ interface Wreck { car: TrafficCar; body: RigidBody; age: number }
  */
 export class Police {
   cops: Cop[] = [];
+  /** road rage: an ordinary driver chasing the player at interceptor pace (at most one) */
+  ragers: (Cop & { rageT: number })[] = [];
+  onRage: ((started: boolean) => void) | null = null;
   wrecks: Wreck[] = [];
   private respawnT = 0;
   private time = 0;
@@ -45,8 +53,8 @@ export class Police {
   /** the player has been clear of the police long enough for the stars to flash */
   get fleeing() { return this.wanted > 0 && this.awayT >= Police.OUTRUN_FLASH_AFTER; }
   onCleared: (() => void) | null = null;
-  onWreck: ((intensity: number) => void) | null = null;
-  onDispatch: ((n: number, charger: boolean, moto: boolean) => void) | null = null;
+  onWreck: ((intensity: number, copDown: boolean) => void) | null = null;
+  onDispatch: ((n: number, kind: UnitKind) => void) | null = null;
 
   constructor(public traffic: Traffic, public path: RoadPath, public map: MapSpec, public layout: Layout, public particles: Particles, public ground: (p: THREE.Vector3) => number) {}
 
@@ -66,15 +74,24 @@ export class Police {
   static OUTRUN_CLEAR_AFTER = 90;
   /** the motorcycle unit only chases riders */
   playerIsBike = false;
-  private spawn(player: PlayerProxy, score: number) {
-    // a motorcycle rider is also chased by one police motorcycle (from 10,000 points; never more than one at a time)
-    const moto = this.playerIsBike && score >= Police.MOTO_FROM && !this.cops.some((c) => c.moto);
-    const charger = !moto && score >= Police.CHARGER_FROM && Math.random() < (score >= 100000 ? 0.7 : 0.5);
-    const type: CopType = charger ? 'cop_charger' : moto ? 'cop_moto' : 'cop_basic';
+  /** which unit the next dispatch sends (highway: a mixed pack; backroad: the single unit for the current tier) */
+  private nextKind(score: number): UnitKind {
+    const s = score / this.diff.copTier;
+    const has = (k: UnitKind) => this.cops.some((c) => c.kind === k && c.retiring <= 0);
+    if (this.map.road === 'backroad') return BACKROAD_TIERS[Math.max(0, Math.min(3, this.wanted - 1))];
+    if (this.wanted >= 5 && !has('interceptor')) return 'interceptor';
+    if (this.playerIsBike && s >= 20000 && !has('samurai')) return 'samurai';
+    if (this.playerIsBike && s >= Police.MOTO_FROM && !has('moto')) return 'moto';
+    return 'patrol';
+  }
+
+  private spawn(player: PlayerProxy, kind: UnitKind) {
+    const charger = kind === 'interceptor', moto = kind === 'moto' || kind === 'samurai';
+    const type: CopType = charger ? 'cop_charger' : kind === 'samurai' ? 'cop_samurai' : kind === 'moto' ? 'cop_moto' : 'cop_basic';
     const dims = copDims(type);
-    // top speeds (m/s): the patrol car is slower than a CCR650R (135 mph), the police motorcycle about level with it,
-    // the Conquette interceptor is the fast one and is also allowed to close up on a faster player
-    const vTop = charger ? 95 : moto ? 58 : 55;
+    // top speeds (m/s): patrol car below a CCR650R (135 mph), the police CCR about level with it, the Samurai (160 mph)
+    // a real threat to riders, and the Conquette interceptor the fastest, always able to close on the player
+    const vTop = VTOP[kind];
     const model = buildCopModel(type);
     // flashing red / blue light bar on the roof (part of the model)
     const red = model.lightBar!.red[0], blue = model.lightBar!.blue[0];
@@ -82,12 +99,13 @@ export class Police {
     // enter from behind, out of view, in a free lane near the player
     const lanes = this.layout.lanes;
     let lane = 0, best = 1e9;
+    const hw = this.map.road === 'highway';
     for (let l = 0; l < lanes; l++) { const dd = Math.abs(this.layout.laneCenter(l) - player.d); if (dd < best) { best = dd; lane = l; } }
     // never appear inside a traffic car: slide back until the slot is clear, and take the lane with the most room
     // while the player is getting away, replacements come from well out of range instead of right behind them
     let sSpawn = player.s - (this.awayT > 20 ? 185 : 90) - Math.random() * 30;
     for (let tries = 0; tries < 6; tries++) {
-      const free = (l: number) => !this.traffic.cars.some((o) => o.alive && o.dir === 1 && Math.abs(o.d - this.layout.laneCenter(l)) < 2.6 && Math.abs(o.s - sSpawn) < 45);
+      const free = (l: number) => !this.traffic.cars.some((o) => o.alive && (o.dir === 1 || !hw) && Math.abs(o.d - this.layout.laneCenter(l)) < 2.6 && Math.abs(o.s - sSpawn) < 45);
       if (free(lane)) break;
       const alt = [lane - 1, lane + 1].find((l) => l >= 0 && l < lanes && free(l));
       if (alt !== undefined) { lane = alt; break; }
@@ -101,13 +119,16 @@ export class Police {
       panicT: 0, freezeT: 0, honkCd: 0, braking: false, wrecked: false, yaw: 0, passedSign: 0, nearMissed: true, alive: true, cop: true,
     };
     this.traffic.cars.push(car);
-    this.cops.push({ car, red, blue, skill: charger ? 0.95 + Math.random() * 0.05 : 0.85 + Math.random() * 0.15, vMax: vTop * this.diff.copSpeed, charger, moto, dSm: car.d, laneT: 0, stuckT: 0, slot: this.cops.length });
-    this.onDispatch?.(this.cops.length, charger, moto);
+    this.cops.push({ kind, smart: charger, retiring: 0, car, red, blue, skill: charger || kind === 'samurai' ? 0.96 + Math.random() * 0.04 : 0.85 + Math.random() * 0.15, vMax: vTop * this.diff.copSpeed, charger, moto, dSm: car.d, laneT: 0, stuckT: 0, slot: this.cops.length });
+    this.onDispatch?.(this.active().length, kind);
   }
+
+  /** units still in the chase (not dropping out) */
+  active() { return this.cops.filter((c) => c.retiring <= 0); }
 
   update(dt: number, player: PlayerProxy, playerVl: number, score: number, active: boolean) {
     this.time += dt;
-    const tier = copsForScore(score / this.diff.copTier);
+    const tier = this.map.road === 'backroad' ? Math.min(4, copsForScore(score / this.diff.copTier)) : copsForScore(score / this.diff.copTier);
     this.wanted = tier > this.clearedTier ? tier : 0;
     if (this.wanted === 0 && this.cops.length) { for (const c of this.cops) this.traffic.release(c.car); this.cops = []; }
     // outrunning the police: a minute with no cop near, then 30 s of flashing stars, then the wanted level is gone
@@ -123,16 +144,31 @@ export class Police {
     } else if (this.wanted === 0) this.awayT = 0;
     // drop cops that despawned (outrun) or wrecked
     this.cops = this.cops.filter((c) => c.car.alive && !c.car.wrecked);
-    if (active && this.cops.length < Math.min(this.wanted, Police.MAX_COPS, this.diff.copMax)) {
+    // backroads: only one unit at a time; a higher tier sends a stronger unit and the current one drops out of the chase
+    if (this.map.road === 'backroad' && this.wanted > 0) {
+      const want = BACKROAD_TIERS[Math.min(3, this.wanted - 1)];
+      for (const c of this.cops) if (c.retiring <= 0 && c.kind !== want && RANK[c.kind] < RANK[want]) c.retiring = 0.001;
+    }
+    // highways: the Conquette only joins at five stars and only one at a time; extra ones retire
+    for (const c of this.cops) {
+      if (c.retiring > 0) {
+        c.retiring += dt;
+        if (c.retiring > 12 || pl_rel(c, player) > 260) { this.traffic.release(c.car); c.car.alive = false; }
+      }
+    }
+    this.cops = this.cops.filter((c) => c.car.alive);
+    const cap = this.map.road === 'backroad' ? 1 : Math.min(this.wanted, Police.MAX_COPS, this.diff.copMax);
+    if (active && this.active().length < cap) {
       this.respawnT -= dt;
-      if (this.respawnT <= 0) { this.spawn(player, score); this.respawnT = 1.2; }
+      if (this.respawnT <= 0) { this.spawn(player, this.nextKind(score)); this.respawnT = this.map.road === 'backroad' ? 2.5 : 1.2; }
     }
     // an interceptor left far behind is pulled back into the chase; the slower units really can be outrun: a patrol
     // car or motorcycle more than 400 m back is lost and a replacement is dispatched after a while
     for (const cop of this.cops) {
       const back = pl_rel(cop, player);
+      if (cop.retiring > 0) continue;
       if (cop.charger && back > 220) { cop.car.s = player.s - 120; cop.car.v = Math.max(cop.car.v, player.v + 20); }
-      else if (!cop.charger && back > 400) { this.traffic.release(cop.car); this.respawnT = 12; }
+      else if (!cop.charger && back > 400) { this.traffic.release(cop.car); cop.car.alive = false; this.respawnT = 12; }
     }
     this.cops.forEach((cop, i) => { cop.slot = i; });
     // tell the traffic where the cops are so that cars ahead of them pull over and clear the way
@@ -141,33 +177,55 @@ export class Police {
     const dMin = (hw ? this.layout.playerMin : this.layout.softMin) + 1.1;
     const dMax = (hw ? this.layout.playerMax : this.layout.softMax) - 1.1;
     for (const cop of this.cops) this.drive(cop, dt, player, playerVl, dMin, dMax);
+    for (const r of this.ragers) {
+      r.rageT += dt;
+      this.drive(r, dt, player, playerVl, dMin, dMax);
+      if (r.car.honkCd <= 0 && Math.abs(player.s - r.car.s) < 60) { this.traffic.onHonk?.(r.car, 1); r.car.honkCd = 1.2 + Math.random(); }
+      r.car.honkCd -= dt;
+      // they give up after a while, or once they are far behind
+      if (r.rageT > 75 || player.s - r.car.s > 400 || !active) this.calm(r);
+    }
+    this.ragers = this.ragers.filter((r) => r.car.alive && !r.car.wrecked && r.car.rage);
     this.collisions();
     this.updateWrecks(dt, player);
     // light bar flash
     const phase = Math.floor(this.time * 7) % 4;
-    for (const c of this.cops) { c.red.material = phase < 2 ? MAT.policeRed : MAT.policeOff; c.blue.material = phase >= 2 ? MAT.policeBlue : MAT.policeOff; }
+    for (const c of this.cops) { if (c.red) c.red.material = phase < 2 ? MAT.policeRed : MAT.policeOff; if (c.blue) c.blue.material = phase >= 2 ? MAT.policeBlue : MAT.policeOff; }
   }
 
   private drive(cop: Cop, dt: number, pl: PlayerProxy, playerVl: number, dMin: number, dMax: number) {
     const c = cop.car;
+    if (cop.retiring > 0) {
+      // dropping out of the chase: lights off the throttle, slow down and fall away behind
+      const a = -6;
+      c.acc = a; c.v = Math.max(0, c.v + a * dt); c.braking = true; c.s += c.v * dt;
+      c.yaw *= 1 - Math.min(1, dt * 4);
+      return;
+    }
+    const smart = cop.smart;
     const rel = pl.s - c.s; // + = player ahead
     // never outrun: a cop can always exceed the player's speed by a margin, so a fast car can't just lose them
     const vMax = cop.charger ? Math.max(cop.vMax, pl.v + 35) : cop.vMax;
     // longitudinal: catch up fast, then close in to ram
     // a cop that has overshot drops back hard to tuck in behind again
-    let vT = rel > 40 ? pl.v + 22 + rel * 0.15 : rel > 6 ? pl.v + 10 : rel > -4 ? pl.v + 4 : pl.v - 14;
+    // a smart unit closes fast but arrives at matched speed (no overshooting), then sits on the rear quarter for a PIT
+    let vT = smart
+      ? (rel > 60 ? pl.v + 26 + rel * 0.2 : rel > 14 ? pl.v + Math.max(4, (rel - 8) * 0.9) : rel > 2 ? pl.v + 2.5 : rel > -3 ? pl.v + 1 : pl.v - 10)
+      : rel > 40 ? pl.v + 22 + rel * 0.15 : rel > 6 ? pl.v + 10 : rel > -4 ? pl.v + 4 : pl.v - 14;
     vT = clamp(vT, 0, vMax);
     // curve speed (cops brake for bends a bit later than traffic)
     let kMax = 0;
     for (const la of [25, 60]) kMax = Math.max(kMax, Math.abs(this.path.frame(c.s + la).k));
     vT = Math.min(vT, Math.sqrt(13 / Math.max(1e-5, kMax)));
     // lateral: aim at the player (with lead) when close, otherwise pick the clearest line
-    const lead = clamp(rel / Math.max(5, c.v - pl.v + 5), 0, 1.2);
+    const lead = clamp(rel / Math.max(5, c.v - pl.v + 5), 0, smart ? 1.6 : 1.2);
     // the pack fans out (slot offsets) while approaching, then every cop converges on the player
-    const slotOff = SLOT_OFFSET[cop.slot % SLOT_OFFSET.length] * clamp((rel - 12) / 40, 0, 1);
-    let dT = (rel < 35 ? pl.d + playerVl * lead * 0.6 : pl.d) + slotOff;
+    const slotOff = smart ? 0 : SLOT_OFFSET[cop.slot % SLOT_OFFSET.length] * clamp((rel - 12) / 40, 0, 1);
+    let dT = (rel < 35 ? pl.d + playerVl * lead * (smart ? 1 : 0.6) : pl.d) + slotOff;
+    // PIT: come up beside the rear quarter first, then turn in once level with it
+    if (smart && rel > 1.5 && rel < 14) dT = pl.d + Math.sign(c.d - pl.d || 1) * clamp((rel - 3) * 0.35, 0, 2.4);
     // obstacle scan ahead in the cop's path
-    const look = 25 + c.v * 2.2; // plan the escape line well ahead
+    const look = smart ? 40 + c.v * 3 : 25 + c.v * 2.2; // plan the escape line well ahead
     const blocked = (d: number) => {
       let g = 1e9, v = 0;
       for (const o of this.traffic.cars) {
@@ -195,19 +253,23 @@ export class Police {
       let bestD = c.d, bestScore = -1e9;
       for (let d = dMin; d <= dMax + 0.01; d += 0.9) {
         const b = blocked(d);
-        const sc = Math.min(b.g, look * 2) + b.v * 0.5 - Math.abs(d - c.d) * 0.8 - Math.abs(d - dT) * 0.15;
+        // smart units weigh how soon each line closes (time to contact) and prefer lines that also lead to the player
+        const closingD = Math.max(0.5, c.v - b.v);
+        const sc = smart
+          ? Math.min(b.g / closingD, 8) * 12 + Math.min(b.g, look * 2) * 0.3 - Math.abs(d - c.d) * 0.6 - Math.abs(d - dT) * 0.5
+          : Math.min(b.g, look * 2) + b.v * 0.5 - Math.abs(d - c.d) * 0.8 - Math.abs(d - dT) * 0.15;
         if (sc > bestScore) { bestScore = sc; bestD = d; }
       }
       dT = bestD;
       // only slow down when the car directly ahead is close and the escape line is not yet reached
       // hold a safe gap to whatever is still in the current path until the new line is reached
-      if (Math.abs(bestD - c.d) > 0.6) vT = Math.min(vT, here.v + Math.max(0, here.g - 6) * 0.9);
+      if (!smart && Math.abs(bestD - c.d) > 0.6) vT = Math.min(vT, here.v + Math.max(0, here.g - 6) * 0.9);
     }
     dT = clamp(dT, dMin, dMax);
     // braking-distance check on the car directly ahead in the current path (never when committed to the ram)
     if (!toPlayer && here.g < 1e8) {
       const closing = c.v - here.v;
-      const need = closing > 0 ? (closing * closing) / (2 * 7) + 5 : 0;
+      const need = closing > 0 ? (closing * closing) / (2 * (smart ? 9 : 7)) + (smart ? 4 : 5) : 0;
       if (here.g < need + 4) vT = Math.min(vT, here.v + Math.max(0, here.g - 5) * 0.8);
     }
     // actuate with skill-limited rates (this is where imperfect cops make mistakes)
@@ -218,7 +280,7 @@ export class Police {
     c.v = Math.max(0, c.v + acc * dt);
     c.braking = acc < -1;
     c.s += c.v * dt;
-    const latRate = (6 + 6 * cop.skill) * clamp(c.v / 20, 0.4, 1) * (cop.moto ? 1.3 : 1);
+    const latRate = (6 + 6 * cop.skill) * clamp(c.v / 20, 0.4, 1) * (cop.moto ? 1.3 : 1) * (smart ? 1.25 : 1);
     // the aim point is low-passed so a line that flips between two open gaps becomes one smooth drift, not a wobble
     cop.dSm += (dT - cop.dSm) * (1 - Math.exp(-dt * (toPlayer ? 9 : 4)));
     const dd = clamp(cop.dSm - c.d, -latRate * dt, latRate * dt);
@@ -229,8 +291,26 @@ export class Police {
   }
 
   /** cop vs traffic: hard hits wreck both (and a new cop gets dispatched) */
+  /** the driver of `car` (same direction as the player) loses it and chases the player like an interceptor */
+  startRage(car: TrafficCar) {
+    if (this.ragers.length || car.cop || car.rage || car.dir !== 1 || car.wrecked) return false;
+    car.rage = true; car.signal = 0; car.pendingLane = -1; car.lcT = 1;
+    this.ragers.push({ kind: 'interceptor', smart: true, retiring: 0, car, skill: 0.97, vMax: VTOP.interceptor * this.diff.copSpeed, charger: true, moto: false, dSm: car.d, laneT: 0, stuckT: 0, slot: 0, rageT: 0 });
+    this.onRage?.(true);
+    return true;
+  }
+  private calm(r: Cop & { rageT: number }) {
+    const c = r.car;
+    c.rage = false;
+    // back to normal driving in the nearest lane
+    let lane = 0, best = 1e9;
+    for (let l = 0; l < this.layout.lanes; l++) { const dd = Math.abs(this.layout.laneCenter(l) - c.d); if (dd < best) { best = dd; lane = l; } }
+    c.lane = lane; c.targetLane = lane; c.lcT = 1; c.v = Math.min(c.v, c.v0); c.yaw = 0;
+    this.onRage?.(false);
+  }
+
   private collisions() {
-    for (const cop of this.cops) {
+    for (const cop of [...this.cops, ...this.ragers]) {
       const c = cop.car;
       if (c.wrecked) continue;
       for (const o of this.traffic.cars) {
@@ -249,7 +329,7 @@ export class Police {
           this.particles.spark(pc, new THREE.Vector3(), 50, 7);
           this.particles.debris(pc, new THREE.Vector3(), 25, 0x111111, false, 0.16);
           this.particles.debris(pc, new THREE.Vector3(), 25, 0xffffff, true, 0.1);
-          this.onWreck?.(clamp(rv / 40, 0.2, 0.8));
+          this.onWreck?.(clamp(rv / 40, 0.2, 0.8), headOnKill && !c.rage);
           break;
         } else {
           // scrape past: nudge apart
@@ -298,5 +378,6 @@ export class Police {
   clear() {
     this.wrecks = [];
     this.cops = [];
+    this.ragers = [];
   }
 }

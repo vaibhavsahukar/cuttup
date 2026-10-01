@@ -8,6 +8,7 @@
  *   headon                hit an oncoming car
  *   truck                 what was hit is a truck, van or pickup
  *   cop                   what was hit is a police car
+ *   rage                  the car was a road rager chasing you (only rage lines are used then)
  *   bus                   what was hit is a school bus (only bus lines are used then)
  *   caught                a police car got you (the only tag such lines need: they replace the hit / solo lines)
  *   wanted                you crashed with a wanted level active (police stars); shown only some of the time
@@ -23,6 +24,7 @@ export interface CrashContext {
   victim?: string; // traffic type that was hit
   cop?: boolean; // the car hit was a police car
   wanted?: boolean; // a wanted level was active when you crashed
+  rage?: boolean; // the car hit was a road rager chasing you
   bike: boolean;
 }
 
@@ -154,6 +156,12 @@ bus|Congratulations. You are now the reason there is a school assembly in silenc
 bus|The red flashing lights were not a suggestion
 bus|They were singing on the way to school. Think about that
 bus|That bus drove the same route for years. You ended it in a second
+rage|You cut him off, he cut your run short. Fair trade
+rage|Road rage: the only race you could not win
+rage|He was having a bad day. You made it worse, and he returned the favour
+rage|Next time, maybe do not carve up a stranger at 150 mph
+rage|You made an enemy and he drove like he meant it
+rage|An angry commuter just out-drove you. Let that sink in
 caught|Congratulations, you outran nobody. The officer would like a word
 caught|Nice run. The officer had a full tank, a siren and absolutely nothing better to do
 caught|You have the right to remain silent. Your driving already said plenty
@@ -227,6 +235,7 @@ export function crashFacts(c: CrashContext) {
   if (c.victim && TRUCKS.has(c.victim)) f.add('truck');
   if (c.cop) f.add('cop');
   if (c.victim === 'schoolbus') f.add('bus');
+  if (c.rage) f.add('rage');
   if (c.wanted) f.add('wanted');
   return f;
 }
@@ -242,7 +251,8 @@ export function randomCrashMessage(c: CrashContext) {
   const wanted = facts.has('wanted') && Math.random() < WANTED_CHANCE;
   let pool = MESSAGES.filter((x) => x.need.every((n) => facts.has(n)) && x.need.includes('wanted') === wanted);
   // a school bus gets its own lines and nothing else
-  if (facts.has('bus')) pool = MESSAGES.filter((x) => x.need.includes('bus') && x.need.every((n) => facts.has(n)));
+  if (facts.has('rage')) pool = MESSAGES.filter((x) => x.need.includes('rage'));
+  else if (facts.has('bus')) pool = MESSAGES.filter((x) => x.need.includes('bus') && x.need.every((n) => facts.has(n)));
   const fresh = pool.filter((x) => !recent.includes(x.t));
   if (fresh.length) pool = fresh;
   const weights = pool.map((x) => 1 + x.need.length * 1.5);

@@ -122,10 +122,11 @@ export class Game {
     this.crash.onPileup = (v) => { this.audio.crash(clamp(v / 40, 0.2, 0.7)); this.rig.addShake(0.5); };
     this.police = new Police(this.traffic, this.path, this.map, this.layout, this.particles, ground);
     this.police.diff = difficultyOf(settings.difficulty);
+    this.police.onRage = (on) => this.onPopup?.(on ? { text: 'ROAD RAGE!', sub: 'The driver you cut off is coming after you', color: '#ff7a1a', big: true } : { text: 'THEY GAVE UP', sub: 'Road rage over', color: '#9ad' });
     this.police.onCleared = () => this.onPopup?.({ text: 'WANTED LEVEL CLEARED', sub: 'You lost them', color: '#6cf', big: true });
     this.police.playerIsBike = this.spec.kind === 'bike';
-    this.police.onWreck = (k) => { this.audio.crash(k * 0.6); this.onPopup?.({ text: 'COP DOWN', sub: 'another unit is coming', color: '#6cf' }); };
-    this.police.onDispatch = (n, charger, moto) => this.onPopup?.({ text: charger ? 'INTERCEPTOR DISPATCHED' : n === 1 ? 'POLICE PURSUIT' : `${n} UNITS IN PURSUIT`, sub: charger ? 'Interceptor unit' : moto ? 'Motorcycle unit' : undefined, color: '#ff4040', big: true });
+    this.police.onWreck = (k, copDown) => { this.audio.crash(k * 0.6); if (copDown) this.onPopup?.({ text: 'COP DOWN', sub: 'another unit is coming', color: '#6cf' }); };
+    this.police.onDispatch = (n, kind) => this.onPopup?.({ text: kind === 'interceptor' ? 'INTERCEPTOR DISPATCHED' : this.map.road === 'backroad' ? 'POLICE PURSUIT' : n === 1 ? 'POLICE PURSUIT' : `${n} UNITS IN PURSUIT`, sub: kind === 'interceptor' ? 'Conquette interceptor' : kind === 'samurai' ? 'Samurai motorcycle unit' : kind === 'moto' ? 'Motorcycle unit' : undefined, color: '#ff4040', big: true });
     this.scoring = new Scoring();
     this.scoring.scoreK = difficultyOf(settings.difficulty).scoreK;
     this.scoring.distK = this.map.road === 'backroad' ? 1.5 : 1;
@@ -383,10 +384,17 @@ export class Game {
     const pb = [-pa[1], pa[0]];
     const pvS = ph.v * Math.cos(ph.psi) - ph.vl * Math.sin(ph.psi), pvD = ph.dDot;
     for (const c of this.traffic.cars) {
-      if (!c.alive || c.wrecked) continue;
+      if (!c.alive) continue;
       const dS = c.s - ph.s, dD = c.d - ph.d;
       if (Math.abs(dS) > 10 || Math.abs(dD) > 5) continue;
-      const ca = [Math.cos(c.yaw), -Math.sin(c.yaw)];
+      // a wreck lying on the road is solid too; its box follows the tumbling body's heading
+      let yaw = c.yaw;
+      if (c.wrecked) {
+        const r = c.model.root;
+        const fw = this.tmpV.set(0, 0, 1).applyQuaternion(r.quaternion);
+        yaw = Math.atan2(fw.x, fw.z) - this.path.frame(c.s, fr).heading - (c.dir < 0 ? Math.PI : 0);
+      }
+      const ca = [Math.cos(yaw), -Math.sin(yaw)];
       const cb = [-ca[1], ca[0]];
       let minOv = 1e9, nS = 0, nD = 0;
       let sep = false;
@@ -400,23 +408,27 @@ export class Game {
       }
       if (sep) continue;
       // relative velocity along the contact normal (player -> car)
-      const rvS = pvS - c.v * c.dir, rvD = pvD;
+      const cv = c.wrecked ? 0 : c.v;
+      const rvS = pvS - cv * c.dir, rvD = pvD;
       const vn = rvS * nS + rvD * nD;
       const rel = Math.hypot(rvS, rvD);
       // only a hard hit wrecks: a gentle nudge or a low speed scrape is a bump (and resets the combo)
-      if (vn > 6.5 || rel > 15 || (c.dir < 0 && rel > 12)) {
+      if (vn > (c.wrecked ? 9 : 6.5) || (!c.wrecked && (rel > 15 || (c.dir < 0 && rel > 12)))) {
         this.startCrash(c.dir < 0 ? 'headon' : 'car', Math.max(vn, rel * 0.8), c);
         return;
       }
-      // light bump: separate and exchange a little speed
-      ph.s -= nS * minOv * 0.6; ph.d -= nD * minOv * 0.6;
-      c.s += nS * minOv * 0.4; c.d += nD * minOv * 0.4;
-      ph.v -= Math.max(0, vn) * nS * 0.8;
-      ph.vl += nD * vn * 0.5;
-      c.v = Math.max(0, c.v + Math.max(0, vn) * nS * 0.4);
-      c.panicT = 1.2; c.swerveTarget = Math.sign(nD) * 0.8;
+      // light bump: push fully apart (nothing ever overlaps) and take out the speed into the contact
+      const share = c.wrecked ? 1 : 0.65;
+      ph.s -= nS * (minOv + 0.02) * share; ph.d -= nD * (minOv + 0.02) * share;
+      if (!c.wrecked) { c.s += nS * (minOv + 0.02) * (1 - share); c.d += nD * (minOv + 0.02) * (1 - share); }
+      ph.v -= Math.max(0, vn) * nS * 1.05;
+      ph.vl += nD * Math.max(0, vn) * 0.6;
+      if (!c.wrecked) {
+        c.v = Math.max(0, c.v + Math.max(0, vn) * nS * 0.4);
+        c.panicT = 1.2; c.swerveTarget = Math.sign(nD) * 0.8;
+      }
       this.scoring.bump(); // the streak resets on every bump, even in the cooldown
-      if (this.bumpCd <= 0) { this.audio.thud(0.5); this.rig.addShake(0.5); this.bumpCd = 0.6; this.traffic.onHonk?.(c, 1); }
+      if (this.bumpCd <= 0) { this.audio.thud(0.5); this.rig.addShake(0.5); this.bumpCd = 0.6; if (!c.wrecked) this.traffic.onHonk?.(c, 1); }
     }
   }
 
@@ -449,7 +461,11 @@ export class Game {
         const limit = c.dir < 0 ? 0.6 : 1.4;
         if (relSpeed > 4 && clearance > -0.05 && clearance < limit && c.passedSign > 0) {
           c.nearMissed = true;
+          const cut = c.dir > 0 && this.scoring.time - this.scoring.lastNearMissT < 1.4;
+          const insane = clamp(1 - Math.max(0, clearance) / 1.4, 0, 1) > 0.7;
           this.scoring.nearMiss(Math.max(0, clearance), relSpeed, c.dir < 0);
+          // very rarely, the driver you just carved up snaps and comes after you
+          if ((cut || insane) && c.dir > 0 && !c.cop && Math.random() < 0.05) this.police.startRage(c);
           this.audio.whoosh(relSpeed / 30);
           this.rig.addShake(0.25);
         }
@@ -485,7 +501,7 @@ export class Game {
       this.boomLight.position.copy(contact); this.boomLight.position.y += 1.5;
     }
     // hitting traffic gets a line about the other people; a solo crash gets one about you
-    const message = randomCrashMessage({ map: this.map.id, kind, victim: hit?.type, cop: !!hit?.cop, wanted: this.police.wanted > 0, bike: this.player.bike });
+    const message = randomCrashMessage({ map: this.map.id, kind, victim: hit?.type, cop: !!hit?.cop, rage: !!hit?.rage, wanted: this.police.wanted > 0, bike: this.player.bike });
     const caught = !!hit?.cop && (kind === 'car' || kind === 'headon');
     this.onCrash?.(message, caught);
     this.result = {

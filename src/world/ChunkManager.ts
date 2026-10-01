@@ -310,7 +310,7 @@ export class ChunkManager {
       const n = Math.round(60 * dens);
       for (let i = 0; i < n; i++) {
         const sd = side();
-        const d = sd * (E + 3.5 + Math.pow(rng(), 1.4) * 70);
+        const d = sd * (this.layout.playerMax + 1.3 + Math.pow(rng(), 1.4) * 66);
         const t = 0.7 + rng() * 0.5;
         col.setRGB(t, t, t);
         const s2 = range(rng, 0.75, 1.7);
@@ -320,7 +320,7 @@ export class ChunkManager {
         const t = 0.7 + rng() * 0.5;
         col.setRGB(t * 1.1, t, t * 0.8);
         const s2 = range(rng, 0.8, 1.4);
-        this.place(this.pools.tree, s0 + rng() * CHUNK, side() * (E + 4 + rng() * 50), rng() * 6, s2, s2, s2, col, -0.2);
+        this.place(this.pools.tree, s0 + rng() * CHUNK, side() * (this.layout.playerMax + 1.8 + rng() * 48), rng() * 6, s2, s2, s2, col, -0.2);
       }
       for (let i = 0; i < 4; i++) {
         col.setRGB(1, 1, 1);

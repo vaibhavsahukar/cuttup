@@ -23,6 +23,7 @@ export function modelCatalog(): ModelEntry[] {
   for (const [id, [label, note]] of Object.entries(TRAFFIC_LABELS)) list.push({ key: `t:${id}`, label, group: 'Traffic', note });
   list.push({ key: 'c:cop_basic', label: 'Police cruiser', group: 'Police', note: 'Standard patrol car, joins the chase from 5,000 points' });
   list.push({ key: 'c:cop_moto', label: 'Police motorcycle', group: 'Police', note: 'Fast, agile CCR650 unit, joins the chase from 10,000 points' });
-  list.push({ key: 'c:cop_charger', label: 'Police interceptor', group: 'Police', note: 'Faster muscle car unit, appears from 50,000 points' });
+  list.push({ key: 'c:cop_samurai', label: 'Police Samurai', group: 'Police', note: 'High tier ZR6X Samurai unit: highways from 20,000 points (riders only), backroads from 15,000' });
+  list.push({ key: 'c:cop_charger', label: 'Police interceptor', group: 'Police', note: 'Conquette pursuit unit: one at a time, highways at five stars, backroads from 20,000 points' });
   return list;
 }
