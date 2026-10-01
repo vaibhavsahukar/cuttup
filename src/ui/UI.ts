@@ -36,6 +36,7 @@ export class UI {
   private settingsReturn: ScreenId = 'menu';
   private previewId = '';
   private focusIdx = 0;
+  private previewed: string | null = null;
 
   constructor(public save: Save, public h: UIHandlers) {
     document.body.insertAdjacentHTML('beforeend', `
@@ -493,10 +494,15 @@ export class UI {
   activate() {
     const bs = this.buttons();
     const el = bs[this.focusIdx];
-    // garage: A on a vehicle previews it and selects it straight away
+    // garage: first A on a vehicle previews it, A again on the same one presses "Select vehicle"
     if (this.current === 'garage' && el?.closest('.list')) {
-      el.click();
-      (document.querySelector('#garage [data-a="choose"]') as HTMLElement | null)?.click();
+      if (this.previewed === el.textContent) {
+        this.previewed = null;
+        (document.querySelector('#garage [data-a="choose"]') as HTMLElement | null)?.click();
+      } else {
+        el.click();
+        this.previewed = el.textContent;
+      }
       return;
     }
     el?.click();
