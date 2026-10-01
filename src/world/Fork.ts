@@ -167,7 +167,8 @@ export class Fork {
     }
     const edge = this.layout.roadHalfWidth - 1;
     // the ground beside the new highway's left edge travels with that edge as it opens out (it is not stretched across the lanes)
-    if (terrain && d <= -edge + 0.001) return this.dC + (-edge - this.dC) * this.unfold(s) + (d + edge);
+    // (its width grows with the unfolding: folded, there is no ground left of the ramp, the old road's ground is there)
+    if (terrain && d <= -edge + 0.001) { const u = this.unfold(s); return this.dC + (-edge - this.dC) * u + (d + edge) * u; }
     return this.dC + (d - this.dC) * this.unfold(s);
   }
   /** interpolate a main road coordinate table at main road s */
