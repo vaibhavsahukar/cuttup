@@ -178,6 +178,14 @@ export const VEHICLES: VehicleSpec[] = [
     brakeG: 1.12, downforce: 0.3, steerLock: 0.54, steerSpeed: 2.7, stability: 0.45, yawInertia: 1.05,
     dims: { length: 4.75, width: 2.0, height: 1.4 }, engine: { cylinders: 8, tone: 0.82, roughness: 0.5 } },
 
+  { ...base, id: 'z350', name: 'Nissi 350z', kind: 'car', model: 'z350', color: 0xe8731a,
+    hp: 306, massKg: 1500, drive: 'RWD', zeroSixty: 5.0, topSpeedMph: 155, limited: true,
+    character: 'Short wheelbase V6 coupe: lively, rotates easily, tail happy in the low gears and one of the easiest to drift',
+    gears: 6, redline: 7500, idleRpm: 800, torquePeak: 0.64, torqueFlat: 0.55,
+    tireMu: 1.12, launchMu: 1.0, frontGrip: 1.04, rearGrip: 0.98, powerOversteer: 1.05,
+    cgHeight: 0.5, wheelbase: 2.65, frontWeight: 0.53, track: 1.6, rollFactor: 0.03, pitchFactor: 0.025,
+    brakeG: 1.1, downforce: 0.3, steerLock: 0.55, steerSpeed: 3.2, highSpeedSteer: 0.18, stability: 0.5, yawInertia: 0.85,
+    dims: { length: 4.31, width: 1.98, height: 1.32 }, engine: { cylinders: 6, tone: 1.3, roughness: 0.35 } },
 ];
 
 /** the colorway picked per vehicle (index into COLORWAYS[id]; missing = stock), kept in sync with the save by the UI */

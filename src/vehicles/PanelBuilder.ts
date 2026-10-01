@@ -12,7 +12,8 @@ import type { Shape } from './ShapeBuilder';
  *  - cabin: a separate tapered greenhouse (windscreen, side windows, rear glass; painted roof),
  *  - bumpers, grille and lamps as flat panels on the body faces.
  */
-type Tag = 'paint' | 'glass' | 'dark' | 'head' | 'tail' | 'chrome' | 'carbon' | 'roofglass' | 'white';
+type Tag = 'paint' | 'glass' | 'dark' | 'head' | 'tail' | 'chrome' | 'carbon' | 'roofglass' | 'white' | 'blue';
+const blueMat = new THREE.MeshStandardMaterial({ color: 0x1f4fbf, metalness: 0.4, roughness: 0.4, envMapIntensity: 0.6 });
 const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf2f2f0, metalness: 0.2, roughness: 0.5, envMapIntensity: 0.5 });
 interface Section { z: number; pts: [number, number, Tag][] } // pts go around the section (x, y); tag = material of the segment to the next point
 
@@ -236,13 +237,13 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
   // ---- meshes ----
   const root = new THREE.Group(), chassis = new THREE.Group();
   root.add(chassis);
-  const matFor = (tag: Tag): THREE.Material => tag === 'paint' ? (lite ? paintLite(color) : paint(color)) : tag === 'glass' ? (lite ? MAT.glassLite : MAT.glass) : tag === 'head' ? MAT.head : tag === 'tail' ? MAT.tailOff : tag === 'white' ? whiteMat : tag === 'chrome' ? MAT.chrome : tag === 'carbon' ? MAT.carbon : tag === 'roofglass' ? (roofGlass ??= new THREE.MeshStandardMaterial({ color: 0x10161c, metalness: 0.1, roughness: 0.45, envMapIntensity: 0.35 })) : MAT.trim;
+  const matFor = (tag: Tag): THREE.Material => tag === 'paint' ? (lite ? paintLite(color) : paint(color)) : tag === 'glass' ? (lite ? MAT.glassLite : MAT.glass) : tag === 'head' ? MAT.head : tag === 'tail' ? MAT.tailOff : tag === 'white' ? whiteMat : tag === 'blue' ? blueMat : tag === 'chrome' ? MAT.chrome : tag === 'carbon' ? MAT.carbon : tag === 'roofglass' ? (roofGlass ??= new THREE.MeshStandardMaterial({ color: 0x10161c, metalness: 0.1, roughness: 0.45, envMapIntensity: 0.35 })) : MAT.trim;
   let body: THREE.Mesh | undefined;
   const brake: THREE.Mesh[] = [], heads: THREE.Mesh[] = [];
   if (lite) {
     // traffic / cops: everything but the lamps in one vertex-coloured mesh, so the instancer can
     // draw it in one call and tint the paint per car (dark parts barely change under the tint)
-    const TONE: Partial<Record<Tag, number>> = { white: 0xf2f2f0, glass: 0x0b1620, roofglass: 0x10161c, dark: 0x121314, carbon: 0x1a1b1d, chrome: 0xb8bcc0 };
+    const TONE: Partial<Record<Tag, number>> = { blue: 0x1f4fbf, white: 0xf2f2f0, glass: 0x0b1620, roofglass: 0x10161c, dark: 0x121314, carbon: 0x1a1b1d, chrome: 0xb8bcc0 };
     const pos: number[] = [], cols: number[] = [], cc = new THREE.Color();
     for (const [tag, arr] of out) {
       if (tag === 'head' || tag === 'tail') continue;
@@ -358,6 +359,12 @@ const PROFILES: Record<string, { centre: [number, number][]; belt: [number, numb
   models: {
     centre: [[0, 0.8], [0.03, 1.0], [0.08, 1.1], [0.2, 1.28], [0.32, 1.4], [0.45, 1.43], [0.58, 1.4], [0.68, 1.18], [0.74, 1.0], [0.82, 0.93], [0.92, 0.84], [0.97, 0.74], [1, 0.62]],
     belt: [[0, 0.82], [0.1, 1.0], [0.3, 1.0], [0.5, 0.97], [0.75, 0.93], [0.9, 0.85], [1, 0.65]],
+    roof: 0.72,
+  },
+  // 350Z: short bonnet, steep screen, small greenhouse, round hatch falling to a ducktail
+  z350: {
+    centre: [[0, 0.82], [0.03, 1.0], [0.09, 1.04], [0.2, 1.12], [0.3, 1.27], [0.4, 1.32], [0.5, 1.32], [0.6, 1.25], [0.7, 1.02], [0.78, 0.96], [0.88, 0.9], [0.96, 0.8], [1, 0.68]],
+    belt: [[0, 0.84], [0.1, 0.98], [0.3, 0.98], [0.5, 0.96], [0.75, 0.93], [1, 0.7]],
     roof: 0.72,
   },
   // Huracán: very low wedge, flat engine deck, cabin well forward of the rear axle, long raked screen, low beak
@@ -578,6 +585,29 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     box('dark', 0, c.tailH - 0.1, R + 0.008, c.tailW * 1.9, 0.03, 0.04); // black strip between the lamps
     box('dark', 0, ground + 0.12, R + 0.04, c.tailW * 1.9, 0.2, 0.1); // black valance
     box('paint', 0, c.deckAt(R + 0.12) + 0.014, R + 0.12, c.tailW * 1.8, 0.025, 0.12); // boot spoiler
+  },
+  // Nissan 350Z: big swept teardrop headlamps, mesh lower grille, side intake, blue skirts and lip, big triangular tail
+  // lamps with a dark centre strip, ducktail lip, twin tips.
+  z350(c) {
+    const { L, ground, box } = c;
+    const F = L / 2, R = -L / 2;
+    for (const sx of [1, -1]) {
+      { const [lx, ly, lz] = c.onTop(sx * c.hwAt(F - 0.3) * 0.72, F - 0.3, 0.02); box('dark', lx, ly - 0.005, lz - 0.01, 0.4, 0.1, 0.34); box('head', lx, ly + 0.01, lz + 0.01, 0.34, 0.06, 0.28); }
+      box('dark', sx * c.noseW * 0.66, c.noseH - 0.1, F - 0.015, c.noseW * 0.5, 0.15, 0.05); box('head', sx * c.noseW * 0.66, c.noseH - 0.1, F + 0.005, c.noseW * 0.44, 0.09, 0.04);
+      box('dark', sx * c.noseW * 0.86, ground + 0.2, F - 0.02, c.noseW * 0.2, 0.18, 0.06); // vertical side intakes
+      const zf = F - 1.2;
+      box('dark', sx * (c.hwAt(zf) + 0.004), c.shAt(zf) - 0.2, zf, 0.02, 0.1, 0.14); // fender vent
+      box('blue', sx * (c.hwAt(0) - 0.01), ground + 0.08, 0.0, 0.05, 0.1, L * 0.42); // blue side skirts
+      box('tail', sx * c.tailW * 0.7, c.tailH - 0.1, R + 0.004, c.tailW * 0.5, 0.12, 0.05);
+      box('chrome', sx * 0.2, ground + 0.15, R - 0.01, 0.1, 0.1, 0.08);
+    }
+    box('dark', 0, ground + 0.16, F - 0.02, c.noseW * 0.8, 0.14, 0.06); // mesh lower grille
+    box('blue', 0, ground + 0.03, F - 0.06, c.noseW * 1.7, 0.03, 0.14); // blue front lip
+    box('chrome', 0, c.noseH - 0.12, F + 0.005, 0.1, 0.07, 0.02); // badge
+    box('dark', 0, c.tailH - 0.1, R + 0.008, c.tailW * 1.9, 0.03, 0.04); // strip between the tail lamps
+    box('paint', 0, c.deckAt(R + 0.14) + 0.02, R + 0.14, c.tailW * 1.8, 0.04, 0.14); // ducktail
+    box('blue', 0, ground + 0.07, R + 0.05, c.tailW * 1.7, 0.05, 0.12); // blue rear lip
+    box('dark', 0, ground + 0.13, R + 0.04, c.tailW * 1.5, 0.12, 0.1);
   },
   // Lamborghini Huracán: slim Y headlamps, wide three-part mouth, hexagon side intakes,
   // louvred engine cover, Y tail lamps, twin exhausts in the diffuser.
