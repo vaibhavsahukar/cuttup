@@ -319,6 +319,14 @@ const PROFILES: Record<string, { centre: [number, number][]; belt: [number, numb
     belt: [[0, 0.72], [0.15, 0.82], [0.35, 0.92], [0.5, 0.97], [0.75, 0.97], [1, 0.84]],
     roof: 0.72,
   },
+  // Corvette C8: cab forward mid-engine wedge, long raked screen, roof peak just ahead of the axle line, high haunches
+  // running back into a short, raised engine deck, low pointed nose
+  c8: {
+    centre: [[0, 0.88], [0.02, 1.0], [0.08, 1.04], [0.2, 1.08], [0.3, 1.14], [0.36, 1.2], [0.42, 1.225], [0.52, 1.225], [0.58, 1.2], [0.66, 1.02], [0.72, 0.93], [0.8, 0.9], [0.9, 0.78], [0.97, 0.64], [1, 0.52]],
+    belt: [[0, 0.88], [0.1, 1.0], [0.3, 1.02], [0.5, 0.98], [0.7, 0.9], [0.9, 0.74], [1, 0.52]],
+    roof: 0.7,
+    beltMax: 0.84,
+  },
   // Huracán: very low wedge, flat engine deck, cabin well forward of the rear axle, long raked screen, low beak
   huracan: {
     centre: [[0, 0.86], [0.05, 0.96], [0.3, 1.0], [0.4, 1.07], [0.47, 1.13], [0.56, 1.11], [0.7, 0.86], [0.8, 0.75], [0.93, 0.64], [1, 0.5]],
@@ -326,7 +334,7 @@ const PROFILES: Record<string, { centre: [number, number][]; belt: [number, numb
   },
 };
 
-const ROOF: Record<string, Tag> = { zr1: 'carbon', m4: 'carbon', tesla: 'roofglass' };
+const ROOF: Record<string, Tag> = { zr1: 'carbon', c8: 'carbon', m4: 'carbon', tesla: 'roofglass' };
 
 /** what a hand-made design gets: body measurements along z plus the part tools */
 interface DesignCtx {
@@ -404,6 +412,45 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     box('carbon', 0, ground + 0.08, R + 0.05, c.tailW * 1.4, 0.12, 0.12);
     const zh = F - 0.75;
     for (const sx of [1, -1]) box('paint', sx * c.hwAt(zh) * 0.3, c.deckAt(zh) + 0.015, zh, 0.12, 0.03, 0.8); // bonnet power bulges
+  },
+  // Corvette C8: boomerang LED headlamps, wide mouth with big corner intakes, long side scoop ahead of the rear
+  // wheel with a black blade above it, slim twin tail pods, quad centre exhausts in a black diffuser, raised blade wing.
+  c8(c) {
+    const { L, ground, box, plate } = c;
+    const F = L / 2, R = -L / 2;
+    const onTop = c.onTop;
+    const wR = c.deckAt(R + 0.3) - 0.02;
+    for (const sx of [1, -1]) {
+      // headlamp: a thin blade sweeping back from the nose corner
+      const w1 = c.hwAt(F - 0.15), w2 = c.hwAt(F - 0.75);
+      plate('head', [onTop(sx * w1 * 0.93, F - 0.12), onTop(sx * w1 * 0.7, F - 0.24), onTop(sx * w2 * 0.82, F - 0.86), onTop(sx * w2 * 0.97, F - 0.8)], 0.05);
+      // big angled corner intakes
+      box('dark', sx * c.noseW * 0.7, ground + 0.2, F - 0.03, c.noseW * 0.52, 0.2, 0.06);
+      // side scoop with its black blade, side sill
+      const zs = -0.38;
+      box('dark', sx * (c.hwAt(zs) + 0.004), c.shAt(zs) - 0.25, zs, 0.02, 0.3, 0.72);
+      box('carbon', sx * (c.hwAt(zs) + 0.008), c.shAt(zs) - 0.08, zs + 0.12, 0.02, 0.06, 0.7);
+      box('carbon', sx * (c.hwAt(0.2) - 0.02), ground + 0.06, 0.2, 0.06, 0.08, L * 0.4);
+      // fender vent behind the front wheel
+      const zf = F - 1.55;
+      box('dark', sx * (c.hwAt(zf) + 0.004), c.shAt(zf) - 0.12, zf, 0.02, 0.09, 0.3);
+      // tail pods
+      box('tail', sx * c.tailW * 0.46, c.tailH - 0.1, R + 0.004, c.tailW * 0.44, 0.06, 0.05);
+      box('tail', sx * c.tailW * 0.78, c.tailH - 0.18, R + 0.004, c.tailW * 0.3, 0.1, 0.05);
+      // rear grille vents above the diffuser, wing uprights
+      box('dark', sx * c.tailW * 0.72, ground + 0.3, R + 0.01, c.tailW * 0.5, 0.09, 0.05);
+      box('carbon', sx * c.tailW * 0.6, wR + 0.06, R + 0.3, 0.04, 0.12, 0.12);
+      box('carbon', sx * c.tailW * 0.9, wR + 0.16, R + 0.3, 0.02, 0.08, 0.3);
+    }
+    // nose: full-width lower mouth and splitter, small bonnet vent
+    box('dark', 0, ground + 0.15, F - 0.03, c.noseW * 0.95, 0.2, 0.06);
+    box('carbon', 0, ground + 0.02, F - 0.1, c.noseW * 1.95, 0.035, 0.26);
+    box('dark', 0, c.deckAt(F - 0.9) + 0.012, F - 0.9, c.hwAt(F - 0.9) * 0.5, 0.01, 0.3);
+    // rear: dark lamp bar, diffuser with four centre exhausts, blade wing
+    box('dark', 0, c.tailH - 0.1, R + 0.012, c.tailW * 1.5, 0.06, 0.04);
+    box('carbon', 0, ground + 0.12, R + 0.05, c.tailW * 1.7, 0.2, 0.12);
+    for (const x of [-0.27, -0.09, 0.09, 0.27]) box('chrome', x, ground + 0.2, R - 0.01, 0.1, 0.1, 0.08);
+    box('carbon', 0, wR + 0.12, R + 0.3, c.tailW * 1.8, 0.03, 0.3);
   },
   // Lamborghini Huracán: slim Y headlamps, wide three-part mouth, hexagon side intakes,
   // louvred engine cover, Y tail lamps, twin exhausts in the diffuser.

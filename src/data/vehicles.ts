@@ -31,6 +31,8 @@ export interface VehicleSpec {
   rearGrip: number;
   /** bikes: how readily the front lifts and how long a wheelie holds (1 = a sport bike, a supermoto is well above) */
   wheelieK?: number;
+  /** cars: gearshift time in seconds (default 0.14; a dual clutch is far quicker) */
+  shiftTime?: number;
   powerOversteer: number; // how much wheelspin kills rear lateral grip (0..1.5)
   cgHeight: number; // m
   wheelbase: number; // m
@@ -100,7 +102,7 @@ export const VEHICLES: VehicleSpec[] = [
     rollFactor: 0, pitchFactor: 0.045, brakeG: 1.2, downforce: 0.03, steerLock: 0.5, steerSpeed: 3.8, highSpeedSteer: 0.2,
     stability: 0.94, yawInertia: 0.88,
     dims: { length: 2.05, width: 0.72, height: 1.13 }, engine: { cylinders: 4, tone: 1.55, roughness: 0.12 } },
-  { ...base, id: 'zr1', name: 'Conquette', kind: 'car', model: 'zr1', color: 0x0c0c0e,
+  { ...base, id: 'zr1', name: 'Conquette C6', kind: 'car', model: 'zr1', color: 0x0c0c0e,
     hp: 638, massKg: 1530, drive: 'RWD', zeroSixty: 3.3, topSpeedMph: 205,
     character: 'Brutal supercharged torque, tail-happy on throttle, stable at speed',
     gears: 6, redline: 6600, idleRpm: 800, torquePeak: 0.58, torqueFlat: 0.92,
@@ -108,6 +110,14 @@ export const VEHICLES: VehicleSpec[] = [
     cgHeight: 0.46, wheelbase: 2.69, frontWeight: 0.51, track: 1.6, rollFactor: 0.03, pitchFactor: 0.02,
     brakeG: 1.2, downforce: 0.9, steerLock: 0.52, steerSpeed: 2.6, highSpeedSteer: 0.16, stability: 0.35, yawInertia: 1.0,
     dims: { length: 4.46, width: 1.93, height: 1.24 }, engine: { cylinders: 8, tone: 0.8, roughness: 0.45 } },
+  { ...base, id: 'c8', name: 'Conquette C8', kind: 'car', model: 'c8', color: 0xf5c400,
+    hp: 495, massKg: 1530, drive: 'RWD', zeroSixty: 2.9, topSpeedMph: 194,
+    character: 'Mid engine V8: explosive launch, razor sharp turn in, rotates eagerly, snaps if you lift mid corner',
+    gears: 8, redline: 6600, idleRpm: 800, torquePeak: 0.78, torqueFlat: 0.75, shiftTime: 0.05,
+    tireMu: 1.15, launchMu: 1.14, frontGrip: 1.05, rearGrip: 1.0, powerOversteer: 0.75,
+    cgHeight: 0.46, wheelbase: 2.722, frontWeight: 0.4, track: 1.64, rollFactor: 0.025, pitchFactor: 0.015,
+    brakeG: 1.3, downforce: 1.0, steerLock: 0.52, steerSpeed: 3.1, highSpeedSteer: 0.17, stability: 0.5, yawInertia: 0.8,
+    dims: { length: 4.63, width: 1.95, height: 1.23 }, engine: { cylinders: 8, tone: 0.95, roughness: 0.3 } },
   { ...base, id: 'm4', name: 'BWM W4', kind: 'car', model: 'm4', color: 0x1d5fd6,
     hp: 503, massKg: 1725, drive: 'RWD', zeroSixty: 3.8, topSpeedMph: 155, limited: true,
     character: 'Balanced, oversteers on throttle',

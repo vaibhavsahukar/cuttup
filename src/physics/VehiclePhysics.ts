@@ -222,7 +222,7 @@ export class VehiclePhysics {
     const vg = this.gearTop[this.gear - 1];
     let rN = Math.abs(v) / vg;
     if (this.shiftT > 0) this.shiftT -= dt;
-    else if (v > 0 && rN > 0.97 && this.gear < sp.gears) { this.gear++; this.shiftT = this.bike ? 0.06 : 0.14; }
+    else if (v > 0 && rN > 0.97 && this.gear < sp.gears) { this.gear++; this.shiftT = this.bike ? 0.06 : sp.shiftTime ?? 0.14; }
     else if (this.gear > 1 && rN < 0.5 * (this.gear > 2 ? 1 : 0.8)) { this.gear--; this.shiftT = 0.08; }
     const vg2 = this.gearTop[this.gear - 1];
     rN = Math.abs(v) / vg2;
