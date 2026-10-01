@@ -235,7 +235,7 @@ export class Game {
           throttle: this.fuel > 0 ? input.throttle : 0,
           // parked with no pedal pressed: the brakes hold the car (no rolling back down a slope)
           ...(input.throttle < 0.05 && input.brake < 0.05 && Math.abs(ph.v) < 1 ? { brake: 0.35 } : {}), brake: keyPull ? input.brakePad : input.brake, frontBrake: input.frontBrake, steer: input.steer, handbrake: input.handbrake,
-          hang: input.hang, pull: bike ? Math.max(input.wheelie, keyPull ? 1 : 0) : 0,
+          hang: input.hang, pull: bike && input.push < 0.3 ? Math.max(input.wheelie, keyPull ? 1 : 0) : 0, push: bike ? input.push : 0,
         };
       // Split the frame into equal sub-steps that add up to exactly this frame's time. A fixed step with a
       // leftover accumulator makes the car's drawn position wobble by up to one step from frame to frame

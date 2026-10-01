@@ -31,6 +31,8 @@ export interface Controls {
   hang?: number;
   /** bikes: rider pulls back on the bars / shifts weight back (0..1) to lift the front */
   pull?: number;
+  /** bikes (gamepad): rider leans forward over the tank (0..1), keeping the front wheel down */
+  push?: number;
 }
 /** rider aid levels; 0 = off. abs 0..2, tc 0..3, aw 0..3, eb 0..2 (engine braking low / medium / high) */
 export interface RiderAids { abs: number; tc: number; aw: number; eb: number; manual: boolean }
@@ -54,6 +56,7 @@ export class VehiclePhysics {
   throttle = 0; brake = 0; frontBrake = 0;
   // ---- bike state ----
   aids: RiderAids = { abs: 2, tc: 2, aw: 1, eb: 1, manual: false };
+  push = 0; // rider weight forward (0..1), smoothed
   pull = 0; // rider weight back (0..1), smoothed
   wheelieT = 0; // seconds with the front up (scoring)
   /** road surface grip multiplier (rain) */
@@ -242,10 +245,11 @@ export class VehiclePhysics {
       this.pull += clamp(pullIn - this.pull, -4 * dt, 6 * dt);
       if (pullIn > 0.5 && this.pullPrev <= 0.5 && c.throttle > 0.5 && this.wheelie < 0.05) this.clutchT = 0.35;
       this.pullPrev = pullIn;
+      this.push += clamp(clamp(c.push ?? 0, 0, 1) - this.push, -6 * dt, 8 * dt);
       if (this.clutchT > 0) {
         this.clutchT -= dt;
         Fdrive *= 1 + 0.25 * clamp(1 - av / 30, 0, 1); // revs dumped through the clutch
-        if (this.wheelie <= 0.001) this.pitchRate = Math.max(this.pitchRate, 0.45 * clamp(1 - av / 35, 0, 1) * c.throttle);
+        if (this.wheelie <= 0.001) this.pitchRate = Math.max(this.pitchRate, 0.45 * clamp(1 - av / 35, 0, 1) * c.throttle * (1 - this.push));
       }
     }
     if (bk && Fdrive > 0) {
@@ -254,7 +258,7 @@ export class VehiclePhysics {
       // anti-wheelie: 3 keeps the front down, 2 / 1 allow a small / bigger lift before cutting power
       // riding assist: an assisted rider who deliberately pulls a wheelie keeps it balanced even on a bike whose stock
       // electronics have no anti-wheelie (otherwise it just loops out); manual riding leaves that entirely to you
-      const awLvl = A.aw > 0 ? A.aw : !A.manual && this.pull > 0.3 ? 1 : 0;
+      const awLvl = this.push > 0.3 ? 3 : A.aw > 0 ? A.aw : !A.manual && this.pull > 0.3 ? 1 : 0; // leaning forward acts as a natural anti-wheelie
       if (awLvl > 0) {
         // allow the front up to `cap`, then pick the drive that brings pitch back toward it
         // when the rider asks for a wheelie, levels 1 / 2 only stop a loop-out; 3 keeps it tiny
@@ -484,6 +488,8 @@ export class VehiclePhysics {
     // the rider heaves on the bars when a wheelie is asked for: extra lift that fades with speed, so a wheelie is
     // possible from a standstill up to roughly 100 mph (engine torque alone only lifts the front at low speed)
     if (this.pull > 0.5 && this.throttle > 0.5 && th >= 0) acc += 3 * this.pull * clamp(1 - th / 0.4, 0, 1) * clamp(1 - av / 55, 0, 1) * (this.aids.manual ? 0.6 : 1);
+    // weight over the front pushes it down: a lifted front settles quickly
+    if (this.push > 0.05 && th > 0) acc -= 9 * this.push;
     if (acc !== 0 || th !== 0 || this.pitchRate !== 0) {
       this.pitchRate = (this.pitchRate + acc * dt) * Math.exp(-2 * dt);
       this.wheelie += this.pitchRate * dt;

@@ -80,18 +80,20 @@ const prism = (w: number, h: number, l: number) => {
   const sh = new THREE.Shape([new THREE.Vector2(-w / 2, 0), new THREE.Vector2(w / 2, 0), new THREE.Vector2(0, h)]);
   return new THREE.ExtrudeGeometry(sh, { depth: l, bevelEnabled: false }).translate(0, 0, -l / 2);
 };
+/** the barn's end wall above the eaves, filling the gambrel profile */
+const gableEnd = () => new THREE.ExtrudeGeometry(new THREE.Shape([new THREE.Vector2(-6, 5.9), new THREE.Vector2(6, 5.9), new THREE.Vector2(3.75, 9.3), new THREE.Vector2(0, 11.4), new THREE.Vector2(-3.75, 9.3)]), { depth: 0.4, bevelEnabled: false }).translate(0, 0, -0.2);
 export function barnGeo() {
   // red barn: gambrel roof, white trim and door braces, hay loft door, cupola, two silos
   const red = 0x9b2a20, trim = 0xf0ebe0, roof = 0x4a4a4c;
   const parts = [
     part(box(12, 6, 20), red, 0, 3, 0),
-    // gambrel roof: steep lower slopes, shallow upper slopes
-    part(box(0.5, 4.2, 20.6), roof, 5.2, 8, 0, 0, 0, -0.42),
-    part(box(0.5, 4.2, 20.6), roof, -5.2, 8, 0, 0, 0, 0.42),
-    part(box(0.5, 3.4, 20.6), roof, 2.2, 10.3, 0, 0, 0, -1.0),
-    part(box(0.5, 3.4, 20.6), roof, -2.2, 10.3, 0, 0, 0, 1.0),
-    part(prism(11.6, 4.4, 0.4), red, 0, 6, 10.05),
-    part(prism(11.6, 4.4, 0.4), red, 0, 6, -10.05),
+    // gambrel roof: steep lower slopes (6.3, 6) to (3.9, 9.4), shallow upper slopes up to the ridge at (0, 11.6)
+    part(box(4.2, 0.3, 20.6), roof, 5.1, 7.7, 0, 0, 0, -0.96),
+    part(box(4.2, 0.3, 20.6), roof, -5.1, 7.7, 0, 0, 0, 0.96),
+    part(box(4.5, 0.3, 20.6), roof, 1.95, 10.5, 0, 0, 0, -0.514),
+    part(box(4.5, 0.3, 20.6), roof, -1.95, 10.5, 0, 0, 0, 0.514),
+    part(gableEnd(), red, 0, 0, 10.0),
+    part(gableEnd(), red, 0, 0, -10.0),
     // front: big double door with white X braces, loft door, trim
     part(box(4.6, 4.6, 0.3), trim, 0, 2.3, 10.2),
     part(box(4.2, 4.2, 0.35), 0x7a2019, 0, 2.2, 10.22),
@@ -104,8 +106,8 @@ export function barnGeo() {
     part(box(0.3, 6.1, 0.3), trim, 6, 3, -10), part(box(0.3, 6.1, 0.3), trim, -6, 3, -10),
     part(box(20.4, 0.3, 0.3), trim, 6.02, 0.15, 0, 0, Math.PI / 2, 0),
     // cupola on the ridge
-    part(box(1.6, 1.4, 1.6), trim, 0, 12.6, 0),
-    part(prism(2.2, 0.9, 2.2), 0x3a3a3c, 0, 13.3, 0),
+    part(box(1.6, 1.4, 1.6), trim, 0, 12.4, 0),
+    part(prism(2.2, 0.9, 2.2), 0x3a3a3c, 0, 13.1, 0),
   ];
   for (const z of [-6, -1.5, 3]) parts.push(part(box(0.2, 1.4, 1.1), 0x2a2f36, 6.02, 3.4, z), part(box(0.2, 1.4, 1.1), 0x2a2f36, -6.02, 3.4, z));
   // silos

@@ -46,7 +46,7 @@ export class Input {
   /** camera look angle in radians, + = to the right: keys show 90 degrees to either side, the right stick swings the view up to 135 degrees */
   lookYaw = 0;
   /** bikes: pull back (0..1), rider weight shift (+ left), keyboard-only brake (S) for the S-while-accelerating wheelie */
-  wheelie = 0; hang = 0; brakeKey = 0; brakePad = 0;
+  wheelie = 0; push = 0; hang = 0; brakeKey = 0; brakePad = 0;
   usingPad = false;
   private padPrev = new Map<Action, boolean>();
   captureCb: ((code: string) => void) | null = null;
@@ -104,6 +104,7 @@ export class Input {
     let tSteer = key('left') - key('right');
     let thr = key('throttle'), brk = key('brake'), fbrk = key('frontBrake');
     let hb = this.held('handbrake'), lb = this.held('lookback'), horn = this.held('horn');
+    let push = 0;
     let wh = key('wheelie'), hang = key('leanLeft') - key('leanRight');
     let look = (key('lookRight') - key('lookLeft')) * (Math.PI / 2);
     this.brakeKey = brk; this.brakePad = 0;
@@ -128,6 +129,9 @@ export class Input {
         brk = Math.max(brk, this.brakePad);
         fbrk = Math.max(fbrk, v('frontBrake'));
         wh = Math.max(wh, v('wheelie'));
+        // left stick pushed forward (gamepad only): lean over the tank, front wheel down
+        const up = -(p.axes[1] ?? 0);
+        if (up > 0.35) push = clamp((up - 0.35) / 0.5, 0, 1);
         const ph = v('leanLeft') - v('leanRight');
         if (Math.abs(ph) > Math.abs(hang)) hang = ph;
         hb = hb || v('handbrake') > 0.5;
@@ -148,7 +152,7 @@ export class Input {
       this.steer += clamp(tSteer - this.steer, -rate * dt, rate * dt);
     }
     this.throttle = thr; this.brake = brk; this.frontBrake = fbrk; this.handbrake = hb; this.lookback = lb; this.horn = horn;
-    this.wheelie = wh; this.hang = clamp(hang, -1, 1);
+    this.wheelie = push > 0.3 ? 0 : wh; this.push = push; this.hang = clamp(hang, -1, 1);
     this.lookYaw = look;
   }
 
