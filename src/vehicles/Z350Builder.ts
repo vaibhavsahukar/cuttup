@@ -8,14 +8,14 @@ import { MAT, paint } from './Materials';
  * arches and tumblehome, a separate glass greenhouse, teardrop headlamps and wrap tail lamps cut from plan shapes.
  * Measurements follow the reference photos (length 4.31 m, width 1.82 m, height 1.32 m, wheelbase 2.65 m).
  */
-type Tag = 'paint' | 'glass' | 'dark' | 'head' | 'tail' | 'chrome' | 'blue' | 'carbon';
-const blueMat = new THREE.MeshStandardMaterial({ color: 0x1f4fbf, metalness: 0.4, roughness: 0.4, envMapIntensity: 0.6 });
+export type Tag = 'paint' | 'glass' | 'dark' | 'head' | 'tail' | 'chrome' | 'blue' | 'carbon' | 'amber';
+export const blueMat = new THREE.MeshStandardMaterial({ color: 0x1f4fbf, metalness: 0.4, roughness: 0.4, envMapIntensity: 0.6 });
 const carbonMat = new THREE.MeshStandardMaterial({ color: 0x1a1b1d, metalness: 0.4, roughness: 0.35 });
 
 const L = 4.31, F = L / 2, R = -F;
 const AX_F = 1.33, AX_R = -1.32, WR_F = 0.33, WR_R = 0.335, WX = 0.77, G = 0.14;
 
-const lerpK = (k: [number, number][], z: number) => {
+export const lerpK = (k: [number, number][], z: number) => {
   for (let j = 1; j < k.length; j++) if (z >= k[j][0]) { const u = (z - k[j - 1][0]) / (k[j][0] - k[j - 1][0]); return k[j - 1][1] + (k[j][1] - k[j - 1][1]) * u; }
   return k[k.length - 1][1];
 };
@@ -24,8 +24,8 @@ const DECK: [number, number][] = [[F, 0.6], [2.08, 0.7], [1.92, 0.78], [1.6, 0.8
 const HW: [number, number][] = [[F, 0.7], [2.1, 0.8], [1.9, 0.875], [1.45, 0.91], [1.0, 0.895], [0.3, 0.88], [-0.4, 0.885], [-1.0, 0.91], [-1.5, 0.915], [-1.95, 0.89], [-2.1, 0.82], [R, 0.72]];
 const ROOF: [number, number][] = [[0.64, 0.97], [0.45, 1.1], [0.25, 1.24], [0.05, 1.31], [-0.15, 1.32], [-0.55, 1.3], [-0.95, 1.2], [-1.25, 1.1], [-1.55, 1.0]];
 
-type Sec = { z: number; pts: [number, number, Tag][] };
-function loft(secs: Sec[], out: Map<Tag, number[]>, capA: Tag | null, capB: Tag | null) {
+export type Sec = { z: number; pts: [number, number, Tag][] };
+export function loft(secs: Sec[], out: Map<Tag, number[]>, capA: Tag | null, capB: Tag | null) {
   const n = secs[0].pts.length;
   const push = (tag: Tag, ...v: number[]) => { let a = out.get(tag); if (!a) out.set(tag, (a = [])); a.push(...v); };
   for (let s = 0; s < secs.length - 1; s++) for (let k = 0; k < n; k++) {
@@ -45,7 +45,7 @@ function loft(secs: Sec[], out: Map<Tag, number[]>, capA: Tag | null, capB: Tag 
   cap(secs[0], capA, false); cap(secs[secs.length - 1], capB, true);
 }
 /** walk a half section (centre bottom to centre top) round both sides */
-const ring = (half: [number, number, Tag][]): [number, number, Tag][] => {
+export const ring = (half: [number, number, Tag][]): [number, number, Tag][] => {
   const full: [number, number, Tag][] = half.map(([x, y, t]) => [-x, y, t]);
   for (let p = half.length - 2; p >= 1; p--) full.push([half[p][0], half[p][1], half[p - 1][2]]);
   return full;
