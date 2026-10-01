@@ -136,7 +136,7 @@ export const VEHICLES: VehicleSpec[] = [
     tireMu: 1.06, launchMu: 0.95, frontGrip: 1.0, rearGrip: 1.0, powerOversteer: 0.95,
     cgHeight: 0.5, wheelbase: 2.81, frontWeight: 0.52, track: 1.58, rollFactor: 0.045,
     brakeG: 1.12, downforce: 0.3, steerLock: 0.54, steerSpeed: 2.8, stability: 0.55, yawInertia: 1.0,
-    dims: { length: 4.8, width: 1.89, height: 1.39 }, engine: { cylinders: 6, tone: 1.0, roughness: 0.3 } },
+    dims: { length: 4.5, width: 1.78, height: 1.31 }, engine: { cylinders: 6, tone: 1.0, roughness: 0.3 } },
   { ...base, id: 'huracan', name: 'Lambo Hurricane', kind: 'car', model: 'huracan', color: 0x33c436,
     hp: 630, massKg: 1500, drive: 'AWD', zeroSixty: 2.9, topSpeedMph: 200,
     character: 'Huge grip, explosive acceleration, stable',
