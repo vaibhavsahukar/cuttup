@@ -126,6 +126,14 @@ export class UI {
         this.previewModel(cat[(i + (a === 'next' ? 1 : cat.length - 1)) % cat.length].key);
       }
     });
+    // the cyan focus ring (keyboard / gamepad) follows the mouse, so it never sits on a different card from the one just clicked
+    document.addEventListener('pointerover', (e) => {
+      if (this.focusIdx < 0 || (e as PointerEvent).pointerType !== 'mouse') return;
+      const el = (e.target as HTMLElement).closest?.('button, .card') as HTMLElement | null;
+      if (!el) return;
+      const i = this.buttons().indexOf(el);
+      if (i >= 0 && i !== this.focusIdx) { this.focusIdx = i; this.applyFocus(); }
+    });
     $('#maps .actions').addEventListener('click', (e) => {
       const a = (e.target as HTMLElement).dataset.a;
       this.h.click();
@@ -252,6 +260,7 @@ export class UI {
     $('#maps .cards').innerHTML = MAPS.map((m) => {
       const best = (this.save.data.leaderboard[m.id] ?? [])[0];
       return `<div class="card panel ${m.id === sel ? 'sel' : ''}" data-m="${m.id}">
+        ${m.id === sel ? '<div class="seltag">SELECTED</div>' : ''}
         <div class="thumb" style="background:${MAP_THUMBS[m.id] ? `url(${MAP_THUMBS[m.id]}) center/cover` : grad[m.id]}"></div>
         <div class="t">${esc(m.name)}</div>
         <div class="best">${best ? `BEST ${best.score.toLocaleString()} · ${esc(getVehicle(best.vehicle).name)}` : 'NO RUNS YET'}</div></div>`;
@@ -270,6 +279,8 @@ export class UI {
       if (!card) return;
       this.h.click();
       this.h.selectMap(card.dataset.m!);
+      if (this.focusIdx >= 0) { const i = this.buttons().indexOf(card); if (i >= 0) this.focusIdx = i; }
+      this.previewed = card.dataset.m!;
       this.buildMaps();
     };
     this.applyFocus(); // the rebuild dropped the highlight
