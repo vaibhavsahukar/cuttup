@@ -124,8 +124,8 @@ export function buildC8(color: number, shadows = true): VehicleModel {
     box('carbon', sx * (flankX(0, 0.22) - 0.03), 0.2, 0.0, 0.05, 0.06, 2.2); // side sill
     addGeo('paint', new THREE.SphereGeometry(1, 16, 10).scale(0.05, 0.065, 0.11).translate(sx * 0.99, 0.95, 0.68));
     box('carbon', sx * 0.9, 0.93, 0.7, 0.14, 0.035, 0.08);
-    // rear: boomerang tail lamp pair, mesh vent below, outer side marker
-    faceSlab('tail', sx, [[0.2, 0.86], [0.5, 0.87], [0.8, 0.85], [0.86, 0.76], [0.72, 0.77], [0.5, 0.8], [0.2, 0.79]], true, 0.03);
+    // rear: bar shaped tail lamps with two fins, mesh vent below, outer side marker
+    faceSlab('tail', sx, [[0.2, 0.73], [0.86, 0.73], [0.86, 0.85], [0.79, 0.79], [0.58, 0.79], [0.56, 0.86], [0.5, 0.86], [0.49, 0.79], [0.2, 0.79]], true, 0.03); // long bar along the top of the tail with a fin in the middle and a hook at the outer end
     
     faceSlab('dark', sx, [[0.36, 0.56], [0.82, 0.56], [0.84, 0.68], [0.36, 0.68]], true, 0.022); // fender vent
     for (const y of [0.6, 0.64]) box('carbon', sx * 0.6, y, R - 0.014, 0.44, 0.01, 0.006);
