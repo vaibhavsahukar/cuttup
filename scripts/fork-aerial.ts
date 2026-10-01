@@ -18,9 +18,10 @@ await page.evaluate(() => {
 });
 const views: [string, number, number, number, number, number][] = [
   // name, main s offset for target, target d, cam height, cam back, cam side
-  ['top', 450, 120, 700, 1, 0],
-  ['oblique', 450, 100, 260, 420, -200],
-  ['ramp', 300, 80, 90, 260, 140],
+  ['r1', 60, 26, 14, 50, -6],
+  ['r2', 180, 34, 14, 50, -6],
+  ['r3', 300, 50, 18, 60, -10],
+  ['r4', 120, 30, 60, 120, -60],
 ];
 for (const [name, ts, td, h, back, side] of views) {
   await page.evaluate(([ts, td, h, back, side]) => {
@@ -31,7 +32,7 @@ for (const [name, ts, td, h, back, side] of views) {
     const cam = g.camera;
     g.rig.update = () => undefined;
     g.scene.fog = null; g.applyLight = () => undefined;
-    g.scene.traverse((o: any) => { if (o.material && o.material.emissiveMap && o.isInstancedMesh) o.visible = false; });
+    
     cam.position.copy(pos); cam.far = 5000; cam.updateProjectionMatrix(); cam.lookAt(tgt);
     a.advance(1 / 30, 1 / 30);
     void T;

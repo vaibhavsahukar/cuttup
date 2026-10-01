@@ -74,8 +74,8 @@ export class Features {
   // ---------------- ramp (highways) ----------------
   /** ramp lane centre and width at x metres into the station stretch */
   rampLane(x: number) {
-    const out = smoothstep(60, 170, x) * (1 - smoothstep(350, 460, x));
-    const w = LANE_W * smoothstep(0, 35, x) * (1 - smoothstep(470, RAMP_LEN, x));
+    const out = smoothstep(100, 200, x) * (1 - smoothstep(330, 430, x));
+    const w = LANE_W * smoothstep(0, 100, x) * (1 - smoothstep(420, RAMP_LEN, x));
     // the lane grows outwards from the shoulder edge (its inner edge stays on the highway while it is joined)
     const inner = this.edge + out * OUT;
     return { c: inner + w / 2, w, inner, outer: inner + w };
@@ -95,7 +95,7 @@ export class Features {
     if (!st || !st.ramp) return 0;
     const x = s - st.s0;
     // open over the joined parts of the ramp, closing smoothly at both ends of each opening
-    const open = (1 - smoothstep(70, 85, x)) * smoothstep(-6, 0, x) + smoothstep(435, 450, x) * (1 - smoothstep(RAMP_LEN, RAMP_LEN + 6, x));
+    const open = (1 - smoothstep(105, 120, x)) * smoothstep(-6, 0, x) + smoothstep(420, 435, x) * (1 - smoothstep(RAMP_LEN, RAMP_LEN + 6, x));
     return -7 * Math.min(1, open);
   }
   /** 0..1: how much the ground right of the road is flattened to road level (station area) */

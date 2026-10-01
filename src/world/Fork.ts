@@ -9,6 +9,8 @@ export const FORK_SPAN = 1300;
 export const COMMIT_X = 240;
 /** the ramp touches the highway (barrier open, you can cross) for this first stretch */
 export const JOIN_X = 100;
+/** the ramp widens from nothing at the highway's edge to a full lane over this distance */
+const TAPER = 110;
 
 /** the ramp: diverge gently, straighten while it climbs, then a right hand loop onto the new highway */
 const DIVERGE: [number, number] = [100, 300];
@@ -76,7 +78,7 @@ export class Fork {
     for (let s = sF; s <= sF + JOIN_H2; s += STEP) {
       this.branch.toWorld(s, this.dC, 0, v3);
       const pin = projectToRoad(main, v3, sg);
-      this.branch.toWorld(s, L.playerMax, 0, v3);
+      this.branch.toWorld(s, this.fold(s, L.playerMax), 0, v3);
       const pout = projectToRoad(main, v3, pin.s);
       sg = pin.s;
       this.mS.push(pin.s); this.mIn.push(pin.d); this.mOut.push(pout.d); this.mRise.push(this.rise(s - sF));
@@ -88,7 +90,7 @@ export class Fork {
   }
 
   /** climb of the ramp above the old road's level at x metres along it */
-  rise(x: number) { return this.H * smoothstep(JOIN_X + 20, TURN[0] + 240, x) * (1 - smoothstep(JOIN_H2 + 260, JOIN_H2 + 560, x)); }
+  rise(x: number) { return this.H * smoothstep(COMMIT_X + 20, TURN[1] - 40, x) * (1 - smoothstep(JOIN_H2 + 260, JOIN_H2 + 560, x)); }
 
   private build() {
     const { main, sF, layout: L } = this;
@@ -107,10 +109,9 @@ export class Fork {
     // hold the heading relative to the main road exactly: correct for its own bends as they come
     for (let x = 0; x <= 1150; x += 10) curve.push({ s: sF + x, v: (x < JOIN_H2 ? main.frame(sF + Math.min(x, 400)).k : 0) + relK(x) });
     const grade: { s: number; v: number }[] = [];
-    const g0 = main.frame(sF).grade;
     for (let x = 0; x <= FORK_SPAN + 400; x += 10) {
       const slope = (this.rise(x + 5) - this.rise(x - 5)) / 10;
-      const base = x < JOIN_X ? main.frame(sF + x).grade : g0 * (1 - smoothstep(JOIN_X, JOIN_X + 200, x));
+      const base = main.frame(sF + x).grade;
       grade.push({ s: sF + x, v: base + slope });
     }
     return new RoadPath({ ...this.map, seed: this.map.seed + 911 }, { s0: sF, x: v3.x, y: v3.y, z: v3.z, heading: heading0, curve, grade });
@@ -140,8 +141,13 @@ export class Fork {
   /** 0..1: how far the branch has unfolded at branch s */
   unfold(s: number) { return smoothstep(this.uA, this.uB, s); }
   /** branch coordinates: fold everything left of lane 4 onto its left edge, opening out as the branch unfolds */
-  fold(s: number, d: number) {
-    if (d >= this.dC) return d;
+  fold(s: number, d: number, terrain = false) {
+    if (d >= this.dC) {
+      // the ramp grows out of the highway's edge as a taper (its ground only appears once it is full width)
+      const x = s - this.sF;
+      if (x >= TAPER) return d;
+      return terrain ? (x < 0 ? this.dC : this.dC + (d - this.dC) * (x >= TAPER - 8 ? 1 : 0)) : this.dC + (d - this.dC) * smoothstep(0, TAPER, x);
+    }
     return this.dC + (d - this.dC) * this.unfold(s);
   }
   /** interpolate a main road coordinate table at main road s */
@@ -202,7 +208,7 @@ export class Fork {
     return a + (c - a) * (i - Math.floor(i));
   }
   /** main road coordinates: how far right the main road's scenery reaches at main s */
-  midMain(s: number) { return this.seam(this.seamM, s, this.sF - 60, Infinity); }
+  midMain(s: number) { if (s - this.sF < TAPER - 8) return Infinity; return this.seam(this.seamM, s, this.sF - 60, Infinity); }
   /** branch coordinates: how far left the branch's scenery reaches at branch s */
   midBranch(s: number) { return this.seam(this.seamB, s, this.sF, -Infinity); }
   /** main road ground rises to meet the climbing ramp beside it (an embankment) */
@@ -222,6 +228,8 @@ export class Fork {
     const a = Math.abs(d) - (this.layout.roadHalfWidth - 1);
     return -r * smoothstep(3, 45, a);
   }
+  /** main road: keep its right side clear where the ramp tapers out of it */
+  taperClear(s: number, d: number) { const x = s - this.sF; return x > -90 && x < TAPER + 30 && d > 0 && d < this.layout.roadHalfWidth + 70; }
   /** main road: no scenery under the bridge */
   underBridge(s: number) { return Math.abs(s - this.sX) < 40; }
   /** main road: the right barrier is open where the ramp touches the highway */

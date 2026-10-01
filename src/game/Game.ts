@@ -420,7 +420,7 @@ export class Game {
     const ahead = () => { const f = this.features.fork; return f && f !== own && f.state !== 'branch' ? f : null; };
     return {
       lateral: (s, d, terrain) => {
-        let dd = own ? own.fold(s, d) : d;
+        let dd = own ? own.fold(s, d, terrain) : d;
         if (terrain && own && dd < 0) dd = Math.max(dd, own.midBranch(s));
         const f = ahead();
         if (terrain && f && dd > 0) dd = Math.min(dd, f.midMain(s));
@@ -432,7 +432,7 @@ export class Game {
       noProps: (s, d) => {
         if (own && d < 0 && (own.unfold(s) < 1 || d < own.midBranch(s) + 24)) return true;
         const f = ahead();
-        return !!f && ((d > 0 && d > f.midMain(s) - 24) || f.underBridge(s));
+        return !!f && ((d > 0 && d > f.midMain(s) - 24) || f.underBridge(s) || f.taperClear(s, d));
       },
       noOverpass: own ? (s) => s < own.sF + FORK_SPAN + 100 : undefined,
       lift: (s, d) => {
