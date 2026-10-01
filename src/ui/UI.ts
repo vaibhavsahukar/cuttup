@@ -227,7 +227,7 @@ export class UI {
       const best = (this.save.data.leaderboard[m.id] ?? [])[0];
       return `<div class="card panel ${m.id === sel ? 'sel' : ''}" data-m="${m.id}">
         <div class="thumb" style="background:${grad[m.id]}"></div>
-        <div class="t">${esc(m.name)}</div><div class="b">${esc(m.blurb)}</div>
+        <div class="t">${esc(m.name)}</div>
         <div class="best">${best ? `BEST ${best.score.toLocaleString()} · ${esc(getVehicle(best.vehicle).name)}` : 'NO RUNS YET'}</div></div>`;
     }).join('');
     $('#maps .cards').insertAdjacentHTML('afterend', '');
