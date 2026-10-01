@@ -7,7 +7,7 @@ def lerp(keys, t):
         if t <= keys[j][0]:
             u = (t - keys[j-1][0]) / (keys[j][0] - keys[j-1][0]); return keys[j-1][1] + (keys[j][1] - keys[j-1][1]) * u
     return keys[-1][1]
-HW = [(0, 0.80), (0.04, 0.9), (0.14, 0.965), (0.28, 0.97), (0.45, 0.935), (0.62, 0.94), (0.8, 0.915), (0.93, 0.85), (1, 0.7)]
+HW = [(0, 0.88), (0.04, 0.99), (0.14, 1.06), (0.28, 1.07), (0.45, 1.03), (0.62, 1.035), (0.8, 1.0), (0.93, 0.93), (1, 0.76)]
 CENTRE = [(0, 0.88), (0.02, 1.0), (0.08, 1.04), (0.2, 1.08), (0.3, 1.14), (0.36, 1.20), (0.42, 1.225), (0.52, 1.225), (0.58, 1.2), (0.66, 1.02), (0.72, 0.93), (0.8, 0.9), (0.9, 0.78), (0.97, 0.64), (1, 0.52)]
 BELT = [(0, 0.88), (0.1, 1.0), (0.3, 1.02), (0.5, 0.98), (0.7, 0.9), (0.9, 0.74), (1, 0.52)]
 hw, t, b, cat = [], [], [], []
@@ -21,7 +21,7 @@ for i in range(nz):
 side = [0] * nz
 wheels = []
 for sx in (1, -1):
-    wheels.append({'x': sx * 0.82, 'z': 1.435, 'r': 0.327, 'w': 0.26})
-    wheels.append({'x': sx * 0.83, 'z': -1.287, 'r': 0.346, 'w': 0.31})
-json.dump({'id': 'c8', 'length': L, 'bike': False, 'nz': nz, 'nu': nu, 'width': 1.95, 'height': 1.225, 'hw': hw, 't': t, 'b': b, 'cat': cat, 'side': side,
+    wheels.append({'x': sx * 0.9, 'z': 1.435, 'r': 0.327, 'w': 0.26})
+    wheels.append({'x': sx * 0.91, 'z': -1.287, 'r': 0.346, 'w': 0.31})
+json.dump({'id': 'c8', 'length': L, 'bike': False, 'nz': nz, 'nu': nu, 'width': 2.14, 'height': 1.225, 'hw': hw, 't': t, 'b': b, 'cat': cat, 'side': side,
            'cats': ['paint', 'glass', 'light', 'dark', 'chrome', 'wheel'], 'wheels': wheels}, open('src/data/shapes/c8.json', 'w'), separators=(',', ':'))
