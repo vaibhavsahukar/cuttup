@@ -48,6 +48,17 @@ interface Slot {
 }
 
 export interface Quality { chunksAhead: number; propDensity: number; shadows: boolean }
+/** per road adjustments (used around a highway fork): reshape the cross section, hide things, keep scenery apart */
+export interface ChunkMods {
+  /** real lateral position for a profile d at s (terrain = a ground strip) */
+  lateral?: (s: number, d: number, terrain: boolean) => number;
+  /** sink the median barrier (m, negative) */
+  medianDrop?: (s: number) => number;
+  /** sink the left hand wall / rail (m, negative) */
+  leftDrop?: (s: number) => number;
+  noProps?: (s: number, d: number) => boolean;
+  noOverpass?: (s: number) => boolean;
+}
 
 const m4 = new THREE.Matrix4();
 const q = new THREE.Quaternion();
@@ -68,7 +79,12 @@ export class ChunkManager {
   buildingMaterial?: THREE.MeshStandardMaterial;
   private edge: number;
 
-  constructor(public path: RoadPath, public map: MapSpec, public layout: Layout, public quality: Quality, public features?: Features) {
+  /** chunks below this index are never built (a fork branch only exists from its start) */
+  minIndex = -Infinity;
+  /** a frozen manager keeps what it has built and builds nothing more (the road not taken, on its way out) */
+  frozen = false;
+
+  constructor(public path: RoadPath, public map: MapSpec, public layout: Layout, public quality: Quality, public features?: Features, public mods: ChunkMods = {}) {
     const nSlots = quality.chunksAhead + this.behind + 1;
     const hw = map.road === 'highway';
     this.edge = layout.roadHalfWidth - 1;
@@ -132,7 +148,10 @@ export class ChunkManager {
       const group = new THREE.Group();
       const ribbons: Ribbon[] = [];
       const walls: THREE.Object3D[] = [];
-      const add = (r: Ribbon, shadow = false) => { r.mesh.receiveShadow = true; r.mesh.castShadow = shadow; ribbons.push(r); group.add(r.mesh); return r; };
+      const add = (r: Ribbon, shadow = false) => {
+        const lat = this.mods.lateral;
+        if (lat) { const terrain = !!r.opts.colorFn; r.opts.lateralFn = (s, d) => lat(s, d, terrain); }
+        r.mesh.receiveShadow = true; r.mesh.castShadow = shadow; ribbons.push(r); group.add(r.mesh); return r; };
       const E = this.edge;
       if (hw) {
         const M = layout.medianHalf;
@@ -140,15 +159,15 @@ export class ChunkManager {
         add(new Ribbon([{ d: -E, h: 0, u: 1 }, { d: -M, h: 0, u: 0 }], ROWS, roadMat));
         add(new Ribbon([{ d: -M, h: -0.02, u: 0 }, { d: M, h: -0.02, u: 1 }], ROWS, medianMat));
         // jersey barrier
-        add(new Ribbon(outline([[-0.4, 0], [-0.3, 0.25], [-0.12, 0.95], [0.12, 0.95], [0.3, 0.25], [0.4, 0]]), ROWS, concrete, { vScale: 4 }), true);
+        add(new Ribbon(outline([[-0.4, 0], [-0.3, 0.25], [-0.12, 0.95], [0.12, 0.95], [0.3, 0.25], [0.4, 0]]), ROWS, concrete, { vScale: 4, heightFn: (s) => this.mods.medianDrop?.(s) ?? 0 }), true);
         if (map.id === 'city') {
           const wallL = add(new Ribbon(outline([[0, 0], [0, 4.2], [0.35, 4.2], [0.35, 0]], E + 1.2), ROWS, concrete, { vScale: 4, heightFn: drop }), true);
-          const wallR = add(new Ribbon(outline([[0, 0], [0, 4.2], [0.35, 4.2], [0.35, 0]], -E - 1.55), ROWS, concrete, { vScale: 4 }), true);
+          const wallR = add(new Ribbon(outline([[0, 0], [0, 4.2], [0.35, 4.2], [0.35, 0]], -E - 1.55), ROWS, concrete, { vScale: 4, heightFn: (s) => this.mods.leftDrop?.(s) ?? 0 }), true);
           walls.push(wallL.mesh, wallR.mesh);
         } else {
           const rail: [number, number][] = [[0, 0.55], [0.05, 0.62], [0.02, 0.7], [0.05, 0.78], [0, 0.85]];
           add(new Ribbon(outline(rail, E + 0.2), ROWS, metal, { vScale: 4, heightFn: drop }));
-          add(new Ribbon(outline(rail, -E - 0.2, true), ROWS, metal, { vScale: 4 }));
+          add(new Ribbon(outline(rail, -E - 0.2, true), ROWS, metal, { vScale: 4, heightFn: (s) => this.mods.leftDrop?.(s) ?? 0 }));
         }
       } else {
         add(new Ribbon([{ d: -E, h: 0, u: 0 }, { d: E, h: 0, u: 1 }], ROWS, roadMat));
@@ -222,10 +241,11 @@ export class ChunkManager {
   }
 
   update(playerS: number) {
+    if (this.frozen) return;
     const cur = Math.floor(playerS / CHUNK);
     const lo = cur - this.behind, hi = cur + this.quality.chunksAhead;
     const needed = new Set<number>();
-    for (let i = lo; i <= hi; i++) needed.add(i);
+    for (let i = Math.max(lo, this.minIndex); i <= hi; i++) needed.add(i);
     const free: Slot[] = [];
     for (const s of this.slots) { if (!needed.has(s.index)) free.push(s); else needed.delete(s.index); }
     // build nearest missing chunks first; at most 2 per frame to avoid hitches
@@ -241,7 +261,8 @@ export class ChunkManager {
 
   private place(pool: PropPool | undefined, s: number, d: number, yaw: number, sx: number, sy: number, sz: number, c?: THREE.Color, yOff = 0) {
     if (!pool) return;
-    if (this.features?.noProps(s, d)) return;
+    if (this.features?.noProps(s, d) || this.mods.noProps?.(s, d)) return;
+    if (this.mods.lateral) d = this.mods.lateral(s, d, false);
     this.path.frame(s, fr);
     this.path.toWorld(s, d, this.terrainH(s, d) + yOff, v3, fr);
     eul.set(0, fr.heading + yaw, 0);
@@ -279,7 +300,7 @@ export class ChunkManager {
       }
       for (let k = 0; k < 2; k++) this.place(this.pools.streetlight, s0 + k * 32 + 8, 0, 0, 1, 1, 1);
       for (let k = 0; k < 2; k++) this.place(this.pools.lamp, s0 + k * 32 + 8, 0, 0, 1, 1, 1);
-      if (index > 2 && hash2(index, 5) < 0.14 && hash2(index - 1, 5) >= 0.14) this.place(this.pools.overpass, s0 + 32, 0, 0, 1, 1, 1);
+      if (index > 2 && hash2(index, 5) < 0.14 && hash2(index - 1, 5) >= 0.14 && !this.mods.noOverpass?.(s0 + 32) && !this.features?.noOverpass(s0 + 32)) this.place(this.pools.overpass, s0 + 32, 0, 0, 1, 1, 1);
       else if (hash2(index, 6) < 0.1) this.place(this.pools.sign, s0 + 20, E + 5, 0, 1.3, 1, 1, undefined, 0.2); // beside the road, past the barrier (its posts span +-3.9 m)
     } else if (this.map.id === 'country') {
       for (let k = 0; k < 2; k++) if (rng() < 0.25) {
@@ -338,7 +359,7 @@ export class ChunkManager {
         const s2 = range(rng, 0.5, 2);
         const rs = s0 + rng() * CHUNK, rd = side() * (E + 2.5 + rng() * 25);
         this.place(this.pools.rock, rs, rd, rng() * 6, s2, s2, s2, col, -0.1);
-        if (!this.features?.noProps(rs, rd)) slot.rocks.push({ s: rs, d: rd, r: 1.15 * s2 });
+        if (!this.features?.noProps(rs, rd) && !this.mods.noProps?.(rs, rd)) slot.rocks.push({ s: rs, d: rd, r: 1.15 * s2 });
       }
     }
     for (const k in this.pools) this.pools[k].finish();

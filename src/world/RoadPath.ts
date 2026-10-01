@@ -9,7 +9,10 @@ import * as THREE from 'three';
  * Samples are generated lazily ahead at fixed spacing DS.
  */
 export const DS = 2;
-const S0 = -600; // first sample s
+const S0_DEFAULT = -600; // first sample s
+
+/** a road that starts somewhere else (a fork branch): its first sample pose and its opening curvature program */
+export interface PathStart { s0: number; x: number; y: number; z: number; heading: number; curve: { s: number; v: number }[]; grade: { s: number; v: number }[] }
 
 export interface Frame {
   x: number; y: number; z: number;
@@ -29,15 +32,30 @@ export class RoadPath {
   private rngG: Rng;
   private cPts: { s: number; v: number }[] = [];
   private gPts: { s: number; v: number }[] = [];
+  private S0: number;
+  /** after a fork is taken, everything from `spliceAt` on comes from the branch */
+  private branch: RoadPath | null = null;
+  private spliceAt = Infinity;
 
-  constructor(private map: MapSpec) {
-    this.rngC = mulberry32(map.seed);
-    this.rngG = mulberry32(map.seed * 31 + 7);
-    this.cPts.push({ s: S0, v: 0 }, { s: 150, v: 0 }); // straight start
-    this.gPts.push({ s: S0, v: 0 }, { s: 150, v: 0 });
-    this.xs.push(0); this.zs.push(S0); this.ys.push(0); this.hs.push(0);
+  constructor(private map: MapSpec, start?: PathStart) {
+    this.rngC = mulberry32(map.seed + (start ? Math.floor(start.s0) : 0));
+    this.rngG = mulberry32(map.seed * 31 + 7 + (start ? Math.floor(start.s0) : 0));
+    this.S0 = start ? start.s0 : S0_DEFAULT;
+    if (start) {
+      this.cPts.push(...start.curve);
+      this.gPts.push(...start.grade);
+      this.xs.push(start.x); this.zs.push(start.z); this.ys.push(start.y); this.hs.push(start.heading);
+    } else {
+      this.cPts.push({ s: this.S0, v: 0 }, { s: 150, v: 0 }); // straight start
+      this.gPts.push({ s: this.S0, v: 0 }, { s: 150, v: 0 });
+      this.xs.push(0); this.zs.push(this.S0); this.ys.push(0); this.hs.push(0);
+    }
     this.ks.push(0); this.gs.push(0);
   }
+  get startS() { return this.S0; }
+  /** from `at` on, this road continues as `branch` (the fork the player took) */
+  splice(branch: RoadPath, at: number) { this.branch = branch; this.spliceAt = at; }
+  get spliced() { return this.branch !== null; }
 
   private ctrl(pts: { s: number; v: number }[], s: number, gen: () => { s: number; v: number }) {
     while (pts[pts.length - 1].s < s + 1) pts.push(gen());
@@ -68,10 +86,10 @@ export class RoadPath {
   };
 
   private ensure(s: number) {
-    const need = Math.ceil((s - S0) / DS) + 2;
+    const need = Math.ceil((s - this.S0) / DS) + 2;
     while (this.xs.length < need) {
       const i = this.xs.length - 1;
-      const sm = S0 + (i + 0.5) * DS;
+      const sm = this.S0 + (i + 0.5) * DS;
       const k = this.ctrl(this.cPts, sm, this.genCurve);
       const g = this.ctrl(this.gPts, sm, this.genGrade);
       const h = this.hs[i] + k * DS; // heading
@@ -86,8 +104,9 @@ export class RoadPath {
   }
 
   frame(s: number, out: Frame = { x: 0, y: 0, z: 0, heading: 0, k: 0, grade: 0 }): Frame {
+    if (s >= this.spliceAt) return this.branch!.frame(s, out);
     this.ensure(s + DS * 2);
-    const f = Math.max(0, (s - S0) / DS);
+    const f = Math.max(0, (s - this.S0) / DS);
     const i = Math.floor(f), t = f - i;
     const L = (a: number[]) => a[i] + (a[i + 1] - a[i]) * t;
     out.x = L(this.xs); out.y = L(this.ys); out.z = L(this.zs);

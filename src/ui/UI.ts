@@ -386,7 +386,7 @@ export class UI {
   }
   private lastStars = -1;
   /** wanted level as filled stars (lower left); they flash red / blue while cops are on the road */
-  stars(level: number, chased: boolean, fleeing = false) {
+  stars(level: number, chased: boolean, fleeing = false, max = 5) {
     const el = $('#hud .stars');
     el.classList.toggle('flee', fleeing);
     el.classList.toggle('chase', chased && level > 0);
@@ -396,7 +396,7 @@ export class UI {
     }
     this.lastStars = level;
     // applied every frame, so the lit stars always match the wanted level whatever happened to the page in between
-    el.querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i < level));
+    el.querySelectorAll('span').forEach((s, i) => { s.classList.toggle('on', i < level); (s as HTMLElement).style.display = i < max ? '' : 'none'; });
   }
   fps(on: boolean, fps: number, worstMs: number, scale: number) {
     const el = $('#hud .fps');

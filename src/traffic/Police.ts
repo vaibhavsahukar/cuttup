@@ -74,6 +74,8 @@ export class Police {
   static OUTRUN_CLEAR_AFTER = 90;
   /** the motorcycle unit only chases riders */
   playerIsBike = false;
+  /** lowest lateral position a unit may drive at s (a fork's new highway is still folded up) */
+  minD: ((s: number) => number) | null = null;
   /** which unit the next dispatch sends (highway: a mixed pack; backroad: the single unit for the current tier) */
   private nextKind(score: number): UnitKind {
     const s = score / this.diff.copTier;
@@ -265,7 +267,7 @@ export class Police {
       // hold a safe gap to whatever is still in the current path until the new line is reached
       if (!smart && Math.abs(bestD - c.d) > 0.6) vT = Math.min(vT, here.v + Math.max(0, here.g - 6) * 0.9);
     }
-    dT = clamp(dT, dMin, dMax);
+    dT = clamp(dT, this.minD ? Math.max(dMin, this.minD(c.s) + 1.1) : dMin, dMax);
     // braking-distance check on the car directly ahead in the current path (never when committed to the ram)
     if (!toPlayer && here.g < 1e8) {
       const closing = c.v - here.v;

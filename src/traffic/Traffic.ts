@@ -52,6 +52,8 @@ export interface TrafficCar {
   alive: boolean;
   cop?: boolean; // driven by the Police controller, not by the traffic AI
   rage?: boolean; // road rage: chasing the player, also driven by the Police controller
+  /** at a fork: true = this car takes the ramp, false = it stays on, undefined = not decided yet */
+  exitFork?: boolean;
   color?: number; // paint colour
 }
 
@@ -76,6 +78,10 @@ export class Traffic {
   diff: Difficulty;
   /** the player's high beam is on: close cars ahead get rattled */
   highBeam = false;
+  /** where new cars may appear (a fork's half built highway has no lanes yet) */
+  spawnOk: ((s: number, d: number) => boolean) | null = null;
+  /** lateral position for a car taking a fork's ramp (null = carry on as normal) */
+  forkTarget: ((c: TrafficCar) => number | null) | null = null;
   /** rain (0..1): everyone drives a little slower */
   wet = 0;
   onHonk: ((car: TrafficCar, intensity: number) => void) | null = null;
@@ -223,7 +229,7 @@ export class Traffic {
         // spawn ahead beyond the fog horizon; behind only if traffic would catch up with the player
         const ahead = dir < 0 || player.v > this.flow * 0.8 || this.rng() < 0.5;
         const s = ahead ? ps + this.spawnAhead + range(this.rng, 0, 150) : ps - range(this.rng, 170, 230);
-        if (this.laneFree(dir, l, s, 35)) this.spawn(dir, s, l);
+        if (this.laneFree(dir, l, s, 35) && (!this.spawnOk || this.spawnOk(s, this.laneD(dir, l)))) this.spawn(dir, s, l);
       }
     }
   }
@@ -382,7 +388,7 @@ export class Traffic {
       c.s += c.dir * c.v * dt;
 
       // ------------- lane changes (MOBIL-style) -------------
-      if (hw && lanes > 1) {
+      if (hw && lanes > 1 && !c.exitFork) {
         c.decideT -= dt; c.lcCool -= dt; c.laneT += dt;
         if (c.pendingLane >= 0 && c.lcT >= 1) {
           // signalling, waiting for the lead time (and a safe gap) before moving over
@@ -443,6 +449,8 @@ export class Traffic {
         }
       }
       let dTarget = this.laneD(c.dir, c.targetLane);
+      const ft = c.exitFork && this.forkTarget ? this.forkTarget(c) : null;
+      if (ft !== null) { dTarget = ft; c.lcT = 1; c.pendingLane = -1; c.signal = c.d < ft - 0.5 ? 1 : 0; }
       if (c.lcT < 1) {
         c.lcT = Math.min(1, c.lcT + dt / c.lcDur);
         dTarget = lerp(c.dFrom, this.laneD(c.dir, c.targetLane), smoothstep(0, 1, c.lcT));

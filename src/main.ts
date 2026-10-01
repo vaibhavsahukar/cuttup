@@ -211,7 +211,7 @@ async function boot() {
         ui.hud(ph.v, ph.gear, ph.rpm / game.spec.redline, game.scoring.score, game.scoring.multiplier, Math.max(0, game.scoring.comboTimer / game.scoring.COMBO_TIME), game.state === 'countdown' ? game.countdown : 0, st.units);
         ui.highBeam(game.highBeamOn);
         { const nx = game.features.next(ph.s); ui.fuel(game.fuel, nx.s0 + (nx.ramp ? 260 : 100) - ph.s, st.units, game.refueling); }
-        ui.stars(game.police.wanted, game.police.cops.length > 0, game.police.fleeing);
+        ui.stars(game.police.wanted, game.police.cops.length > 0, game.police.fleeing, game.map.road === 'backroad' ? 4 : 5);
         ui.copVignette(game.police.cops.length ? clamp((150 - game.police.nearest(ph.s)) / 130, 0, 1) : 0);
         if (!alive) endGame();
       }

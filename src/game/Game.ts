@@ -21,6 +21,8 @@ import { difficultyOf } from '../data/difficulty';
 import { Weather } from '../world/Weather';
 import { Features } from '../world/Features';
 import { StationRenderer } from '../world/Stations';
+import { Fork, FORK_SPAN, COMMIT_X, JOIN_X, UNFOLD_B } from '../world/Fork';
+import { type ChunkMods } from '../world/ChunkManager';
 import { timeSetting } from '../world/TimeOfDay';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -71,6 +73,13 @@ export class Game {
   private stallT = 0;
   /** the run ended because the tank ran dry (the car just sits there; no crash cinematic) */
   stalled = false;
+  /** the fork being approached or driven through, the new highway's scenery, and road scenery on its way out */
+  fork: Fork | null = null;
+  private branchChunks: ChunkManager | null = null;
+  private oldChunks: { cm: ChunkManager; until: number }[] = [];
+  /** the fork whose branch the active scenery belongs to (its folded start shapes it) */
+  private chunksFork: Fork | null = null;
+  private quality!: { chunksAhead: number; propDensity: number; shadows: boolean };
   private skidAcc = 0;
   private tmpV = new THREE.Vector3();
   private lampLights: THREE.PointLight[] = [];
@@ -82,8 +91,10 @@ export class Game {
   private applyLight() {
     const n = this.env.nightFactor;
     this.scene.environmentIntensity = (this.map.id === 'city' ? 0.5 : 0.8) * (1 - n) + 0.12 * n;
-    this.chunks.lampMaterial.emissiveIntensity = 0.3 + 2.7 * n;
-    if (this.chunks.buildingMaterial) this.chunks.buildingMaterial.emissiveIntensity = 0.25 + 0.6 * n;
+    for (const cm of this.allChunks()) {
+      cm.lampMaterial.emissiveIntensity = 0.3 + 2.7 * n;
+      if (cm.buildingMaterial) cm.buildingMaterial.emissiveIntensity = 0.25 + 0.6 * n;
+    }
     for (const l of this.lampLights) l.intensity = 160 * Math.max(0, n - 0.3) / 0.7;
     if (this.player.headlight) this.player.headlight.intensity = (this.map.id === 'forest' ? 220 : 0) + 950 * n;
     this.nightNow = n;
@@ -112,7 +123,8 @@ export class Game {
     if (startPose) this.features = new Features(this.map, this.layout, -startPose.x);
     this.stations = new StationRenderer(this.path, this.features);
     this.scene.add(this.stations.root);
-    this.chunks = new ChunkManager(this.path, this.map, this.layout, { chunksAhead: Math.ceil((this.map.fogFar * q.drawDist) / 64) + 1, propDensity: q.propDensity, shadows: q.shadows }, this.features);
+    this.quality = { chunksAhead: Math.ceil((this.map.fogFar * q.drawDist) / 64) + 1, propDensity: q.propDensity, shadows: q.shadows };
+    this.chunks = new ChunkManager(this.path, this.map, this.layout, this.quality, this.features, this.chunkMods(null));
     this.scene.add(this.chunks.root);
     for (let i = 0; i < 40; i++) this.chunks.update(0);
 
@@ -253,6 +265,7 @@ export class Game {
     this.audio.siren(this.police.cops.length > 0 && this.state !== 'done' && !(this.state === 'crash' && this.crashTimer > 6) ? clamp(1 - this.police.nearest(ph.s) / 250, 0.1, 1) : 0);
     this.chunks.update(this.state === 'crash' && !this.stalled ? this.crash.wrecks[0]?.s ?? ph.s : ph.s);
     this.stations.update(ph.s);
+    this.forkStep(ph.s);
     if (this.state !== 'crash') p.sync(dt);
     this.traffic.sync(dt, ph.s);
     this.particles.update(dt);
@@ -278,8 +291,7 @@ export class Game {
       this.env.wet = w;
       this.env.applyHour();
       this.env.hemi.intensity += this.weather.flash * 2.5;
-      const rm = this.chunks.roadMat;
-      rm.roughness = 0.92 - 0.5 * w; rm.metalness = 0.12 * w; rm.color.setScalar(1 - 0.3 * w);
+      for (const cm of this.allChunks()) { const rm = cm.roadMat; rm.roughness = 0.92 - 0.5 * w; rm.metalness = 0.12 * w; rm.color.setScalar(1 - 0.3 * w); }
       this.applyLight();
     } else if (this.env.cycle) this.applyLight();
     this.player.phys.gripScale = this.weather.grip;
@@ -390,6 +402,122 @@ export class Game {
     };
   }
 
+  /** every scenery manager alive (active, the branch being approached, roads on their way out) */
+  private allChunks() {
+    const out = [this.chunks];
+    if (this.branchChunks) out.push(this.branchChunks);
+    for (const o of this.oldChunks) out.push(o.cm);
+    return out;
+  }
+
+  /**
+   * Scenery adjustments for a road. `own` = the fork this road is the branch of (fold its left side until it unfolds,
+   * keep its scenery off the road it left); every road also keeps its right side clear of the fork currently ahead.
+   */
+  private chunkMods(own: Fork | null): ChunkMods {
+    const ahead = () => { const f = this.features.fork; return f && f !== own && f.state !== 'branch' ? f : null; };
+    return {
+      lateral: (s, d, terrain) => {
+        let dd = own ? own.fold(s, d) : d;
+        if (terrain && own && dd < 0) dd = Math.max(dd, own.midBranch(s));
+        const f = ahead();
+        if (terrain && f && dd > 0) dd = Math.min(dd, f.midMain(s));
+        return dd;
+      },
+      medianDrop: own ? (s) => own.branchMedianDrop(s) : undefined,
+      // the new highway's far side wall only rises once its lanes have unfolded (folded, it would wall off the ramp)
+      leftDrop: own ? (s) => -7 * (1 - Math.min(1, Math.max(0, (own.unfold(s) - 0.85) / 0.15))) : undefined,
+      noProps: (s, d) => {
+        if (own && d < 0 && (own.unfold(s) < 1 || d < own.midBranch(s) + 24)) return true;
+        const f = ahead();
+        return !!f && d > 0 && d > f.midMain(s) - 24;
+      },
+      noOverpass: own ? (s) => s < own.sF + FORK_SPAN + 100 : undefined,
+    };
+  }
+
+  /** forks: build the branch ahead of time, decide which road the player took, and retire the other one */
+  private forkStep(s: number) {
+    const ph = this.player.phys;
+    for (const o of this.oldChunks) if (s > o.until) { this.scene.remove(o.cm.root); o.cm.dispose(); }
+    this.oldChunks = this.oldChunks.filter((o) => s <= o.until);
+    if (!this.fork) {
+      const sF = this.features.forkAfter(s);
+      if (sF - s > 1900 || !isFinite(sF)) return;
+      const fk = new Fork(this.path, this.map, this.layout, sF);
+      this.fork = fk;
+      this.features.fork = fk;
+      const cm = new ChunkManager(fk.branch, this.map, this.layout, this.quality, this.features, this.chunkMods(fk));
+      cm.minIndex = Math.floor(sF / 64);
+      this.branchChunks = cm;
+      this.scene.add(cm.root);
+      this.applyLight();
+      return;
+    }
+    const fk = this.fork;
+    this.branchChunks?.update(s);
+    const x = s - fk.sF;
+    // traffic routing: about a third of the cars in the right lane take the ramp
+    if (fk.state === 'open') {
+      for (const c of this.traffic.cars) {
+        if (c.dir < 0 || c.cop || c.rage || c.exitFork !== undefined) continue;
+        if (c.s > fk.sF - 260 && c.s < fk.sF - 120 && c.lane === 4) c.exitFork = Math.random() < 0.35;
+      }
+    }
+    if (fk.state !== 'branch') this.traffic.forkTarget = (c) => (c.s > fk.sF - 40 && c.s < fk.sF + FORK_SPAN - 60 ? fk.rampIn(c.s) + this.layout.laneWidth / 2 + 0.3 : null);
+    if (fk.state === 'main') for (const c of this.traffic.cars) if (c.exitFork && c.s > fk.sF + FORK_SPAN - 80) this.traffic.release(c);
+    if (fk.state === 'open' && this.state === 'driving') {
+      if (x > COMMIT_X && ph.d > this.layout.playerMax + 0.5) this.takeFork(fk);
+      else if (x > JOIN_X + 30 && ph.d <= this.layout.playerMax + 0.5) {
+        // stayed on the main road: the branch drifts off and goes when it is out of sight
+        fk.state = 'main';
+        // cars that took the ramp keep following it until they are gone
+        if (this.branchChunks) { this.branchChunks.frozen = true; this.oldChunks.push({ cm: this.branchChunks, until: fk.sF + FORK_SPAN }); this.branchChunks = null; }
+      }
+    }
+    if (fk.state !== 'open' && x > FORK_SPAN + 50) {
+      this.fork = null;
+      if (this.features.fork === fk) this.features.fork = null;
+      this.traffic.forkTarget = null;
+    }
+    // traffic and cops on the new highway stay off its folded up lanes
+    const cf = this.chunksFork;
+    if (cf && s < cf.sF + UNFOLD_B + 600) {
+      for (const c of this.traffic.cars) if (!c.cop && !c.rage && !c.wrecked && c.s > cf.sF && c.s < cf.sF + UNFOLD_B && c.d < cf.branchMin(c.s) - 0.5) this.traffic.release(c);
+    } else if (cf) { this.chunksFork = null; this.traffic.spawnOk = null; this.police.minD = null; }
+  }
+
+  /** the player took the ramp: from the fork on, the road IS the new highway */
+  private takeFork(fk: Fork) {
+    const ph = this.player.phys;
+    // world positions before the road changes under everything
+    const pw = this.player.model.root.position.clone();
+    const yaw = this.path.frame(ph.s).heading + ph.psi;
+    const movers = this.traffic.cars.filter((c) => (c.cop || c.rage || (c.exitFork && c.s > fk.sF)) && !c.wrecked).map((c) => ({ c, p: this.path.toWorld(c.s, c.d, 0, new THREE.Vector3()) }));
+    // cars still on the old highway at or past the fork are left behind with it
+    for (const c of this.traffic.cars) if (!c.cop && !c.rage && !(c.exitFork && c.s > fk.sF) && c.s > fk.sF - 400) this.traffic.release(c);
+    this.path.splice(fk.branch, fk.sF);
+    fk.state = 'branch';
+    const pr = projectToRoad(this.path, pw, ph.s);
+    ph.s = pr.s; ph.d = pr.d;
+    ph.psi = yaw - this.path.frame(ph.s).heading;
+    this.sGuess = ph.s;
+    for (const m of movers) {
+      const q2 = projectToRoad(this.path, m.p, m.c.s); m.c.s = q2.s; m.c.d = Math.max(q2.d, fk.branchMin(q2.s) + 1.2);
+      if (m.c.exitFork) { m.c.exitFork = false; m.c.lane = 4; m.c.targetLane = 4; m.c.lcT = 1; }
+    }
+    this.traffic.forkTarget = null;
+    // scenery: the new highway's becomes the live one; the old road stays put until it is out of sight
+    this.chunks.frozen = true;
+    this.oldChunks.push({ cm: this.chunks, until: fk.sF + FORK_SPAN });
+    this.chunks = this.branchChunks!;
+    this.branchChunks = null;
+    this.chunksFork = fk;
+    this.traffic.spawnOk = (s2, d2) => !(s2 > fk.sF - 50 && s2 < fk.sF + UNFOLD_B + 40 && d2 < fk.branchMin(s2) + 1);
+    this.police.minD = (s2) => (s2 > fk.sF && s2 < fk.sF + UNFOLD_B + 40 ? fk.branchMin(s2) : -999);
+    this.onPopup?.({ text: 'NEW HIGHWAY', sub: 'you took the fork', color: '#6cf', big: true });
+  }
+
   /** barriers / road edges */
   private edges() {
     const ph = this.player.phys;
@@ -397,7 +525,17 @@ export class Game {
     const half = this.player.collW / 2;
     ph.onGrass = (ph.d < L.softMin || ph.d > L.softMax) && !this.features.paved(ph.s, ph.d);
     const lim = this.features.limits(ph.s, ph.d, L.playerMin, L.playerMax);
-    const lo = (lim ? lim.lo : L.playerMin) + half, hi = (lim ? lim.hi : L.playerMax) - half;
+    let rlo = lim ? lim.lo : L.playerMin, rhi = lim ? lim.hi : L.playerMax;
+    const fk = this.fork;
+    if (fk && fk.state === 'open') {
+      // the fork's ramp: open to the highway at first, then walled off behind its island
+      const x = ph.s - fk.sF;
+      if (x > 0 && x < JOIN_X) rhi = Math.max(rhi, fk.rampOut(ph.s));
+      else if (x >= JOIN_X && x < FORK_SPAN && ph.d > L.playerMax + 0.5) { rlo = fk.rampIn(ph.s); rhi = fk.rampOut(ph.s); }
+    }
+    // the new highway's folded up left side is not drivable yet
+    if (this.chunksFork && ph.s < this.chunksFork.sF + UNFOLD_B + 20 && ph.s > this.chunksFork.sF) rlo = Math.max(rlo, this.chunksFork.branchMin(ph.s));
+    const lo = rlo + half, hi = rhi - half;
     if (ph.d <= lo + 0.1 || ph.d >= hi - 0.1) this.wallContact = true;
     if (ph.d < lo || ph.d > hi) {
       const side = ph.d < lo ? -1 : 1;
@@ -616,7 +754,7 @@ export class Game {
     this.police.clear();
     this.audio.siren(0);
     this.traffic.clear();
-    this.chunks.dispose();
+    for (const cm of this.allChunks()) cm.dispose();
     this.env.dispose();
     this.scene.traverse((o) => { const m = o as THREE.Mesh; if (m.geometry && !(m as THREE.InstancedMesh).isInstancedMesh) m.geometry.dispose?.(); });
   }

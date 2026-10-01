@@ -1,5 +1,6 @@
 import type { Layout, MapSpec } from '../data/maps';
 import { mulberry32, smoothstep, type Rng } from '../core/math';
+import { FORK_SPAN, type Fork } from './Fork';
 
 /**
  * Gas stations along the road, in road coordinates (s along, d across, + = right).
@@ -17,7 +18,13 @@ const OUT = 13; // how far the ramp lane swings out from the shoulder
 
 export class Features {
   stations: Station[] = [];
+  /** city only: where forks leave the highway (every 4 to 5 miles) */
+  forkS: number[] = [];
+  private nextFork = Infinity;
+  /** the fork currently being driven through (its geometry shapes the main road around it) */
+  fork: Fork | null = null;
   private rng: Rng;
+  private rngF: Rng;
   private nextS: number;
   readonly ramp: boolean;
   /** inner edge of the paved road on the right (shoulder edge / verge edge) */
@@ -27,14 +34,26 @@ export class Features {
     this.rng = mulberry32((map.seed * 13 + 5) >>> 0);
     this.ramp = map.road === 'highway';
     this.edge = this.ramp ? layout.playerMax : layout.softMax;
+    this.rngF = mulberry32((map.seed * 29 + 3) >>> 0);
+    if (map.id === 'city') this.nextFork = 4200 + this.rngF() * 2200;
     if (firstStation !== null) { this.stations.push({ s0: firstStation, ramp: this.ramp }); this.nextS = firstStation + this.gap(); }
     else this.nextS = 2200 + this.rng() * 2200;
   }
   /** 2 to 3 miles */
   private gap() { return 3200 + this.rng() * 1650; }
   private ensure(s: number) {
-    while (this.nextS < s + 4000) { this.stations.push({ s0: this.nextS, ramp: this.ramp }); this.nextS += this.gap(); }
+    while (this.nextFork < s + 9000) { this.forkS.push(this.nextFork); this.nextFork += 6400 + this.rngF() * 1650; } // 4 to 5 miles
+    while (this.nextS < s + 4000) {
+      // a station never sits inside a fork
+      const f = this.forkS.find((x) => this.nextS > x - 800 && this.nextS < x + FORK_SPAN + 300);
+      if (f !== undefined) { this.nextS = f + FORK_SPAN + 300; continue; }
+      this.stations.push({ s0: this.nextS, ramp: this.ramp }); this.nextS += this.gap();
+    }
   }
+  /** the next fork start after s (Infinity on maps without forks) */
+  forkAfter(s: number) { this.ensure(s); return this.forkS.find((x) => x > s) ?? Infinity; }
+  /** no overpass across a fork (it would cross the new highway) */
+  noOverpass(s: number) { this.ensure(s); return this.forkS.some((x) => s > x - 200 && s < x + FORK_SPAN); }
   len(st: Station) { return st.ramp ? RAMP_LEN : LOT_LEN; }
   /** the station whose stretch of road (plus a margin) contains s */
   at(s: number, margin = 0): Station | undefined {
@@ -70,6 +89,8 @@ export class Features {
   // ---------------- queries used by the world, physics and props ----------------
   /** right hand barrier hidden (sunk into the ground) here: the ramp openings */
   barrierDrop(s: number) {
+    const fk = this.fork && this.fork.state === 'open' ? this.fork.mainBarrierDrop(s) : 0;
+    if (fk) return fk;
     const st = this.at(s, 5);
     if (!st || !st.ramp) return 0;
     const x = s - st.s0;
