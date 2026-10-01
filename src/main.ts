@@ -130,8 +130,10 @@ async function boot() {
   addEventListener('keydown', (e) => {
     audio.resume();
     if (mode === 'game' || input.captureCb || input.padCaptureCb || input.menuBlock > 0) return;
-    if (e.code === 'ArrowDown' || e.code === 'ArrowRight' || e.code === 'KeyS') { ui.nav(1); e.preventDefault(); }
-    else if (e.code === 'ArrowUp' || e.code === 'ArrowLeft' || e.code === 'KeyW') { ui.nav(-1); e.preventDefault(); }
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') { ui.navDir(0, 1); e.preventDefault(); }
+    else if (e.code === 'ArrowUp' || e.code === 'KeyW') { ui.navDir(0, -1); e.preventDefault(); }
+    else if (e.code === 'ArrowRight') { ui.navDir(1, 0); e.preventDefault(); }
+    else if (e.code === 'ArrowLeft') { ui.navDir(-1, 0); e.preventDefault(); }
     else if (e.code === 'Enter') { ui.activate(); e.preventDefault(); }
     else if (e.code === 'Escape') {
       if (mode === 'paused') { if (ui.current === 'settings') ui.show('pause'); else { mode = 'game'; ui.show('hud'); input.clearPressed(); } }
@@ -159,8 +161,10 @@ async function boot() {
     if (input.padCaptureCb || input.menuBlock > 0) { padPrev = p.buttons.map((x) => x.pressed); return; }
     const b = p.buttons.map((x) => x.pressed);
     const edge = (i: number) => b[i] && !padPrev[i];
-    if (edge(12) || edge(14)) ui.nav(-1);
-    if (edge(13) || edge(15)) ui.nav(1);
+    if (edge(12)) ui.navDir(0, -1);
+    if (edge(13)) ui.navDir(0, 1);
+    if (edge(14)) ui.navDir(-1, 0);
+    if (edge(15)) ui.navDir(1, 0);
     if (mode === 'results') {
       // results screen: A retry, X change vehicle, Y change map, B main menu (badges under the buttons)
       if (edge(0)) ui.resultsShortcut('retry'); else if (edge(2)) ui.resultsShortcut('vehicle'); else if (edge(3)) ui.resultsShortcut('map'); else if (edge(1)) ui.resultsShortcut('menu');

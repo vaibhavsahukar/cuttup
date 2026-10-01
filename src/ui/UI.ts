@@ -491,6 +491,31 @@ export class UI {
     this.applyFocus();
     bs[this.focusIdx].scrollIntoView({ block: 'nearest' });
   }
+  /** directional navigation: up / down jump to the nearest control in the row above / below, left / right stay in the row */
+  navDir(dx: number, dy: number) {
+    const bs = this.buttons();
+    if (!bs.length) return;
+    if (this.focusIdx < 0 || this.focusIdx >= bs.length) { this.nav(0); return; }
+    const r = bs.map((b) => b.getBoundingClientRect());
+    const c = r[this.focusIdx];
+    const cx = c.left + c.width / 2, cy = c.top + c.height / 2;
+    let best = -1, bestScore = Infinity;
+    r.forEach((q, i) => {
+      if (i === this.focusIdx) return;
+      const qx = q.left + q.width / 2, qy = q.top + q.height / 2;
+      const ox = qx - cx, oy = qy - cy;
+      // must lie in the pressed direction; rows count as the same row within half a control height
+      const sameRow = Math.abs(oy) < Math.min(c.height, q.height) * 0.5;
+      if (dx !== 0 && !(sameRow && ox * dx > 0)) return;
+      if (dy !== 0 && !(!sameRow && oy * dy > 0)) return;
+      const score = dx !== 0 ? Math.abs(ox) : Math.abs(oy) * 4 + Math.abs(ox);
+      if (score < bestScore) { bestScore = score; best = i; }
+    });
+    if (best < 0) return;
+    this.focusIdx = best;
+    this.applyFocus();
+    bs[best].scrollIntoView({ block: 'nearest' });
+  }
   activate() {
     const bs = this.buttons();
     const el = bs[this.focusIdx];
