@@ -101,8 +101,7 @@ export function buildZ350(color: number, shadows = true): VehicleModel {
 
   // ---- front: teardrop headlamps, nose badge, mesh grille, side intakes ----
   for (const sx of [1, -1]) {
-    slab('head', [[0.36, 2.115], [0.7, 2.1], [0.8, 2.04], [0.84, 1.9], [0.78, 1.7], [0.6, 1.74], [0.46, 1.9]], 0.68, 0.76, sx);
-    slab('dark', [[0.34, 2.125], [0.7, 2.11], [0.82, 2.05], [0.86, 1.9], [0.8, 1.68], [0.58, 1.72], [0.44, 1.9]], 0.66, 0.7, sx); // lamp surround
+    slab('head', [[0.56, 2.125], [0.78, 2.1], [0.85, 2.0], [0.84, 1.8], [0.72, 1.58], [0.62, 1.52], [0.6, 1.7], [0.56, 1.95]], 0.66, 0.84, sx);
     box('dark', sx * 0.72, 0.36, F - 0.02, 0.1, 0.17, 0.05); // side intake slot
     box('dark', sx * 0.4, 0.34, F - 0.02, 0.3, 0.14, 0.05); // lower fog / duct
     box('dark', sx * (lerpK(HW, 1.2) + 0.004), 0.58, 1.18, 0.012, 0.13, 0.06); // fender gill
@@ -120,7 +119,7 @@ export function buildZ350(color: number, shadows = true): VehicleModel {
 
   // ---- rear: wrap tail lamps, ducktail, plate recess, bumper, twin tips ----
   for (const sx of [1, -1]) {
-    slab('tail', [[0.4, -2.16], [0.82, -2.12], [0.9, -2.0], [0.88, -1.84], [0.66, -1.88], [0.5, -2.0]], 0.78, 0.94, sx);
+    slab('tail', [[0.5, -2.165], [0.82, -2.13], [0.9, -2.02], [0.9, -1.62], [0.8, -1.58], [0.76, -1.85], [0.5, -2.02]], 0.76, 1.0, sx);
     box('tail', sx * 0.7, 0.4, R + 0.01, 0.2, 0.05, 0.05); // lower reflector
     box('chrome', sx * 0.22, 0.26, R - 0.02, 0.1, 0.1, 0.12);
     box('dark', sx * 0.44, 0.3, R + 0.02, 0.1, 0.1, 0.04);
