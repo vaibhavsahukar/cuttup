@@ -67,6 +67,18 @@ export function buildZ350(color: number, shadows = true): VehicleModel {
     addGeo(tag, g);
   };
 
+  /** a lamp lying on the body surface: spans xin..xout (functions of z) from z0 to z1, following the deck so nothing sticks out */
+  const lampOn = (tag: Tag, sx: number, z0: number, z1: number, xin: (z: number) => number, xout: (z: number) => number, lift = 0.02) => {
+    const surf = (x: number, z: number) => { const hw = lerpK(HW, z), t = Math.min(1, Math.max(0, (x / hw - 0.6) / 0.355)); return lerpK(DECK, z) - 0.008 - 0.042 * t * t + lift; };
+    const n = 16, rows: [number, number, number][][] = [];
+    for (let i = 0; i <= n; i++) { const z = z0 + (z1 - z0) * (i / n), a = xin(z), b = xout(z); rows.push([0, 1, 2, 3, 4].map((k) => { const x = a + (b - a) * (k / 4); return [sx * x, surf(x, z) + (k === 0 || k === 4 ? -0.01 : 0), z] as [number, number, number]; })); }
+    const tri: number[] = [];
+    for (let i = 0; i < n; i++) for (let k = 0; k < 4; k++) {
+      const a = rows[i][k], b = rows[i][k + 1], c = rows[i + 1][k], d = rows[i + 1][k + 1];
+      tri.push(...a, ...c, ...b, ...b, ...c, ...d, ...a, ...b, ...c, ...b, ...d, ...c);
+    }
+    push(tag, tri);
+  };
   // ---- lower body: 90 sections nose to tail, with real wheel arches ----
   const N = 90, secs: Sec[] = [];
   for (let q = 0; q < N; q++) {
@@ -101,7 +113,7 @@ export function buildZ350(color: number, shadows = true): VehicleModel {
 
   // ---- front: teardrop headlamps, nose badge, mesh grille, side intakes ----
   for (const sx of [1, -1]) {
-    slab('head', [[0.56, 2.125], [0.78, 2.1], [0.85, 2.0], [0.84, 1.8], [0.72, 1.58], [0.62, 1.52], [0.6, 1.7], [0.56, 1.95]], 0.66, 0.84, sx);
+    lampOn('head', sx, 2.1, 1.5, () => 0.46, (z) => lerpK([[2.12, 0.8], [2.0, 0.87], [1.8, 0.87], [1.6, 0.74], [1.5, 0.56]], z));
     box('dark', sx * 0.72, 0.36, F - 0.02, 0.1, 0.17, 0.05); // side intake slot
     box('dark', sx * 0.4, 0.34, F - 0.02, 0.3, 0.14, 0.05); // lower fog / duct
     box('dark', sx * (lerpK(HW, 1.2) + 0.004), 0.58, 1.18, 0.012, 0.13, 0.06); // fender gill
@@ -119,7 +131,7 @@ export function buildZ350(color: number, shadows = true): VehicleModel {
 
   // ---- rear: wrap tail lamps, ducktail, plate recess, bumper, twin tips ----
   for (const sx of [1, -1]) {
-    slab('tail', [[0.5, -2.165], [0.82, -2.13], [0.9, -2.02], [0.9, -1.62], [0.8, -1.58], [0.76, -1.85], [0.5, -2.02]], 0.76, 1.0, sx);
+    lampOn('tail', sx, -2.15, -1.64, (z) => lerpK([[-1.6, 0.8], [-1.64, 0.78], [-1.9, 0.62], [-2.15, 0.5]], z), (z) => lerpK([[-1.6, 0.8], [-1.64, 0.82], [-1.9, 0.9], [-2.15, 0.82]], z));
     box('tail', sx * 0.7, 0.4, R + 0.01, 0.2, 0.05, 0.05); // lower reflector
     box('chrome', sx * 0.22, 0.26, R - 0.02, 0.1, 0.1, 0.12);
     box('dark', sx * 0.44, 0.3, R + 0.02, 0.1, 0.1, 0.04);
