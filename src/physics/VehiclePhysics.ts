@@ -20,6 +20,8 @@ const MPH = 0.44704;
 const LOOP_V = 75 * MPH;
 /** arcade lateral grip multiplier: makes cornering and lane changes much easier than real tyres */
 export const ARCADE_GRIP = 1.35;
+/** the fastest a car reverses (m/s, about 18 mph) */
+const REVERSE_MAX = 8;
 /** bikes: pitch inertia multiplier (rider + wheels), slows wheelies / stoppies to a catchable pace */
 const PITCH_I = 3.4;
 
@@ -350,10 +352,10 @@ export class VehiclePhysics {
       this.steerAngle = target;
     } else {
       const lim = Math.min(sp.steerLock, lockLimit * (1 + sp.highSpeedSteer));
-      target = c.steer * lim;
+      target = c.steer * lim * (v < -0.5 ? 0.55 : 1); // less lock when backing up
       // auto counter-steer toward the slide (arcade assist)
       const beta = av > 2 ? Math.atan2(this.vl, av) : 0;
-      if (!c.handbrake) target += clamp(beta * sp.stability * 0.9, -0.25, 0.25);
+      if (!c.handbrake && v > -0.5) target += clamp(beta * sp.stability * 0.9, -0.25, 0.25); // (the slide angle is measured for forward motion)
       const rate = sp.steerSpeed * (Math.abs(target) < Math.abs(this.steerAngle) ? 1.6 : 1);
       this.steerAngle += clamp(target - this.steerAngle, -rate * dt, rate * dt);
     }
@@ -400,6 +402,7 @@ export class VehiclePhysics {
     this.v += dv * dt;
     if (!reverse && this.v < 0 && brkAny > 0) this.v = Math.max(this.v, 0);
     if (this.v < 0 && Fdrive > 0) this.v += 4 * dt;
+    if (!bk && this.v < -REVERSE_MAX) this.v = lerp(this.v, -REVERSE_MAX, clamp(dt * 8, 0, 1)); // reverse tops out at a jogging pace
 
     const dvl = (Fyf * cosd + FxF * sind + Fyr) / this.m - this.v * this.r;
     const Mz = this.a * (Fyf * cosd + FxF * sind) - this.b * Fyr;
@@ -444,6 +447,12 @@ export class VehiclePhysics {
     // kinematic blend at very low speed
     const rKin = (this.v * Math.tan(delta)) / this.L;
     if (!bikeLat) { this.r = lerp(rKin, this.r, lowBlend); this.vl = lerp(0, this.vl, lowBlend); }
+    // reversing: the rear tyres no longer lead, which made the car slide out and steer oddly. Backing up is a slow
+    // manoeuvre, so the car simply follows its steering (like a parked car being backed around a corner)
+    if (!bk && v < -0.5) {
+      this.r = lerp(this.r, rKin * 0.8, clamp(dt * 10, 0, 1));
+      this.vl *= Math.exp(-10 * dt);
+    }
     // keep slides recoverable: cap sideslip
     const maxVl = Math.max(2, av * 0.9);
     this.vl = clamp(this.vl, -maxVl, maxVl);
