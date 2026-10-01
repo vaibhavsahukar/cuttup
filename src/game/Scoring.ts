@@ -20,6 +20,8 @@ export class Scoring {
   readonly COMBO_TIME = 5;
   /** per map multiplier on distance points (the backroad's winding, slow roads need a boost to keep pace) */
   distK = 1;
+  /** per map multiplier on near miss points */
+  passK = 1;
   /** difficulty multiplier on every score gain */
   scoreK = 1;
 
@@ -45,7 +47,7 @@ export class Scoring {
     const close = clamp(1 - clearance / 1.4, 0, 1);
     // Oncoming passes (backroad) come far more often than overtakes and have a huge closing speed, so they pay
     // less per pass, build the combo slowly and can't chain into cut-ups; otherwise that map out-scores the rest.
-    const pts = Math.round((150 + 450 * close * close) * clamp(relSpeed / 18, 0.5, oncoming ? 2 : 3) * (oncoming ? 1.4 : 1) * 0.6);
+    const pts = Math.round((150 + 450 * close * close) * clamp(relSpeed / 18, 0.5, oncoming ? 2 : 3) * (oncoming ? 1.4 : 1) * 0.6 * this.passK);
     this.score += (pts * this.multiplier) * this.scoreK;
     this.nearMisses++;
     const cut = !oncoming && this.time - this.lastNearMissT < 1.4;

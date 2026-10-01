@@ -173,7 +173,8 @@ export class Game {
     this.police.onDispatch = (n, kind) => this.onPopup?.({ text: kind === 'interceptor' ? 'INTERCEPTOR DISPATCHED' : this.map.road === 'backroad' ? 'POLICE PURSUIT' : n === 1 ? 'POLICE PURSUIT' : `${n} UNITS IN PURSUIT`, sub: kind === 'interceptor' ? 'Conquette interceptor' : kind === 'samurai' ? 'Samurai motorcycle unit' : kind === 'moto' ? 'Motorcycle unit' : undefined, color: '#ff4040', big: true });
     this.scoring = new Scoring();
     this.scoring.scoreK = difficultyOf(settings.difficulty).scoreK;
-    this.scoring.distK = this.map.road === 'backroad' ? 1.5 : 1;
+    this.scoring.distK = this.map.road === 'backroad' ? 4 : 1;
+    this.scoring.passK = this.map.road === 'backroad' ? 2.5 : 1;
     this.scoring.onPopup = (p) => this.onPopup?.(p);
     this.rig = new CameraRig(this.camera);
     this.rig.mode = settings.camera;
