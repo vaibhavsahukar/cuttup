@@ -20,16 +20,18 @@ export class Scoring {
   readonly COMBO_TIME = 5;
   /** per map multiplier on distance points (the backroad's winding, slow roads need a boost to keep pace) */
   distK = 1;
+  /** difficulty multiplier on every score gain */
+  scoreK = 1;
 
   update(dt: number, ds: number, speed: number) {
     this.time += dt;
     if (ds > 0) this.distance += ds;
     const speedK = speed < 20 ? 0.2 : (speed / 30) ** 1.6;
-    this.score += Math.max(0, ds) * speedK * this.multiplier * 0.5 * this.distK;
+    this.score += (Math.max(0, ds) * speedK * this.multiplier * 0.5 * this.distK) * this.scoreK;
     // sustained speed (> ~100 mph)
     if (speed > 44.7) {
       this.highSpeedTime += dt;
-      this.score += dt * 15 * (1 + Math.min(3, this.highSpeedTime / 10)) * this.multiplier;
+      this.score += (dt * 15 * (1 + Math.min(3, this.highSpeedTime / 10)) * this.multiplier) * this.scoreK;
       if (Math.floor(this.highSpeedTime / 10) !== Math.floor((this.highSpeedTime - dt) / 10)) this.onPopup?.({ text: 'SPEED STREAK', sub: `${Math.floor(this.highSpeedTime)}s over 100 mph`, color: '#6cf' });
     } else this.highSpeedTime = Math.max(0, this.highSpeedTime - dt * 3);
     if (this.comboTimer > 0) {
@@ -44,14 +46,14 @@ export class Scoring {
     // Oncoming passes (backroad) come far more often than overtakes and have a huge closing speed, so they pay
     // less per pass, build the combo slowly and can't chain into cut-ups; otherwise that map out-scores the rest.
     const pts = Math.round((150 + 450 * close * close) * clamp(relSpeed / 18, 0.5, oncoming ? 2 : 3) * (oncoming ? 1.4 : 1));
-    this.score += pts * this.multiplier;
+    this.score += (pts * this.multiplier) * this.scoreK;
     this.nearMisses++;
     const cut = !oncoming && this.time - this.lastNearMissT < 1.4;
     this.lastNearMissT = this.time;
     this.multiplier = Math.min(10, this.multiplier + (oncoming ? 0.25 : cut ? 1 : 0.5));
     this.comboTimer = this.COMBO_TIME;
     const label = cut ? 'CUT UP!' : oncoming ? 'ONCOMING!' : close > 0.7 ? 'INSANE MISS' : close > 0.4 ? 'CLOSE CALL' : 'NEAR MISS';
-    if (cut) { this.cutUps++; this.score += 500 * this.multiplier; }
+    if (cut) { this.cutUps++; this.score += (500 * this.multiplier) * this.scoreK; }
     this.onPopup?.({ text: label, sub: `+${Math.round(pts * this.multiplier + (cut ? 500 * this.multiplier : 0))}  x${this.multiplier.toFixed(1)}`, color: cut ? '#ff4fd8' : oncoming ? '#ffb020' : '#4dff88', big: cut || close > 0.7 });
   }
 
@@ -64,7 +66,7 @@ export class Scoring {
       return;
     }
     this.wheelieBest = t;
-    this.score += dt * (40 + 200 * Math.min(1, pitch / 0.6)) * this.multiplier;
+    this.score += (dt * (40 + 200 * Math.min(1, pitch / 0.6)) * this.multiplier) * this.scoreK;
     if (Math.floor(t / 3) !== Math.floor((t - dt) / 3)) { this.comboTimer = this.COMBO_TIME; this.onPopup?.({ text: 'WHEELIE', sub: `${Math.floor(t)}s  x${this.multiplier.toFixed(1)}`, color: '#ffd23f' }); }
   }
 

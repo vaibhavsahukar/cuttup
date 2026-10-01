@@ -1,6 +1,6 @@
 import { clamp } from '../core/math';
 
-export type Action = 'throttle' | 'brake' | 'frontBrake' | 'left' | 'right' | 'wheelie' | 'leanLeft' | 'leanRight' | 'handbrake' | 'camera' | 'pause' | 'lookback' | 'lookLeft' | 'lookRight' | 'horn';
+export type Action = 'throttle' | 'brake' | 'frontBrake' | 'left' | 'right' | 'wheelie' | 'leanLeft' | 'leanRight' | 'handbrake' | 'camera' | 'pause' | 'lookback' | 'lookLeft' | 'lookRight' | 'horn' | 'highbeam';
 export const ACTIONS: { id: Action; label: string }[] = [
   { id: 'throttle', label: 'Accelerate' }, { id: 'brake', label: 'Brake / Reverse (bike: rear brake)' },
   { id: 'frontBrake', label: 'Bike front brake' },
@@ -8,13 +8,13 @@ export const ACTIONS: { id: Action; label: string }[] = [
   { id: 'wheelie', label: 'Bike: pull back (wheelie)' },
   { id: 'leanLeft', label: 'Bike: shift weight left' }, { id: 'leanRight', label: 'Bike: shift weight right' },
   { id: 'handbrake', label: 'Handbrake' }, { id: 'camera', label: 'Toggle camera' },
-  { id: 'lookback', label: 'Look back' }, { id: 'lookLeft', label: 'Look left (camera)' }, { id: 'lookRight', label: 'Look right (camera)' }, { id: 'horn', label: 'Horn' }, { id: 'pause', label: 'Pause' },
+  { id: 'lookback', label: 'Look back' }, { id: 'lookLeft', label: 'Look left (camera)' }, { id: 'lookRight', label: 'Look right (camera)' }, { id: 'horn', label: 'Horn' }, { id: 'highbeam', label: 'High beam (toggle)' }, { id: 'pause', label: 'Pause' },
 ];
 export type Bindings = Record<Action, string[]>;
 export const DEFAULT_BINDINGS: Bindings = {
   throttle: ['KeyW', 'ArrowUp'], brake: ['KeyS', 'ArrowDown'], frontBrake: ['KeyE', ''], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
   wheelie: ['', ''], leanLeft: ['KeyZ', ''], leanRight: ['KeyX', ''],
-  handbrake: ['Space', ''], camera: ['KeyC', ''], lookback: ['ShiftLeft', 'KeyQ'], lookLeft: ['KeyJ', 'Numpad4'], lookRight: ['KeyL', 'Numpad6'], horn: ['KeyH', 'ControlLeft'], pause: ['Escape', 'KeyP'],
+  handbrake: ['Space', ''], camera: ['KeyC', ''], lookback: ['ShiftLeft', 'KeyQ'], lookLeft: ['KeyJ', 'Numpad4'], lookRight: ['KeyL', 'Numpad6'], highbeam: ['KeyF', ''], horn: ['KeyH', 'ControlLeft'], pause: ['Escape', 'KeyP'],
 };
 
 /**
@@ -24,7 +24,7 @@ export const DEFAULT_BINDINGS: Bindings = {
 export type PadBindings = Record<Action, string>;
 export const DEFAULT_PAD: PadBindings = {
   throttle: 'B7', brake: 'B6', frontBrake: 'B5', left: 'A0-', right: 'A0+', wheelie: 'A1+', leanLeft: 'B14', leanRight: 'B15',
-  handbrake: 'B0', camera: 'B3', lookback: 'B1', lookLeft: 'A2-', lookRight: 'A2+', horn: 'B10', pause: 'B9',
+  handbrake: 'B0', camera: 'B3', lookback: 'B1', lookLeft: 'A2-', lookRight: 'A2+', highbeam: 'B4', horn: 'B10', pause: 'B9',
 };
 const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'L3', 'R3', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right', 'Home'];
 const AXIS_NAMES = [['Left stick left', 'Left stick right'], ['Left stick up', 'Left stick down'], ['Right stick left', 'Right stick right'], ['Right stick up', 'Right stick down']];
@@ -135,7 +135,7 @@ export class Input {
         const pLook = (v('lookRight') - v('lookLeft')) * Math.PI * 0.75;
         if (Math.abs(pLook) > Math.abs(look)) look = pLook;
         horn = horn || v('horn') > 0.5;
-        for (const a of ['camera', 'pause', 'handbrake'] as Action[]) {
+        for (const a of ['camera', 'pause', 'handbrake', 'highbeam'] as Action[]) {
           const on = v(a) > 0.5;
           if (on && !this.padPrev.get(a)) this.pressedOnce.add(a);
           this.padPrev.set(a, on);

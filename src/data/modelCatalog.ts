@@ -11,6 +11,7 @@ export const TRAFFIC_LABELS: Record<string, [string, string]> = {
   pickup: ['Pickup truck', 'Full size pickup with open bed'],
   van: ['Van', 'Delivery van'],
   boxtruck: ['Box truck', 'Heavy cargo truck'],
+  schoolbus: ['School bus', 'Yellow bus, rare, slow and always careful'],
   tesla: ['Tesler (traffic)', 'The Tesler as it appears in traffic'],
   civic: ['Honder Civiz (traffic)', 'The Honder Civiz as it appears in traffic'],
 };

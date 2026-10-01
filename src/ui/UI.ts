@@ -64,6 +64,7 @@ export class UI {
       <div id="settings" class="screen"><div class="panel"></div></div>
       <div id="hud" class="screen">
         <div class="copvig"><i></i></div>
+        <div class="hbind" hidden>HIGH BEAM</div>
         <div class="stars" title="Wanted level"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
         <div class="score"><div class="v">0</div><div class="m">x1.0</div><div class="combo"><i></i></div></div>
         <div class="fps" hidden></div>
@@ -240,7 +241,7 @@ export class UI {
       <div class="row"><span>Graphics quality</span>${opt('quality', [['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['ultra', 'Ultra']], st.quality)}</div>
       <div class="row"><span>Resolution</span>${opt('resolution', res.map((r) => [r, r === 'native' ? 'Window' : r]), st.resolution)}</div>
       <div class="row"><span>Display</span>${opt('fullscreen', [['false', 'Windowed'], ['true', 'Fullscreen']], String(st.fullscreen))}</div>
-      <div class="row"><span>Difficulty (traffic)</span>${opt('difficulty', [['0', 'Easy'], ['1', 'Normal'], ['2', 'Hard'], ['3', 'Insane']], String(st.difficulty))}</div>
+      <div class="row"><span>Difficulty</span>${opt('difficulty', [['0', 'Easy'], ['1', 'Normal'], ['2', 'Hard'], ['3', 'Insane']], String(st.difficulty))}</div>
       <div class="row"><span>FPS counter <small>(shows frame rate and render resolution)</small></span>${opt('showFps', [['false', 'Off'], ['true', 'On']], String(st.showFps))}</div>
       <div class="row"><span>Speed units</span>${opt('units', [['mph', 'MPH'], ['kph', 'KM/H']], st.units)}</div>
       <div class="row"><span>Default camera</span>${opt('camera', [['chase', 'Chase'], ['hood', 'Hood / Cockpit']], st.camera)}</div>
@@ -355,6 +356,7 @@ export class UI {
     i.style.background = temp < 0.75 ? '#5ab0ff' : temp < 1.1 ? '#4dff88' : '#ff5a4d';
     i.style.opacity = String(1 - wear * 0.5);
   }
+  highBeam(on: boolean) { const e = $('#hud .hbind'); if (e.hidden === on) e.hidden = !on; }
   private lastVig = -1;
   /** red vignette round the screen border while a cop is near; `level` 0..1 grows as the nearest cop closes in */
   copVignette(level: number) {
@@ -365,12 +367,16 @@ export class UI {
   }
   private lastStars = -1;
   /** wanted level as filled stars (lower left); they flash red / blue while cops are on the road */
-  stars(level: number, chased: boolean) {
+  stars(level: number, chased: boolean, fleeing = false) {
     const el = $('#hud .stars');
+    el.classList.toggle('flee', fleeing);
     el.classList.toggle('chase', chased && level > 0);
-    if (level === this.lastStars) return;
-    if (level > this.lastStars && this.lastStars >= 0) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+    if (level > this.lastStars && this.lastStars >= 0) {
+      el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+      setTimeout(() => el.classList.remove('pop'), 700); // the pop is a one off; it must not hold the other animations back
+    }
     this.lastStars = level;
+    // applied every frame, so the lit stars always match the wanted level whatever happened to the page in between
     el.querySelectorAll('span').forEach((s, i) => s.classList.toggle('on', i < level));
   }
   fps(on: boolean, fps: number, worstMs: number, scale: number) {
@@ -402,6 +408,7 @@ export class UI {
         <h2>Run over · ${esc(getMap(mapId).name)}</h2>
         ${r.message ? `<div class="shame small">${esc(r.message)}</div>` : ''}
         <div class="big">${r.score.toLocaleString()}</div>
+        ${r.prevBest > 0 && r.score > r.prevBest ? `<div class="newbest">NEW PERSONAL BEST · +${(r.score - r.prevBest).toLocaleString()}</div>` : ''}
         ${rank === 0 ? '<div class="newbest">NEW MAP RECORD</div>' : rank > 0 ? `<div class="newbest">#${rank + 1} ON THE LEADERBOARD</div>` : ''}
         <div class="kv">
           <span>Vehicle</span><b>${esc(getVehicle(vehicleId).name)}</b>

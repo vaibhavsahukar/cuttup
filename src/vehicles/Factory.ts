@@ -23,7 +23,7 @@ export function buildPlayerModel(spec: VehicleSpec, shadows = true): VehicleMode
 /** Traffic types -> measured shape ids. */
 export const TRAFFIC_SHAPES = {
   sedan: 't_sedan', hatch: 't_hatch', suv: 't_lexus', crossover: 't_crv', pickup: 't_pickup',
-  van: 't_van', boxtruck: 't_boxtruck', tesla: 'tesla', civic: 'civic',
+  van: 't_van', boxtruck: 't_boxtruck', schoolbus: 't_boxtruck', tesla: 'tesla', civic: 'civic',
 } as const;
 export type TrafficType = keyof typeof TRAFFIC_SHAPES;
 export const TRAFFIC_TYPES = Object.keys(TRAFFIC_SHAPES) as TrafficType[];
@@ -34,7 +34,7 @@ export const TRAFFIC_COLORS = [0xe8e8e8, 0x1b1c1e, 0x8f9499, 0x5a6068, 0x9b1b1f,
 export function buildViewerModel(key: string, drivable: (id: string) => VehicleSpec): VehicleModel {
   const [kind, id] = key.split(':');
   if (kind === 'v') return buildPlayerModel(drivable(id), true);
-  if (kind === 't') return build(TRAFFIC_SHAPES[id as TrafficType], id === 'boxtruck' ? 0xeeeeee : 0x8f9499, false, true);
+  if (kind === 't') return build(TRAFFIC_SHAPES[id as TrafficType], id === 'boxtruck' ? 0xeeeeee : id === 'schoolbus' ? 0xf2b400 : 0x8f9499, false, true);
   const cop = id as CopType;
   if (cop === 'cop_moto') return buildBike('cbr650', COP_MOTO_COLOR, true, 'police');
   return build(COP_SHAPES[cop], COP_COLORS[cop], false, true, 'police');

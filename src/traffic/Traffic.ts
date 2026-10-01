@@ -5,6 +5,7 @@ import { buildTrafficModel, TRAFFIC_COLORS, TRAFFIC_TYPES, trafficDims, type Tra
 import type { VehicleModel } from '../vehicles/ModelKit';
 import { MAT } from '../vehicles/Materials';
 import { TrafficInstancer } from './TrafficInstancer';
+import { difficultyOf, type Difficulty } from '../data/difficulty';
 import { clamp, lerp, mulberry32, pick, range, smoothstep } from '../core/math';
 
 export type DriverType = 'fast' | 'slow' | 'scared';
@@ -42,6 +43,8 @@ export interface TrafficCar {
   wander: number; wanderPhase: number; swerve: number; swerveTarget: number;
   panicT: number; freezeT: number; honkCd: number;
   braking: boolean;
+  tailT: number; // seconds the player has been tailgating this car
+  rattle?: number; // seconds left of driving erratically (blinded by the player's high beam)
   wrecked: boolean; // handed over to crash physics
   yaw: number; // extra yaw from lane change
   passedSign: number; // for near-miss detection
@@ -69,6 +72,9 @@ export class Traffic {
   private time = 0;
   flow: number;
   density = 1; // multiplier
+  diff: Difficulty;
+  /** the player's high beam is on: close cars ahead get rattled */
+  highBeam = false;
   onHonk: ((car: TrafficCar, intensity: number) => void) | null = null;
   obstacles: Obstacle[] = []; // wrecks etc.
   spawnAhead: number;
@@ -80,7 +86,8 @@ export class Traffic {
   constructor(public path: RoadPath, public map: MapSpec, public layout: Layout, public difficulty: number, drawDist: number) {
     this.root.add(this.instancer.root);
     this.rng = mulberry32((map.seed * 7 + 99) >>> 0);
-    this.flow = map.flowSpeed * (0.9 + difficulty * 0.08);
+    this.diff = difficultyOf(difficulty);
+    this.flow = map.flowSpeed * 0.98 * this.diff.flow;
     this.spawnAhead = Math.max(map.fogFar + 30, 260) * drawDist;
     this.spawnAhead = Math.min(this.spawnAhead, 700);
   }
@@ -121,13 +128,13 @@ export class Traffic {
   /** target cars per km per lane, grows slowly with distance */
   densityAt(distance: number) {
     const base = this.map.road === 'highway' ? 7 : 6;
-    return base * (0.7 + this.difficulty * 0.3) * this.density * (1 + Math.min(1.2, distance / 12000));
+    return base * this.diff.density * this.density * (1 + Math.min(1.2, distance / 12000) * this.diff.growth);
   }
 
   private spawn(dir: 1 | -1, s: number, lane: number, v?: number) {
     const r = this.rng;
     const roll = r();
-    const driver: DriverType = roll < 0.22 ? 'fast' : roll < 0.74 ? 'slow' : 'scared';
+    let driver: DriverType = roll < this.diff.fast ? 'fast' : roll < 1 - this.diff.scared ? 'slow' : 'scared';
     const hw = this.map.road === 'highway';
     // trucks keep right, fast drivers are cars
     let type: TrafficType = pick(r, TRAFFIC_TYPES);
@@ -135,23 +142,25 @@ export class Traffic {
     if (!hw && type === 'boxtruck' && r() < 0.6) type = 'hatch';
     // backroads are full of pickups; the countryside highway carries a lot of freight
     if (!hw && driver !== 'fast' && r() < 0.4) type = 'pickup';
+    // the occasional school bus, always a slow driver
+    if (type === 'schoolbus') { if (r() < 0.65) type = 'sedan'; else driver = 'slow'; }
     if (this.map.id === 'country' && driver !== 'fast' && r() < 0.22) type = 'boxtruck';
     if (hw && (type === 'boxtruck') && lane < this.lanesFor(dir) - 2) lane = this.lanesFor(dir) - 1 - Math.floor(r() * 2);
     if (hw && driver === 'slow' && r() < 0.6) lane = Math.max(lane, this.lanesFor(dir) - 2);
     const dims = trafficDims(type);
     const p = DRIVERS[driver];
-    const f = this.flow * (type === 'boxtruck' ? 0.85 : 1);
+    const f = this.flow * (type === 'boxtruck' || type === 'schoolbus' ? 0.85 : 1);
     // lane discipline: the left lanes run faster than the right ones, like real multi-lane traffic
     const nLanes = this.lanesFor(dir);
     const laneK = hw && nLanes > 1 ? 1 + (0.5 - lane / (nLanes - 1)) * 0.16 : 1;
     const v0 = laneK * (driver === 'fast' ? f * range(r, 1.08, 1.22) : driver === 'slow' ? f * range(r, 0.8, 0.92) : f * range(r, 0.86, 1.0));
-    const color = pick(r, TRAFFIC_COLORS);
+    const color = type === 'schoolbus' ? 0xf2b400 : pick(r, TRAFFIC_COLORS);
     const car: TrafficCar = {
       id: this.nextId++, type, color, model: this.getModel(type, color), L: dims.length, W: dims.width,
       dir, s, d: this.laneD(dir, lane), v: v ?? v0 * 0.95, v0, acc: 0,
       lane, targetLane: lane, lcT: 1, lcDur: 3, dFrom: 0,
       signal: 0, signalT: 0, pendingLane: -1,
-      driver, p, decideT: range(r, p.decide[0], p.decide[1]), lcCool: 0, laneT: 99, prevLane: -1,
+      driver, p, decideT: range(r, p.decide[0], p.decide[1]), lcCool: 0, laneT: 99, prevLane: -1, tailT: 0,
       wander: driver === 'scared' ? range(r, 0.15, 0.45) : driver === 'fast' ? 0.08 : 0.05, wanderPhase: r() * 10,
       swerve: 0, swerveTarget: 0, panicT: 0, freezeT: 0, honkCd: 0,
       braking: false, wrecked: false, yaw: 0, passedSign: 0, nearMissed: false, alive: true,
@@ -298,6 +307,26 @@ export class Traffic {
       c.honkCd -= dt;
       if (c.panicT > 0) c.panicT -= dt; else c.swerveTarget *= Math.max(0, 1 - dt * 1.5);
 
+      // ------------- tailgating and high beams -------------
+      if (player.alive && c.dir > 0) {
+        const inLine = Math.abs(player.d - c.d) < (player.W + c.W) / 2 + 0.6;
+        const behindGap = -relS - (c.L + player.L) / 2; // the player is behind this car when relS < 0
+        if (relS < 0 && behindGap < 6 + player.v * 0.3 && inLine && player.v > 8) c.tailT += dt;
+        else c.tailT = Math.max(0, c.tailT - dt * 2);
+        // a high beam in the mirror: the driver is rattled and drives erratically for a few seconds
+        if (this.highBeam && relS < 0 && behindGap < 40 && inLine) {
+          if (!(c.rattle && c.rattle > 0) && c.honkCd <= 0) { this.onHonk?.(c, 1); c.honkCd = 2.5; }
+          c.rattle = 4;
+        }
+      }
+      if (c.rattle && c.rattle > 0) {
+        c.rattle -= dt;
+        const k = Math.sin(this.time * 2.7 + c.id) + 0.5 * Math.sin(this.time * 6.1 + c.id * 3);
+        c.swerveTarget = k * 0.9;
+        c.panicT = Math.max(c.panicT, 0.2);
+        v0 *= 0.7 + 0.3 * (0.5 + 0.5 * Math.sin(this.time * 1.9 + c.id)); // speed up and slow down at random
+      }
+
       // ------------- make way for police -------------
       // A cop closing from behind in this car's lane: change lane away from it if possible, otherwise pull to the
       // side of the road and slow so the cop can get past.
@@ -307,7 +336,10 @@ export class Traffic {
           const back = c.s - a.s;
           if (back > 0 && back < 50 + a.v * 2.4 && Math.abs(a.d - c.d) < 3.2 && a.v > c.v + 2) { cop = a; break; }
         }
-        if (cop) {
+        // never yield into the player: if they are alongside or about to arrive in the space this car would move
+        // into, the car just carries on (it used to dive across their path to make way for a cop)
+        const pClose = player.alive && player.s - c.s < 22 + Math.max(0, player.v - c.v) * 2 && c.s - player.s < 20 && Math.abs(player.d - c.d) < 4.6;
+        if (cop && !pClose) {
           const away = c.d >= cop.d ? 1 : -1; // + = towards the right edge
           if (hw && lanes > 1 && c.lcT >= 1) {
             for (const nl of [c.lane + away, c.lane - away]) {
@@ -361,6 +393,8 @@ export class Traffic {
           // and not while the player is closing in from behind (cars must hold their line for someone to overtake).
           const held = lead.gap < 18 + c.v * 1.6 && lead.v < c.v0 * 0.92 && c.v < v0 * 0.97;
           const playerClosing = player.alive && relS < 0 && relS > -260 && player.v > c.v + 3;
+          // someone sitting on the bumper for a few seconds: a polite driver moves over to let them by
+          const tailgated = c.tailT > 3 && c.driver !== 'fast';
           const keepRight = !held && c.driver !== 'fast' && c.lane < lanes - 1 && c.laneT > 15 && r() < 0.5;
           if (c.lcCool <= 0 && !playerClosing && !held && keepRight) {
             // nobody in the way: drift back into the slower lane on the right when there is plenty of room
@@ -369,15 +403,15 @@ export class Traffic {
             if (nl !== c.prevLane && ln.gap > 60 && this.safeToChange(c, nl, player)) {
               c.pendingLane = nl; c.signal = 1; c.signalT = range(r, c.p.signalLead[0], c.p.signalLead[1]) + 0.8;
             }
-          } else if (c.lcCool <= 0 && held && !playerClosing) {
-            let best = -1, bestGain = c.p.threshold;
+          } else if ((c.lcCool <= 0 || tailgated) && (held || tailgated) && !playerClosing) {
+            let best = -1, bestGain = tailgated ? -9 : c.p.threshold;
             const aCur = acc;
             for (const nl of [c.lane - 1, c.lane + 1]) {
               if (nl < 0 || nl >= lanes) continue;
-              if (nl === c.prevLane && c.laneT < 40) continue; // no changing straight back
+              if (nl === c.prevLane && c.laneT < 40 && !tailgated) continue; // no changing straight back
               if (!this.safeToChange(c, nl, player)) continue;
               const ln = this.leader(c, this.laneD(c.dir, nl), c.W / 2, player);
-              if (ln.gap < lead.gap + 15 && ln.v < lead.v + 2) continue; // the other lane must be clearly better
+              if (tailgated ? ln.gap < 25 : ln.gap < lead.gap + 15 && ln.v < lead.v + 2) continue; // the other lane must be clearly better
               const aNew = this.idm(c, v0, ln.gap, ln.v);
               let gain = aNew - aCur + (nl > c.lane ? c.p.keepRight : -c.p.keepRight * 0.3);
               if (c.driver === 'fast') gain += r() * 0.3; // weaving
@@ -472,6 +506,7 @@ export class Traffic {
     if (c.signal !== 0) this.stats.signalled[c.driver]++;
     c.prevLane = c.lane;
     c.laneT = 0;
+    c.tailT = 0;
     c.lcCool = range(this.rng, c.p.cool[0], c.p.cool[1]);
     c.targetLane = nl;
     c.lcT = 0;

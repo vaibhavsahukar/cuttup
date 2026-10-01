@@ -20,7 +20,7 @@ for (const id of ids) for (const view of views) {
     const cam = p.camera, m = p.current;
     const bike = !!m.bike;
     const h = bike ? 0.55 : 0.7, D = 14;
-    cam.fov = 7; cam.aspect = 1200 / 700; cam.updateProjectionMatrix();
+    cam.fov = bike ? 7 : 16; cam.aspect = 1200 / 700; cam.updateProjectionMatrix();
     const pos: Record<string, [number, number, number]> = {
       side: [-D, h, 0], left: [D, h, 0], front: [0, h, D], rear: [0, h, -D], q34: [-D * 0.7, h + 1.2, D * 0.7], top: [0, D, 0.01],
     };

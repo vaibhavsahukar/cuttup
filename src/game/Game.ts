@@ -17,13 +17,14 @@ import { QUALITY, type Settings } from '../storage/Save';
 import { clamp } from '../core/math';
 import { Police } from '../traffic/Police';
 import { randomCrashMessage } from '../data/crashMessages';
+import { difficultyOf } from '../data/difficulty';
 import { timeSetting } from '../world/TimeOfDay';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
-export interface RunResult { score: number; distance: number; topSpeed: number; nearMisses: number; cutUps: number; time: number; crashKind: CrashKind; message: string; caught: boolean }
+export interface RunResult { prevBest: number; score: number; distance: number; topSpeed: number; nearMisses: number; cutUps: number; time: number; crashKind: CrashKind; message: string; caught: boolean }
 
 const fr: Frame = { x: 0, y: 0, z: 0, heading: 0, k: 0, grade: 0 };
 const PHYS_DT = 1 / 240;
@@ -47,6 +48,18 @@ export class Game {
   private sGuess = 0;
   gameTime = 0;
   private bumpCd = 0;
+  highBeamOn = false;
+  /** seconds the player has been scraping a highway wall; five in a row wrecks the run */
+  private wallT = 0;
+  private wallContact = false;
+  /** best score on this map with this vehicle before the run (0 = none), and whether the record popup has been shown */
+  prevBest = 0;
+  private prDone = false;
+  private fireT = 0;
+  private boomT = 99;
+  private boomLight = new THREE.PointLight(0xff7a22, 0, 90, 2);
+  private skidAcc = 0;
+  private tmpV = new THREE.Vector3();
   private lampLights: THREE.PointLight[] = [];
   private hornCd = 0;
   police: Police;
@@ -60,6 +73,7 @@ export class Game {
     if (this.chunks.buildingMaterial) this.chunks.buildingMaterial.emissiveIntensity = 0.25 + 0.6 * n;
     for (const l of this.lampLights) l.intensity = 160 * Math.max(0, n - 0.3) / 0.7;
     if (this.player.headlight) this.player.headlight.intensity = (this.map.id === 'forest' ? 220 : 0) + 950 * n;
+    this.nightNow = n;
     // fewer cars on the road at night (new spawns; cars already out there drive on)
     this.traffic.density = 1 - 0.4 * n;
     if (this.bloom) { this.bloom.strength = 0.12 + 0.18 * n; this.bloom.threshold = 3 - 1.2 * n; }
@@ -100,17 +114,20 @@ export class Game {
     };
 
     this.particles = new Particles();
-    this.scene.add(this.particles.root);
+    this.scene.add(this.particles.root, this.boomLight);
     const ground = (p: THREE.Vector3) => this.groundAt(p);
     this.particles.groundY = ground;
     this.crash = new CrashScene(this.scene, this.path, this.particles, ground);
     if (this.map.road === 'highway') this.crash.bounds = { min: this.layout.playerMin, max: this.layout.playerMax };
     this.crash.onPileup = (v) => { this.audio.crash(clamp(v / 40, 0.2, 0.7)); this.rig.addShake(0.5); };
     this.police = new Police(this.traffic, this.path, this.map, this.layout, this.particles, ground);
+    this.police.diff = difficultyOf(settings.difficulty);
+    this.police.onCleared = () => this.onPopup?.({ text: 'WANTED LEVEL CLEARED', sub: 'You lost them', color: '#6cf', big: true });
     this.police.playerIsBike = this.spec.kind === 'bike';
     this.police.onWreck = (k) => { this.audio.crash(k * 0.6); this.onPopup?.({ text: 'COP DOWN', sub: 'another unit is coming', color: '#6cf' }); };
     this.police.onDispatch = (n, charger, moto) => this.onPopup?.({ text: charger ? 'INTERCEPTOR DISPATCHED' : n === 1 ? 'POLICE PURSUIT' : `${n} UNITS IN PURSUIT`, sub: charger ? 'Interceptor unit' : moto ? 'Motorcycle unit' : undefined, color: '#ff4040', big: true });
     this.scoring = new Scoring();
+    this.scoring.scoreK = difficultyOf(settings.difficulty).scoreK;
     this.scoring.distK = this.map.road === 'backroad' ? 1.5 : 1;
     this.scoring.onPopup = (p) => this.onPopup?.(p);
     this.rig = new CameraRig(this.camera);
@@ -193,7 +210,9 @@ export class Game {
       this.nearMisses();
       this.horn(dt);
       this.bumpCd -= dt;
+      this.driverAids(dt, realDt);
     } else if (this.state === 'crash') {
+      this.crashFx(dt);
       this.proxy.alive = false;
       this.crash.update(dt, this.traffic);
       this.crashTimer += realDt;
@@ -236,6 +255,62 @@ export class Game {
     return this.state !== 'done';
   }
 
+  nightNow = 0;
+  /** high beam toggle, wall scraping, record popup and drift effects: everything that happens only while driving */
+  private driverAids(dt: number, realDt: number) {
+    const ph = this.player.phys;
+    if (this.state === 'driving' && this.input.pressed('highbeam')) this.highBeamOn = !this.highBeamOn;
+    const hb = this.highBeamOn && this.state === 'driving';
+    if (this.player.highBeam) this.player.highBeam.intensity = hb ? 1500 : 0;
+    this.traffic.highBeam = hb;
+    // scraping a highway wall for five seconds in a row wrecks you (touching it for a moment does not)
+    if (this.map.road === 'highway' && this.state === 'driving' && this.wallContact && ph.speed > 6) {
+      this.wallT += realDt;
+      if (this.wallT > 5) { this.wallT = 0; this.startCrash('barrier', Math.max(14, ph.speed * 0.6), null); return; }
+    } else this.wallT = Math.max(0, this.wallT - realDt * 2);
+    this.wallContact = false;
+    // beating the previous best on this map and vehicle
+    if (!this.prDone && this.prevBest > 0 && this.scoring.score > this.prevBest) {
+      this.prDone = true;
+      this.onPopup?.({ text: 'NEW PERSONAL BEST', sub: `beat your ${this.prevBest.toLocaleString()}`, color: '#ffd23f', big: true });
+    }
+    this.driftFx(dt);
+  }
+
+  /** tyre smoke and skid marks while the car or bike is sliding sideways (the drift itself is plain physics) */
+  private driftFx(dt: number) {
+    const ph = this.player.phys;
+    const beta = Math.abs(Math.atan2(ph.vl, Math.max(1, Math.abs(ph.v))));
+    const thresh = this.player.bike ? 0.12 : 0.15;
+    if (beta < thresh || ph.speed < 9 || ph.onGrass) { this.skidAcc = 0; return; }
+    const amount = Math.min(1, (beta - thresh) / 0.25 + 0.3);
+    const rear = this.player.model.wheels.filter((w) => !w.front);
+    this.skidAcc += ph.speed * dt;
+    const mark = this.skidAcc > 0.6;
+    if (mark) this.skidAcc = 0;
+    const vel = this.player.worldVel;
+    const yaw = Math.atan2(vel.x, vel.z);
+    for (const w of rear) {
+      w.obj.getWorldPosition(this.tmpV);
+      const gy = this.player.model.root.position.y;
+      this.tmpV.y = gy + 0.05;
+      this.particles.smoke(this.tmpV, vel, 2, 1.6, 0.45 + 0.25 * amount, 3.4, 0.95);
+      if (Math.random() < amount * 25 * dt) this.particles.spark(this.tmpV, vel, 1, 2.5);
+      if (mark) { this.tmpV.y = gy + 0.03; this.particles.skids.add(this.tmpV, yaw, 0.9 + ph.speed * 0.03, this.player.bike ? 0.14 : 0.3); }
+    }
+  }
+
+  /** the fireball light and the fire that keeps burning on a wreck */
+  private crashFx(dt: number) {
+    this.boomT += dt;
+    this.boomLight.intensity = this.boomT < 3 ? 1800 * Math.exp(-this.boomT * 2.6) : 0;
+    if (this.fireT > 0) {
+      this.fireT -= dt;
+      this.tmpV.copy(this.crash.focus); this.tmpV.y += 0.4;
+      this.particles.fire(this.tmpV, Math.random() < 0.7 ? 3 : 1);
+    }
+  }
+
   /** barriers / road edges */
   private edges() {
     const ph = this.player.phys;
@@ -243,6 +318,7 @@ export class Game {
     const half = this.player.collW / 2;
     ph.onGrass = ph.d < L.softMin || ph.d > L.softMax;
     const lo = L.playerMin + half, hi = L.playerMax - half;
+    if (ph.d <= lo + 0.1 || ph.d >= hi - 0.1) this.wallContact = true;
     if (ph.d < lo || ph.d > hi) {
       const side = ph.d < lo ? -1 : 1;
       const into = ph.dDot * side; // speed into the wall
@@ -260,6 +336,7 @@ export class Game {
       ph.r *= 0.5;
       ph.v *= 1 - clamp(into * 0.012, 0.002, 0.2);
       this.scrape = Math.min(1, 0.4 + into * 0.1);
+      if (into > 1.5 && this.bumpCd <= 0) { this.audio.thud(clamp(into / 8, 0.2, 1)); this.rig.addShake(0.3); this.scoring.bump(); this.bumpCd = 0.5; }
       if (Math.random() < 0.5) {
         const pos = this.player.model.root.position.clone();
         const right = new THREE.Vector3(-Math.cos(this.path.frame(ph.s, fr).heading), 0, Math.sin(fr.heading));
@@ -331,7 +408,8 @@ export class Game {
       const rvS = pvS - c.v * c.dir, rvD = pvD;
       const vn = rvS * nS + rvD * nD;
       const rel = Math.hypot(rvS, rvD);
-      if (vn > 2.5 || rel > 8 || (c.dir < 0 && rel > 4)) {
+      // only a hard hit wrecks: a gentle nudge or a low speed scrape is a bump (and resets the combo)
+      if (vn > 6.5 || rel > 15 || (c.dir < 0 && rel > 12)) {
         this.startCrash(c.dir < 0 ? 'headon' : 'car', Math.max(vn, rel * 0.8), c);
         return;
       }
@@ -342,7 +420,8 @@ export class Game {
       ph.vl += nD * vn * 0.5;
       c.v = Math.max(0, c.v + Math.max(0, vn) * nS * 0.4);
       c.panicT = 1.2; c.swerveTarget = Math.sign(nD) * 0.8;
-      if (this.bumpCd <= 0) { this.audio.thud(0.5); this.rig.addShake(0.5); this.scoring.bump(); this.bumpCd = 0.6; this.traffic.onHonk?.(c, 1); }
+      this.scoring.bump(); // the streak resets on every bump, even in the cooldown
+      if (this.bumpCd <= 0) { this.audio.thud(0.5); this.rig.addShake(0.5); this.bumpCd = 0.6; this.traffic.onHonk?.(c, 1); }
     }
   }
 
@@ -400,13 +479,23 @@ export class Game {
     this.rig.addShake(0.8);
     this.audio.stopEngine();
     this.audio.crash(clamp(impact / 30, 0.4, 1.5));
+    // a really bad one ends in a fireball
+    const fall = ['lowside', 'highside', 'looped', 'endo', 'tipover'].includes(kind);
+    if (impact > (fall ? 55 : 38) && kind !== 'rock') {
+      const power = clamp((impact - 30) / 30, 0.8, 2);
+      this.particles.explode(contact, power);
+      this.audio.explosion();
+      this.rig.addShake(1.5);
+      this.boomT = 0; this.fireT = 9;
+      this.boomLight.position.copy(contact); this.boomLight.position.y += 1.5;
+    }
     // hitting traffic gets a line about the other people; a solo crash gets one about you
     const message = randomCrashMessage({ map: this.map.id, kind, victim: hit?.type, cop: !!hit?.cop, wanted: this.police.wanted > 0, bike: this.player.bike });
     const caught = !!hit?.cop && (kind === 'car' || kind === 'headon');
     this.onCrash?.(message, caught);
     this.result = {
       score: Math.round(this.scoring.score), distance: this.scoring.distance, topSpeed: this.player.topSpeed,
-      nearMisses: this.scoring.nearMisses, cutUps: this.scoring.cutUps, time: this.scoring.time, crashKind: kind, message, caught,
+      nearMisses: this.scoring.nearMisses, cutUps: this.scoring.cutUps, time: this.scoring.time, crashKind: kind, message, caught, prevBest: this.prevBest,
     };
     void ph;
   }

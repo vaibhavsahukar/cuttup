@@ -8,6 +8,7 @@
  *   headon                hit an oncoming car
  *   truck                 what was hit is a truck, van or pickup
  *   cop                   what was hit is a police car
+ *   bus                   what was hit is a school bus (only bus lines are used then)
  *   caught                a police car got you (the only tag such lines need: they replace the hit / solo lines)
  *   wanted                you crashed with a wanted level active (police stars); shown only some of the time
  *   barrier / tree / rock ran into the roadside barrier / a tree / a rock
@@ -139,6 +140,20 @@ solo,car|Airbags deployed, dignity did not
 fall|Gravity is undefeated, even against a rider with a plan
 fall|You were leaning into a decision you could not take back
 fall|That was not a slide, that was an audition for the ambulance
+bus|That was a school bus. Somebody's whole class was on it
+bus|A school bus. There is no score worth that
+bus|The bus was full of kids who were just thinking about lunch
+bus|Yellow, huge and impossible to miss. You managed it anyway
+bus|Somebody's backpack is still on that seat
+bus|Those kids were going to learn something today. You taught them
+bus|A school bus has one job: get kids home. You just made that harder
+bus|The driver had a clean record, a thermos and a route to finish
+bus|Slow down in school zones, they said. You skipped that lesson too
+bus|Every parent on that route is about to get a phone call
+bus|Congratulations. You are now the reason there is a school assembly in silence
+bus|The red flashing lights were not a suggestion
+bus|They were singing on the way to school. Think about that
+bus|That bus drove the same route for years. You ended it in a second
 caught|Congratulations, you outran nobody. The officer would like a word
 caught|Nice run. The officer had a full tank, a siren and absolutely nothing better to do
 caught|You have the right to remain silent. Your driving already said plenty
@@ -211,6 +226,7 @@ export function crashFacts(c: CrashContext) {
   if (c.kind === 'barrier' || c.kind === 'tree' || c.kind === 'rock') f.add(c.kind);
   if (c.victim && TRUCKS.has(c.victim)) f.add('truck');
   if (c.cop) f.add('cop');
+  if (c.victim === 'schoolbus') f.add('bus');
   if (c.wanted) f.add('wanted');
   return f;
 }
@@ -225,6 +241,8 @@ export function randomCrashMessage(c: CrashContext) {
   // wanted lines only sometimes come up when a wanted level is active, and never otherwise
   const wanted = facts.has('wanted') && Math.random() < WANTED_CHANCE;
   let pool = MESSAGES.filter((x) => x.need.every((n) => facts.has(n)) && x.need.includes('wanted') === wanted);
+  // a school bus gets its own lines and nothing else
+  if (facts.has('bus')) pool = MESSAGES.filter((x) => x.need.includes('bus') && x.need.every((n) => facts.has(n)));
   const fresh = pool.filter((x) => !recent.includes(x.t));
   if (fresh.length) pool = fresh;
   const weights = pool.map((x) => 1 + x.need.length * 1.5);

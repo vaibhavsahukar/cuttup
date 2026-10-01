@@ -8,6 +8,7 @@ import { projectToRoad, type RoadPath } from '../world/RoadPath';
 import type { Particles } from '../game/Particles';
 import { clamp } from '../core/math';
 import { MAT } from '../vehicles/Materials';
+import { difficultyOf, type Difficulty } from '../data/difficulty';
 
 /** Score thresholds -> number of pursuing police cars. */
 export const POLICE_TIERS: [number, number][] = [[5000, 1], [10000, 2], [15000, 3], [20000, 4], [25000, 5]];
@@ -36,6 +37,14 @@ export class Police {
   private respawnT = 0;
   private time = 0;
   wanted = 0;
+  diff: Difficulty = difficultyOf(1);
+  /** seconds since a cop was last close (inside the vignette range) while wanted */
+  awayT = 0;
+  /** the star level that was shaken off: no wanted level until the score earns a higher one */
+  clearedTier = 0;
+  /** the player has been clear of the police long enough for the stars to flash */
+  get fleeing() { return this.wanted > 0 && this.awayT >= Police.OUTRUN_FLASH_AFTER; }
+  onCleared: (() => void) | null = null;
   onWreck: ((intensity: number) => void) | null = null;
   onDispatch: ((n: number, charger: boolean, moto: boolean) => void) | null = null;
 
@@ -50,6 +59,11 @@ export class Police {
   static MOTO_FROM = 10000;
   /** at most this many police units are on the road at once */
   static MAX_COPS = 5;
+  /** a cop closer than this (m) counts as near: the red vignette, and it resets the outrun timer */
+  static NEAR = 150;
+  /** a full minute without a cop getting near, the stars start to flash; 30 s later the wanted level is gone */
+  static OUTRUN_FLASH_AFTER = 60;
+  static OUTRUN_CLEAR_AFTER = 90;
   /** the motorcycle unit only chases riders */
   playerIsBike = false;
   private spawn(player: PlayerProxy, score: number) {
@@ -70,7 +84,8 @@ export class Police {
     let lane = 0, best = 1e9;
     for (let l = 0; l < lanes; l++) { const dd = Math.abs(this.layout.laneCenter(l) - player.d); if (dd < best) { best = dd; lane = l; } }
     // never appear inside a traffic car: slide back until the slot is clear, and take the lane with the most room
-    let sSpawn = player.s - 90 - Math.random() * 40;
+    // while the player is getting away, replacements come from well out of range instead of right behind them
+    let sSpawn = player.s - (this.awayT > 20 ? 185 : 90) - Math.random() * 30;
     for (let tries = 0; tries < 6; tries++) {
       const free = (l: number) => !this.traffic.cars.some((o) => o.alive && o.dir === 1 && Math.abs(o.d - this.layout.laneCenter(l)) < 2.6 && Math.abs(o.s - sSpawn) < 45);
       if (free(lane)) break;
@@ -82,20 +97,33 @@ export class Police {
       id: -Math.floor(Math.random() * 1e9), type: 'sedan', model, L: dims.length, W: dims.width, dir: 1,
       s: sSpawn, d: this.layout.laneCenter(lane), v: Math.min(vTop, Math.max(25, player.v + 12)), v0: 90, acc: 0,
       lane, targetLane: lane, lcT: 1, lcDur: 1, dFrom: 0, signal: 0, signalT: 0, pendingLane: -1,
-      driver: 'fast', p: DRIVERS.fast, decideT: 0, lcCool: 0, laneT: 99, prevLane: -1, wander: 0, wanderPhase: 0, swerve: 0, swerveTarget: 0,
+      driver: 'fast', p: DRIVERS.fast, decideT: 0, lcCool: 0, laneT: 99, prevLane: -1, tailT: 0, wander: 0, wanderPhase: 0, swerve: 0, swerveTarget: 0,
       panicT: 0, freezeT: 0, honkCd: 0, braking: false, wrecked: false, yaw: 0, passedSign: 0, nearMissed: true, alive: true, cop: true,
     };
     this.traffic.cars.push(car);
-    this.cops.push({ car, red, blue, skill: charger ? 0.95 + Math.random() * 0.05 : 0.85 + Math.random() * 0.15, vMax: vTop, charger, moto, dSm: car.d, laneT: 0, stuckT: 0, slot: this.cops.length });
+    this.cops.push({ car, red, blue, skill: charger ? 0.95 + Math.random() * 0.05 : 0.85 + Math.random() * 0.15, vMax: vTop * this.diff.copSpeed, charger, moto, dSm: car.d, laneT: 0, stuckT: 0, slot: this.cops.length });
     this.onDispatch?.(this.cops.length, charger, moto);
   }
 
   update(dt: number, player: PlayerProxy, playerVl: number, score: number, active: boolean) {
     this.time += dt;
-    this.wanted = copsForScore(score);
+    const tier = copsForScore(score / this.diff.copTier);
+    this.wanted = tier > this.clearedTier ? tier : 0;
+    if (this.wanted === 0 && this.cops.length) { for (const c of this.cops) this.traffic.release(c.car); this.cops = []; }
+    // outrunning the police: a minute with no cop near, then 30 s of flashing stars, then the wanted level is gone
+    if (this.wanted > 0 && active) {
+      if (this.cops.length && this.nearest(player.s) < Police.NEAR) this.awayT = 0;
+      else if (this.cops.length || this.awayT > 0 || this.respawnT > 2) this.awayT += dt;
+      if (this.awayT >= Police.OUTRUN_CLEAR_AFTER) {
+        this.clearedTier = this.wanted; this.wanted = 0; this.awayT = 0;
+        for (const c of this.cops) this.traffic.release(c.car);
+        this.cops = [];
+        this.onCleared?.();
+      }
+    } else if (this.wanted === 0) this.awayT = 0;
     // drop cops that despawned (outrun) or wrecked
     this.cops = this.cops.filter((c) => c.car.alive && !c.car.wrecked);
-    if (active && this.cops.length < Math.min(this.wanted, Police.MAX_COPS)) {
+    if (active && this.cops.length < Math.min(this.wanted, Police.MAX_COPS, this.diff.copMax)) {
       this.respawnT -= dt;
       if (this.respawnT <= 0) { this.spawn(player, score); this.respawnT = 1.2; }
     }
@@ -183,7 +211,7 @@ export class Police {
       if (here.g < need + 4) vT = Math.min(vT, here.v + Math.max(0, here.g - 5) * 0.8);
     }
     // actuate with skill-limited rates (this is where imperfect cops make mistakes)
-    let acc = clamp((vT - c.v) * 2.5, -11, (cop.charger ? 11 : cop.moto ? 9 : 7.5) * cop.skill);
+    let acc = clamp((vT - c.v) * 2.5, -11, (cop.charger ? 11 : cop.moto ? 9 : 7.5) * cop.skill * this.diff.copSpeed);
     // the pedals are eased on and off (a raw target flips every frame when a car ahead comes in and out of range)
     if (acc > -6) acc = c.acc + (acc - c.acc) * (1 - Math.exp(-dt / (acc > c.acc ? 0.35 : 0.2)));
     c.acc = acc;

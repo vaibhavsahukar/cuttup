@@ -176,6 +176,13 @@ export class AudioEngine {
     o.connect(g).connect(this.ctx.destination);
     o.start(t); o.stop(t + 4.6);
   }
+  /** a fireball: deep boom, rumble and a crackle */
+  explosion() {
+    this.burst(1.8, 180, 'lowpass', 1.3);
+    this.tone(60, 1.3, 1, 'sine', 0, 26);
+    this.burst(0.7, 2600, 'highpass', 0.45, 0.05);
+    this.burst(1.2, 700, 'bandpass', 0.35, 0.3);
+  }
   thud(intensity: number) { this.tone(90, 0.3, 0.4 * clamp(intensity, 0.1, 1), 'sine', 0, 45); this.burst(0.25, 700, 'lowpass', 0.3 * intensity); }
   honk(volume: number, pan: number) {
     const v = clamp(volume, 0, 1) * 0.35;

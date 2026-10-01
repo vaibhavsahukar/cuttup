@@ -16,6 +16,8 @@ export class Player {
   phys: VehiclePhysics;
   model: VehicleModel;
   headlight?: THREE.SpotLight;
+  /** long narrow beam for the high beams */
+  highBeam?: THREE.SpotLight;
   roll = 0; pitch = 0;
   worldVel = new THREE.Vector3();
   private lastPos = new THREE.Vector3();
@@ -28,14 +30,18 @@ export class Player {
     // a bike's box covers the rider and frame only (not the handlebar ends or the tips of the wheels)
     this.collW = spec.kind === 'bike' ? spec.dims.width * 0.7 : spec.dims.width * 0.96;
     this.collL = spec.kind === 'bike' ? spec.dims.length * 0.8 : spec.dims.length * 0.97;
-    if (night) {
-      const h = new THREE.SpotLight(0xfff2dd, night ? 950 : 500, 150, 0.45, 0.5, 2);
-      h.position.set(0, 0.8, spec.dims.length / 2);
-      h.target.position.set(0, 0, spec.dims.length / 2 + 30);
-      h.castShadow = false;
-      this.model.root.add(h, h.target);
-      this.headlight = h;
-    }
+    // always fitted: a run can start in daylight and end in the dark; the game sets the intensity from the light level
+    void night;
+    const h = new THREE.SpotLight(0xfff2dd, 0, 150, 0.45, 0.5, 2);
+    h.position.set(0, 0.8, spec.dims.length / 2);
+    h.target.position.set(0, 0, spec.dims.length / 2 + 30);
+    h.castShadow = false;
+    const hb = new THREE.SpotLight(0xe8f0ff, 0, 280, 0.2, 0.35, 1.6);
+    hb.position.set(0, 0.9, spec.dims.length / 2);
+    hb.target.position.set(0, 0.6, spec.dims.length / 2 + 60);
+    hb.castShadow = false;
+    this.model.root.add(h, h.target, hb, hb.target);
+    this.headlight = h; this.highBeam = hb;
   }
 
   get bike() { return this.spec.kind === 'bike'; }
