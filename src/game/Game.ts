@@ -121,7 +121,7 @@ export class Game {
     this.path = new RoadPath(this.map);
     const tod = timeSetting(settings.timeOfDay, this.map.id);
     this.env = new Environment(this.scene, this.map, tod.hour, tod.cycle, q.shadows, q.drawDist);
-    this.weather = new Weather(settings.weather ?? 'changing');
+    this.weather = new Weather(settings.difficulty === 0 ? 'clear' : (settings.weather ?? 'changing')) // easy mode is always dry;
     this.scene.add(this.weather.lines);
     const night = this.env.night;
     this.scene.environment = pmrem;

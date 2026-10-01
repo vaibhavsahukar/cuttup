@@ -238,7 +238,7 @@ export class UI {
     tb.innerHTML = `<span>Time of day</span>${TIME_CHOICES.map(([v, l]) => `<button class="small ${st.timeOfDay === v ? 'primary' : ''}" data-t="${v}">${l}</button>`).join('')}<span class="dim">${st.timeOfDay === 'auto' ? 'clock runs: dawn, day, dusk, night' : 'time is fixed'}</span>`;
     let wb = document.getElementById('wxbar');
     if (!wb) { wb = document.createElement('div'); wb.id = 'wxbar'; wb.className = 'panel todbar wxbar'; $('#maps').appendChild(wb); wb.onclick = (e) => { const w = (e.target as HTMLElement).dataset.w; if (w) { st.weather = w as WeatherChoice; this.save.persist(); this.h.click(); this.buildMaps(); } }; }
-    wb.innerHTML = `<span>Weather</span>${WEATHER_CHOICES.map(([v, l]) => `<button class="small ${st.weather === v ? 'primary' : ''}" data-w="${v}">${l}</button>`).join('')}<span class="dim">${st.weather === 'changing' ? 'rain comes and goes during the run' : st.weather === 'rain' ? 'wet roads, less grip' : 'dry all run'}</span>`;
+    wb.innerHTML = `<span>Weather</span>${WEATHER_CHOICES.map(([v, l]) => `<button class="small ${st.weather === v ? 'primary' : ''}" data-w="${v}">${l}</button>`).join('')}<span class="dim">${st.difficulty === 0 ? 'Easy mode is always dry' : st.weather === 'changing' ? 'rain comes and goes during the run' : st.weather === 'rain' ? 'wet roads, less grip' : 'dry all run'}</span>`;
     $('#maps .cards').onclick = (e) => {
       const t = (e.target as HTMLElement).dataset.t;
       if (t) { st.timeOfDay = t as TimeChoice; this.save.persist(); this.h.click(); this.buildMaps(); return; }
