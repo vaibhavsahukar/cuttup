@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 const out = process.argv[2] ?? '.';
 const N = Number(process.argv[3] ?? 120), FPS = 20;
 const b = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-const page = await b.newPage({ viewport: { width: 800, height: 450 } });
+const page = await b.newPage({ viewport: { width: 1280, height: 720 } });
 await page.addInitScript('window.__name = (f) => f');
 await page.goto('http://localhost:5173/');
 await page.waitForFunction(() => (window as any).__app);
