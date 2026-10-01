@@ -235,10 +235,10 @@ export class Fork {
   raised(s: number) { return this.rise(s - this.sF); }
   /** branch ground beside the raised ramp and road lies at the old road's level, below its retaining walls */
   branchLift(s: number, d: number) {
+    // a few centimetres under the old road's ground wherever the two overlap (so it is the old road's that shows)
     const r = this.rise(s - this.sF);
-    if (r <= 0) return 0;
     const a = Math.abs(d) - (this.layout.roadHalfWidth - 1);
-    return -r * smoothstep(1.85, 1.95, a);
+    return -0.04 - (r > 0 ? r * smoothstep(1.85, 1.95, a) : 0);
   }
   /** main road: keep its right side clear where the ramp tapers out of it */
   taperClear(s: number, d: number) { const x = s - this.sF; return x > -90 && x < TAPER + 30 && d > 0 && d < this.layout.roadHalfWidth + 70; }
@@ -356,7 +356,6 @@ export class Fork {
         mesh.scale.y = yRoad - 1.35 - (ground - 0.5);
       }
     }
-    this.fillDeck();
   }
 
   /** height of the new highway's surface at deck position t (west of the join) */
