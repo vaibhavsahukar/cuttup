@@ -356,6 +356,7 @@ export class Fork {
         mesh.scale.y = yRoad - 1.35 - (ground - 0.5);
       }
     }
+    this.fillDeck();
   }
 
   /** height of the new highway's surface at deck position t (west of the join) */

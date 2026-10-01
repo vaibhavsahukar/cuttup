@@ -7,7 +7,6 @@ export const TRAFFIC_LABELS: Record<string, [string, string]> = {
   sedan: ['Sedan', 'Everyday family saloon'],
   hatch: ['Hatchback', 'Compact city hatch'],
   suv: ['SUV', 'Large luxury SUV'],
-  crossover: ['Crossover', 'Mid size crossover'],
   pickup: ['Pickup truck', 'Full size pickup with open bed'],
   van: ['Van', 'Delivery van'],
   boxtruck: ['Box truck', 'Heavy cargo truck'],

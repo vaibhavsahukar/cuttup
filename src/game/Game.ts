@@ -276,6 +276,7 @@ export class Game {
     this.stations.update(ph.s);
     this.forkStep(ph.s);
     if (this.state !== 'crash') p.sync(dt);
+    this.deckTraffic(dt);
     this.traffic.sync(dt, ph.s);
     this.particles.update(dt);
 
@@ -537,6 +538,8 @@ export class Game {
     if (cf && s < cf.uB + 600) {
       for (const c of this.traffic.cars) {
         if (c.cop || c.rage || c.wrecked || c.s <= cf.sF || c.s >= cf.uB || c.d >= cf.branchMin(c.s) - 0.5) continue;
+        // oncoming traffic reaching the join carries on west over the bridge
+        if (c.dir < 0) cf.adoptOncoming(c.s, c.lane, c.v, c.type, c.color ?? 0xffffff);
         this.traffic.release(c);
       }
     } else if (cf) { this.chunksFork = null; this.traffic.spawnOk = null; this.police.minD = null; }

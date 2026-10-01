@@ -23,7 +23,7 @@ export function buildPlayerModel(spec: VehicleSpec, shadows = true): VehicleMode
 
 /** Traffic types -> measured shape ids. */
 export const TRAFFIC_SHAPES = {
-  sedan: 't_sedan', hatch: 't_hatch', suv: 't_lexus', crossover: 't_crv', pickup: 't_pickup',
+  sedan: 't_sedan', hatch: 't_hatch', suv: 't_lexus', pickup: 't_pickup',
   van: 't_van', boxtruck: 't_boxtruck', schoolbus: 't_boxtruck', tesla: 'tesla', civic: 'civic',
 } as const;
 export type TrafficType = keyof typeof TRAFFIC_SHAPES;
