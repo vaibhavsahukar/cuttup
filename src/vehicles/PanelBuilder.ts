@@ -341,6 +341,13 @@ const PROFILES: Record<string, { centre: [number, number][]; belt: [number, numb
     roof: 0.72,
     beltMax: 0.8,
   },
+  // Urus: tall coupe SUV, long raked screen, roof peak mid body falling to a short high tail, big bluff nose
+  urus: {
+    centre: [[0, 1.18], [0.02, 1.38], [0.08, 1.45], [0.2, 1.55], [0.3, 1.62], [0.4, 1.64], [0.52, 1.64], [0.6, 1.58], [0.68, 1.32], [0.74, 1.2], [0.82, 1.17], [0.92, 1.12], [0.98, 1.05], [1, 0.92]],
+    belt: [[0, 1.2], [0.1, 1.3], [0.3, 1.3], [0.5, 1.26], [0.7, 1.2], [0.9, 1.1], [1, 0.95]],
+    roof: 0.66,
+    beltMax: 0.82,
+  },
   // Huracán: very low wedge, flat engine deck, cabin well forward of the rear axle, long raked screen, low beak
   huracan: {
     centre: [[0, 0.86], [0.05, 0.96], [0.3, 1.0], [0.4, 1.07], [0.47, 1.13], [0.56, 1.11], [0.7, 0.86], [0.8, 0.75], [0.93, 0.64], [1, 0.5]],
@@ -508,6 +515,37 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     for (const x of [-0.14, 0.14]) box('chrome', x, ground + 0.25, R - 0.01, 0.1, 0.1, 0.08);
     box('carbon', 0, c.deckAt(R + 0.2) + 0.02, R + 0.2, c.tailW * 1.7, 0.03, 0.16);
     box('carbon', 0, wR + 0.06, R + 0.38, c.tailW * 1.96, 0.035, 0.38);
+  },
+  // Lamborghini Urus: slim hex LED headlamps, huge black mouth with horizontal bars and angled corner intakes, raised
+  // bonnet ridge, black rear spoiler, full width tail lamp strips over a script vent band, big diffuser, quad tips.
+  urus(c) {
+    const { L, ground, box } = c;
+    const F = L / 2, R = -L / 2;
+    for (const sx of [1, -1]) {
+      c.lamp(sx, F - 0.12, F - 0.62, 0.42, 0.96, 0.62, 0.99, 0.045);
+      // angled corner intakes, side skirts, fender vent
+      box('dark', sx * c.noseW * 0.74, c.noseH - 0.32, F - 0.03, c.noseW * 0.5, 0.4, 0.06);
+      box('carbon', sx * (c.hwAt(0) - 0.02), ground + 0.1, -0.1, 0.07, 0.1, L * 0.4);
+      const zf = F - 1.4;
+      box('dark', sx * (c.hwAt(zf) + 0.004), c.shAt(zf) - 0.2, zf, 0.02, 0.12, 0.34);
+      // tail: slim lamp strips, outer lamps, side exhausts
+      box('tail', sx * c.tailW * 0.62, c.tailH - 0.1, R + 0.004, c.tailW * 0.6, 0.045, 0.05);
+      box('tail', sx * c.tailW * 0.9, c.tailH - 0.3, R + 0.004, c.tailW * 0.14, 0.05, 0.05);
+      box('chrome', sx * c.tailW * 0.62, ground + 0.2, R - 0.01, 0.14, 0.1, 0.08);
+      box('chrome', sx * c.tailW * 0.8, ground + 0.2, R - 0.01, 0.14, 0.1, 0.08);
+    }
+    // nose: black mouth with bars, splitter, badge, raised bonnet ridge
+    box('dark', 0, c.noseH - 0.3, F - 0.02, c.noseW * 1.05, 0.38, 0.06);
+    for (const dy of [-0.08, 0.02, 0.12]) box('carbon', 0, c.noseH - 0.3 + dy, F + 0.01, c.noseW * 0.95, 0.025, 0.04);
+    box('chrome', 0, c.noseH - 0.05, F + 0.005, 0.07, 0.06, 0.02);
+    box('carbon', 0, ground + 0.03, F - 0.1, c.noseW * 1.9, 0.035, 0.28);
+    const zh = F - 1.0;
+    box('paint', 0, c.deckAt(zh) + 0.015, zh, c.hwAt(zh) * 0.55, 0.05, 1.2);
+    // rear: roof spoiler lip, black script band, lower diffuser
+    box('carbon', 0, c.topAt(R + 0.25) + 0.015, R + 0.25, c.tailW * 1.4, 0.03, 0.26);
+    box('dark', 0, c.tailH - 0.1, R + 0.012, c.tailW * 1.4, 0.07, 0.04);
+    box('dark', 0, ground + 0.3, R + 0.02, c.tailW * 1.9, 0.5, 0.06);
+    box('carbon', 0, ground + 0.12, R + 0.05, c.tailW * 1.8, 0.2, 0.12);
   },
   // Lamborghini Huracán: slim Y headlamps, wide three-part mouth, hexagon side intakes,
   // louvred engine cover, Y tail lamps, twin exhausts in the diffuser.
