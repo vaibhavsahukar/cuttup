@@ -87,6 +87,7 @@ export function barnGeo() {
   const red = 0x9b2a20, trim = 0xf0ebe0, roof = 0x4a4a4c;
   const parts = [
     part(box(12, 6, 20), red, 0, 3, 0),
+    part(box(12.4, 4, 20.4), 0x6e6a62, 0, -2, 0), // stone footing: on a slope the downhill side no longer floats
     // gambrel roof: steep lower slopes (6.3, 6) to (3.9, 9.4), shallow upper slopes up to the ridge at (0, 11.6)
     part(box(4.2, 0.3, 20.6), roof, 5.1, 7.7, 0, 0, 0, -0.96),
     part(box(4.2, 0.3, 20.6), roof, -5.1, 7.7, 0, 0, 0, 0.96),
@@ -113,6 +114,7 @@ export function barnGeo() {
   // silos
   for (const [x, z] of [[9.2, -5], [9.2, -0.4]] as const) {
     parts.push(part(cyl(2.2, 2.2, 15, 12), 0xc9c8c0, x, 7.5, z), part(new THREE.SphereGeometry(2.2, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0x8e8c86, x, 15, z));
+    parts.push(part(cyl(2.4, 2.4, 4, 12), 0x8e8c86, x, -2, z));
     for (const y of [3, 6, 9, 12]) parts.push(part(cyl(2.25, 2.25, 0.18, 12), 0x8e8c86, x, y, z));
   }
   return merge(parts);
@@ -122,6 +124,8 @@ export function houseGeo() {
   const wall = 0xeee6d4, roof = 0x5b3f34, trim = 0xfaf6ee, shutter = 0x3e6a4a, glass = 0x2a3440;
   const parts = [
     part(box(9, 5.6, 8), wall, 0, 2.8, 0),
+    part(box(9.4, 4, 8.4), 0x7a766e, 0, -2, 0.2), // footing so it never floats on a slope
+    part(box(4.9, 4, 10.4), 0x7a766e, -6, -2, 0.4),
     part(box(4.5, 3.6, 10), wall, -6, 1.8, 0.4),
     part(prism(10.2, 3.6, 8.6), roof, 0, 5.6, 0, 0, 0, 0),
     part(prism(5.6, 2.2, 10.6), roof, -6, 3.6, 0.4),
