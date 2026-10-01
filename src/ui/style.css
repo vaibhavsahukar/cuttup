@@ -95,8 +95,9 @@ input[type=range] { width: 260px; accent-color: var(--accent); }
 #hud .count { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font-size: 120px; font-weight: 900; font-style: italic; color: #fff; text-shadow: 0 3px 0 rgba(255,61,110,0.9); will-change: contents; }
 #hud .copvig { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.3s; }
 #hud .copvig i { position: absolute; inset: 0; box-shadow: inset 0 0 14vmin 3vmin rgba(255, 24, 24, 0.85), inset 0 0 4vmin 0 rgba(255, 60, 60, 0.6); animation: vigPulse 0.7s ease-in-out infinite alternate; }
+#hud .ragetag { position: absolute; left: 30px; bottom: 82px; font-size: 20px; font-weight: 800; letter-spacing: 0.22em; color: #ff2a2a; text-shadow: 0 0 10px rgba(255,30,30,0.7), 0 2px 6px rgba(0,0,0,0.85); animation: vigPulse 0.6s ease-in-out infinite alternate; }
 @keyframes vigPulse { from { opacity: 0.6; } to { opacity: 1; } }
-#hud .fuel { position: absolute; left: 30px; bottom: 92px; display: flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: 0.15em; color: var(--dim); text-shadow: 0 2px 6px rgba(0,0,0,0.8); }
+#hud .fuel { position: absolute; left: 30px; bottom: 112px; display: flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: 0.15em; color: var(--dim); text-shadow: 0 2px 6px rgba(0,0,0,0.8); }
 #hud .fuel .bar { width: 150px; height: 7px; background: rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden; }
 #hud .fuel .bar i { display: block; height: 100%; background: #ffb62e; }
 #hud .fuel .nx { color: #e6e6e6; font-weight: 700; }

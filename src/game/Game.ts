@@ -701,7 +701,7 @@ export class Game {
           const insane = clamp(1 - Math.max(0, clearance) / 1.4, 0, 1) > 0.7;
           this.scoring.nearMiss(Math.max(0, clearance), relSpeed, c.dir < 0);
           // very rarely, the driver you just carved up snaps and comes after you
-          if ((cut || insane) && c.dir > 0 && !c.cop && Math.random() < 0.05) this.police.startRage(c);
+          if ((cut || insane) && c.dir > 0 && !c.cop && Math.random() < 0.012) this.police.startRage(c);
           this.audio.whoosh(relSpeed / 30);
           this.rig.addShake(0.25);
         }

@@ -65,6 +65,8 @@ export class UI {
       <div id="settings" class="screen"><div class="panel"></div></div>
       <div id="hud" class="screen">
         <div class="copvig"><i></i></div>
+        <div class="copvig ragevig"><i></i></div>
+        <div class="ragetag" hidden>ROAD RAGE</div>
         <div class="hbind" hidden>HIGH BEAM</div>
         <div class="fuel"><label>FUEL</label><div class="bar"><i></i></div><span class="nx"></span></div>
         <div class="stars" title="Wanted level"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
@@ -383,6 +385,15 @@ export class UI {
     if (v === this.lastVig) return;
     this.lastVig = v;
     ($('#hud .copvig') as HTMLElement).style.opacity = String(v);
+  }
+  private lastRageVig = -1;
+  /** red vignette while a road rager is close (separate from the wanted level's) and the ROAD RAGE tag above the stars */
+  rage(active: boolean, level: number) {
+    const v = active ? Math.round(level * 20) / 20 : 0;
+    const tag = $('#hud .ragetag'); if (tag.hidden === active) tag.hidden = !active;
+    if (v === this.lastRageVig) return;
+    this.lastRageVig = v;
+    ($('#hud .ragevig') as HTMLElement).style.opacity = String(v);
   }
   private lastStars = -1;
   /** wanted level as filled stars (lower left); they flash red / blue while cops are on the road */

@@ -297,7 +297,8 @@ export class Police {
   startRage(car: TrafficCar) {
     if (this.ragers.length || car.cop || car.rage || car.dir !== 1 || car.wrecked) return false;
     car.rage = true; car.signal = 0; car.pendingLane = -1; car.lcT = 1;
-    this.ragers.push({ kind: 'interceptor', smart: true, retiring: 0, car, skill: 0.97, vMax: VTOP.interceptor * this.diff.copSpeed, charger: true, moto: false, dSm: car.d, laneT: 0, stuckT: 0, slot: 0, rageT: 0 });
+    // an angry civilian: patrol car pace, ordinary (not smart) steering, and sloppy reactions, well short of a Conquette
+    this.ragers.push({ kind: 'patrol', smart: false, retiring: 0, car, skill: 0.62 + Math.random() * 0.1, vMax: VTOP.patrol * 0.9 * this.diff.copSpeed, charger: false, moto: false, dSm: car.d, laneT: 0, stuckT: 0, slot: 0, rageT: 0 });
     this.onRage?.(true);
     return true;
   }
@@ -371,6 +372,12 @@ export class Police {
   }
 
   /** nearest cop distance (m), Infinity if none */
+  /** distance to the nearest road rager (Infinity if none) */
+  nearestRager(ps: number) {
+    let d = Infinity;
+    for (const r of this.ragers) d = Math.min(d, Math.abs(r.car.s - ps));
+    return d;
+  }
   nearest(ps: number) {
     let d = Infinity;
     for (const c of this.cops) d = Math.min(d, Math.abs(c.car.s - ps));
