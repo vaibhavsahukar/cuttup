@@ -14,7 +14,7 @@ export interface VehicleSpec {
   model: string; // procedural model key
   color: number;
   /** bike accent paints of the chosen colorway (see colorways.ts) */
-  paint?: { a1?: number; a2?: number };
+  paint?: { a1?: number; a2?: number; rim?: number };
   hp: number;
   massKg: number;
   drive: Drive;
@@ -189,7 +189,7 @@ export const getVehicle = (id: string): VehicleSpec => {
   if (!cw || i === 0) return v;
   const key = `${v.id}:${i}`;
   let r = resolved.get(key);
-  if (!r) { r = { ...v, color: cw.color, paint: { a1: cw.a1, a2: cw.a2 } }; resolved.set(key, r); }
+  if (!r) { r = { ...v, color: cw.color, paint: { a1: cw.a1, a2: cw.a2, rim: cw.rim } }; resolved.set(key, r); }
   return r;
 };
 

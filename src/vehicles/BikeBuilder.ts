@@ -53,26 +53,48 @@ const DESIGNS: Record<string, BikeDesign> = {
     exhaust: { from: [0.05, 0.3], to: [-0.3, 0.34], r: 0.07, x: -0.08 },
     mirrors: [0.72, 1.0],
   },
-  // Yamaha R6: full race fairing to the belly, sharp beak with a central ram-air intake,
-  // tall bubble screen, knife-edge tail set high, under-engine exhaust.
+  // Yamaha R6 (from the blue and black photos): sharp pointed nose with slit lamps, tall screen, white side stripes
+  // and a white belly pan, gold fork, knife tail, silver can slung low on the right, blue wheels on the blue bike.
   r6: {
-    wheelR: 0.3, front: 0.72, rear: -0.68,
+    wheelR: 0.29, rearR: 0.3, front: 0.69, rear: -0.685, frontW: 0.12, rearW: 0.18, spokes: 10, rim: 0x1f3aa8,
+    colors: { a1: 0xf1f1f5, a2: 0xcfd2d8 },
+    dims: [2.04, 0.7, 1.14], noMudguard: true, forkTag: 'gold',
     parts: [
-      { tag: 'paint', hw: 0.2, pts: [[1.04, 0.78], [0.92, 0.62], [0.72, 0.42], [0.2, 0.3], [0.05, 0.36], [0.2, 0.62], [0.38, 0.8], [0.52, 0.96], [0.8, 0.98], [0.98, 0.88]] },
-      { tag: 'paint', hw: 0.17, pts: [[0.4, 0.8], [0.44, 1.0], [0.2, 1.05], [-0.08, 0.98], [-0.1, 0.8]] },
-      { tag: 'seat', hw: 0.12, pts: [[-0.08, 0.93], [-0.1, 0.85], [-0.46, 0.9], [-0.5, 0.95], [-0.28, 0.95]] },
-      { tag: 'paint', hw: 0.11, pts: [[-0.1, 0.84], [-0.5, 0.9], [-0.96, 1.08], [-1.0, 1.04], [-0.7, 0.8], [-0.2, 0.72]] },
-      { tag: 'dark', hw: 0.14, pts: [[0.22, 0.62], [0.2, 0.34], [-0.1, 0.3], [-0.26, 0.48], [-0.1, 0.74]] },
-      { tag: 'metal', hw: 0.19, pts: [[0.48, 0.97], [0.52, 0.88], [-0.18, 0.62], [-0.24, 0.72]] },
-      { tag: 'glass', hw: 0.12, pts: [[0.8, 0.98], [0.6, 1.14], [0.66, 1.16], [0.98, 0.89]] },
-      { tag: 'dark', hw: 0.12, pts: [[-0.12, 0.48], [-0.2, 0.38], [-0.68, 0.28], [-0.68, 0.34]] },
-      { tag: 'dark', hw: 0.06, pts: [[-0.7, 0.8], [-0.94, 0.66], [-0.98, 0.7], [-0.76, 0.84]] },
+      // front fender, nose and cowl
+      { tag: 'paint', hw: 0.07, pts: [[0.5, 0.6], [0.58, 0.66], [0.74, 0.66], [0.86, 0.6], [0.92, 0.54], [0.88, 0.52], [0.78, 0.58], [0.64, 0.58], [0.54, 0.53]] },
+      { tag: 'paint', hw: 0.19, pts: [[0.98, 0.76], [0.92, 0.68], [0.78, 0.62], [0.5, 0.6], [0.34, 0.62], [0.2, 0.58], [0.24, 0.64], [0.34, 0.74], [0.4, 0.84], [0.42, 0.98], [0.5, 1.0], [0.62, 0.96], [0.78, 0.9], [0.92, 0.82]] },
+      { tag: 'a1', hw: 0.195, pts: [[0.92, 0.77], [0.74, 0.73], [0.52, 0.71], [0.34, 0.68], [0.5, 0.67], [0.74, 0.69], [0.9, 0.73]] },
+      { tag: 'dark', hw: 0.07, pts: [[0.98, 0.78], [0.9, 0.8], [0.84, 0.78], [0.92, 0.74]] },
+      // lower fairing and white belly pan
+      { tag: 'paint', hw: 0.19, pts: [[0.46, 0.6], [0.3, 0.62], [0.22, 0.58], [0.18, 0.48], [0.28, 0.38], [0.1, 0.3], [0.0, 0.26], [-0.08, 0.22], [-0.2, 0.16], [0.0, 0.12], [0.25, 0.1], [0.45, 0.08], [0.46, 0.3]] },
+      { tag: 'a2', hw: 0.192, pts: [[-0.2, 0.16], [0.0, 0.12], [0.25, 0.1], [0.45, 0.08], [0.46, 0.17], [0.3, 0.21], [0.05, 0.22], [-0.08, 0.23]] },
+      { tag: 'a1', hw: 0.195, pts: [[0.22, 0.52], [0.42, 0.5], [0.45, 0.46], [0.3, 0.47], [0.2, 0.48]] },
+      { tag: 'a1', hw: 0.195, pts: [[0.2, 0.45], [0.4, 0.43], [0.43, 0.4], [0.28, 0.41], [0.18, 0.42]] },
+      { tag: 'glass', hw: 0.1, pts: [[0.4, 0.98], [0.46, 1.12], [0.54, 1.14], [0.62, 1.04], [0.74, 0.94], [0.68, 0.92], [0.52, 0.98]] },
+      // tank and seat
+      { tag: 'paint', hw: 0.17, pts: [[-0.08, 0.78], [-0.04, 0.86], [0.0, 0.92], [0.14, 0.95], [0.3, 0.93], [0.42, 0.88], [0.45, 0.86], [0.32, 0.82], [0.2, 0.72], [0.1, 0.66], [-0.1, 0.66], [-0.28, 0.7], [-0.2, 0.76]] },
+      { tag: 'a1', hw: 0.175, pts: [[-0.16, 0.77], [0.04, 0.82], [0.2, 0.83], [0.2, 0.81], [0.04, 0.79], [-0.14, 0.74]] },
+      { tag: 'seat', hw: 0.12, pts: [[-0.5, 0.88], [-0.38, 0.85], [-0.22, 0.82], [-0.1, 0.8], [-0.04, 0.81], [-0.08, 0.77], [-0.28, 0.79], [-0.48, 0.83]] },
+      // knife tail, stripe and plate hanger
+      { tag: 'paint', hw: 0.11, pts: [[-0.9, 1.0], [-0.76, 0.98], [-0.6, 0.94], [-0.5, 0.89], [-0.38, 0.84], [-0.2, 0.78], [-0.1, 0.72], [-0.3, 0.7], [-0.45, 0.76], [-0.58, 0.84], [-0.7, 0.92], [-0.84, 0.96]] },
+      { tag: 'a1', hw: 0.115, pts: [[-0.86, 0.99], [-0.74, 0.96], [-0.62, 0.9], [-0.56, 0.85], [-0.6, 0.85], [-0.68, 0.9], [-0.8, 0.95]] },
+      { tag: 'dark', hw: 0.04, pts: [[-0.55, 0.84], [-0.75, 0.78], [-0.9, 0.76], [-0.94, 0.7], [-1.0, 0.62], [-0.97, 0.6], [-0.9, 0.64], [-0.82, 0.7], [-0.72, 0.72], [-0.56, 0.78]] },
+      // frame, engine and swingarm
+      { tag: 'dark', hw: 0.15, pts: [[0.2, 0.66], [-0.28, 0.7], [-0.12, 0.55], [-0.1, 0.3], [0.1, 0.3], [0.3, 0.5]] },
+      { tag: 'metal', hw: 0.15, pts: [[0.4, 0.6], [0.42, 0.4], [0.32, 0.2], [0.0, 0.2], [-0.12, 0.3], [-0.12, 0.55], [0.1, 0.62]] },
+      { tag: 'dark', hw: 0.1, pts: [[-0.18, 0.5], [-0.3, 0.52], [-0.5, 0.5], [-0.68, 0.38], [-0.7, 0.3], [-0.6, 0.3], [-0.45, 0.36], [-0.2, 0.38]] },
+      // silver can on the right, slung low
+      { tag: 'chrome', hw: 0.065, x: -0.17, pts: [[-0.78, 0.46], [-0.72, 0.52], [-0.2, 0.36], [-0.2, 0.26], [-0.7, 0.36]] },
+      { tag: 'dark', hw: 0.067, x: -0.17, pts: [[-0.78, 0.46], [-0.72, 0.52], [-0.68, 0.51], [-0.73, 0.45]] },
     ],
-    fork: [[0.72, 0.3], [0.52, 0.97]], bars: [0.47, 0.97], barW: 0.6,
-    heads: [{ z: 1.0, y: 0.74, x: 0.085, w: 0.08, h: 0.03 }],
-    tailLamp: [-0.97, 1.05],
-    exhaust: { from: [0.0, 0.26], to: [-0.32, 0.3], r: 0.06, x: 0.05 },
-    mirrors: [0.76, 1.0],
+    tubes: [
+      { tag: 'chrome', a: [-0.2, 0.28], b: [0.0, 0.2], t: 0.05, x: -0.12 },
+    ],
+    fork: [[0.69, 0.3], [0.46, 0.95]], bars: [0.45, 0.97], barW: 0.58,
+    heads: [{ z: 0.95, y: 0.8, x: 0.07, w: 0.09, h: 0.03 }],
+    sigF: [0.8, 0.8],
+    tailLamp: [-0.88, 0.98],
+    mirrors: [0.62, 1.03],
   },
   // Kawasaki ZX-6R (traced from the side photo, 710 px per metre): sharp full fairing with a tall screen, high
   // tank, stepped seat and an upswept tail, big black muffler on the right, belly pan under the engine.
@@ -208,8 +230,9 @@ function policeLivery(d: BikeDesign): BikeDesign {
   };
 }
 
-export function buildBike(id: string, color: number, shadows = true, livery?: 'police', paintOv?: { a1?: number; a2?: number }): VehicleModel {
+export function buildBike(id: string, color: number, shadows = true, livery?: 'police', paintOv?: { a1?: number; a2?: number; rim?: number }): VehicleModel {
   let d = DESIGNS[id] ?? DESIGNS.cbr650;
+  if (paintOv?.rim !== undefined) d = { ...d, rim: paintOv.rim };
   if (paintOv && (paintOv.a1 !== undefined || paintOv.a2 !== undefined)) d = { ...d, colors: { ...d.colors, ...(paintOv.a1 !== undefined ? { a1: paintOv.a1 } : {}), ...(paintOv.a2 !== undefined ? { a2: paintOv.a2 } : {}) } };
   if (livery === 'police') d = policeLivery(d);
   const out = new Map<Tag, THREE.BufferGeometry[]>();
