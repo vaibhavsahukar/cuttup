@@ -177,13 +177,20 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
     for (let k = 1; k < n - 1; k++) { tri(top[0], top[k], top[k + 1]); tri(bot[0], bot[k + 1], bot[k]); }
     for (let k = 0; k < n; k++) { const k2 = (k + 1) % n; tri(top[k], bot[k], top[k2]); tri(bot[k], bot[k2], top[k2]); }
   };
+  /** a rounded blob (ellipsoid) with radii rx, ry, rz */
+  const ball = (tag: Tag, x: number, y: number, z: number, rx: number, ry: number, rz: number) => {
+    const g = new THREE.SphereGeometry(1, 16, 12).scale(rx, ry, rz).translate(x, y, z).toNonIndexed();
+    const p = g.attributes.position.array as Float32Array;
+    let a = out.get(tag); if (!a) out.set(tag, (a = []));
+    for (let k = 0; k < p.length; k++) a.push(p[k]);
+  };
   const idx = (z: number) => Math.min(nz - 1, Math.max(0, Math.round(((z - z0) / L) * nz - 0.5)));
   const idxHw = (z: number) => hw[idx(z)] * 0.985;
   const deckH = (z: number) => { const i = idx(z); return i >= c0 && i <= c1 ? shoulder[i] + 0.01 : Math.max(centre[i] * 0.98, shoulder[i] - 0.02); };
   const design = DESIGNS[sh.id];
   if (design) {
     const ctx: DesignCtx = {
-      L, ground, noseW, tailW, noseH, tailH, cabFront: zc1, cabRear: zc0, box, plate,
+      L, ground, noseW, tailW, noseH, tailH, cabFront: zc1, cabRear: zc0, box, plate, ball,
       hwAt: (z) => hw[idx(z)] * 0.985, shAt: (z) => shoulder[idx(z)],
       deckAt: (z) => { const i = idx(z); return i >= c0 && i <= c1 ? shoulder[i] + 0.01 : Math.max(centre[i] * 0.98, shoulder[i] - 0.02); },
       topAt: (z) => centre[idx(z)],
@@ -349,6 +356,8 @@ interface DesignCtx {
   hwAt(z: number): number; shAt(z: number): number; deckAt(z: number): number; topAt(z: number): number;
   box(tag: Tag, x: number, y: number, z: number, w: number, h: number, d: number): void;
   plate(tag: Tag, top: [number, number, number][], t: number): void;
+  /** a rounded blob with radii rx, ry, rz */
+  ball(tag: Tag, x: number, y: number, z: number, rx: number, ry: number, rz: number): void;
   /** a point resting on the body top at (x, z) */
   onTop(x: number, z: number, lift?: number): [number, number, number];
   /** a headlamp plate on the fender top between zf (front) and zb (back); in/out are fractions of the half width */
@@ -469,8 +478,8 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
       // round headlamps on the fender humps
       const zl = F - 0.32, xl = sx * c.hwAt(zl) * 0.7;
       const [lx, ly, lz] = c.onTop(xl, zl, 0.03);
-      box('dark', lx, ly, lz, 0.17, 0.12, 0.17);
-      box('head', lx, ly, lz + 0.08, 0.13, 0.1, 0.04);
+      c.ball('dark', lx, ly - 0.02, lz - 0.05, 0.2, 0.15, 0.2); // bezel, mostly hidden behind the lamp
+      c.ball('head', lx, ly + 0.02, lz + 0.02, 0.2, 0.17, 0.21); // big round bulbous lamp
       // fender top vents, front intakes either side of the mouth
       const zv = F - 1.05, [vx, vy, vz] = c.onTop(sx * c.hwAt(zv) * 0.62, zv, 0.012);
       box('dark', vx, vy, vz, 0.28, 0.01, 0.2);
