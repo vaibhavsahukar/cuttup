@@ -137,7 +137,7 @@ export class AudioEngine {
       e.nG.gain.setTargetAtTime(0.08 + throttle * 0.15, t, 0.05);
       e.g.gain.setTargetAtTime(running ? 0.22 + throttle * 0.4 : 0, t, 0.06);
     }
-    this.wind.gain.setTargetAtTime(running ? clamp((speed / 70) ** 2, 0, 1) * 0.5 : 0, t, 0.1);
+    this.wind.gain.setTargetAtTime(0, t, 0.1); // the speed wind (a white noise hiss) is switched off
     this.windF.frequency.setTargetAtTime(300 + speed * 12, t, 0.1);
     this.squeal.gain.setTargetAtTime(running ? clamp(slip - 0.15, 0, 1) * 0.35 : 0, t, 0.05);
     this.scrape.gain.setTargetAtTime(running ? clamp(scrape, 0, 1) * 0.5 : 0, t, 0.03);
