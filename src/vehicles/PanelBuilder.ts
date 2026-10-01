@@ -477,9 +477,9 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     for (const sx of [1, -1]) {
       // round headlamps on the fender humps
       const zl = F - 0.32, xl = sx * c.hwAt(zl) * 0.7;
-      const [lx, ly, lz] = c.onTop(xl, zl, 0.03);
-      c.ball('dark', lx, ly - 0.02, lz - 0.05, 0.2, 0.15, 0.2); // bezel, mostly hidden behind the lamp
-      c.ball('head', lx, ly + 0.02, lz + 0.02, 0.2, 0.17, 0.21); // big round bulbous lamp
+      const [lx, ly, lz] = c.onTop(xl, zl, 0.02);
+      c.ball('dark', lx, ly, lz - 0.02, 0.135, 0.135, 0.14); // dark bezel ring on the fender hump
+      c.ball('head', lx, ly, lz + 0.05, 0.105, 0.105, 0.09); // round domed lens, set in the bezel
       // fender top vents, front intakes either side of the mouth
       const zv = F - 1.05, [vx, vy, vz] = c.onTop(sx * c.hwAt(zv) * 0.62, zv, 0.012);
       box('dark', vx, vy, vz, 0.28, 0.01, 0.2);
