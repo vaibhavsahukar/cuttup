@@ -48,6 +48,7 @@ h2 { margin: 0 0 14px; font-size: 13px; letter-spacing: 0.35em; color: var(--dim
 #maps .cards { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -55%); display: flex; gap: 18px; }
 .card { width: 300px; cursor: pointer; transition: transform .15s, border-color .15s; }
 .card:hover, .card.sel { border-color: var(--accent); transform: translateY(-4px); }
+.card.focus { border-color: var(--accent2); box-shadow: 0 0 0 3px var(--accent2), 0 0 28px rgba(95,243,255,0.55); transform: translateY(-8px) scale(1.04); }
 .card .thumb { height: 150px; border-radius: 6px; margin-bottom: 12px; }
 .card .t { font-size: 20px; font-weight: 800; }
 .card .b { color: var(--dim); font-size: 13px; margin: 6px 0 10px; min-height: 36px; }
