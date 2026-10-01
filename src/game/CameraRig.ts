@@ -6,7 +6,7 @@ const tmpD = new THREE.Vector3();
 
 /** Chase cam (speed FOV, shake, lag), hood / cockpit cam, look-back, and cinematic crash orbit. */
 export class CameraRig {
-  mode: 'chase' | 'hood' = 'chase';
+  mode: 'chase' | 'hood' | 'far' = 'chase';
   shake = 0;
   private pos = new THREE.Vector3();
   private look = new THREE.Vector3();
@@ -62,8 +62,10 @@ export class CameraRig {
       this.pos.copy(desiredPos);
       this.look.copy(desiredLook);
     } else {
-      const dist = (bike ? 3.1 : 3.6 + p.spec.dims.length * 0.22) + clamp(spd / 80, 0, 1) * 0.3; // close, barely pulls back with speed
-      const height = (bike ? 1.35 : 1.1 + h * 0.45);
+      // 'far' is a third view: higher and further back than the chase cam, so more of the road ahead shows
+      const far = this.mode === 'far';
+      const dist = (bike ? 3.1 : 3.6 + p.spec.dims.length * 0.22) + clamp(spd / 80, 0, 1) * 0.3 + (far ? (bike ? 2.2 : 2.8) : 0); // close, barely pulls back with speed
+      const height = (bike ? 1.35 : 1.1 + h * 0.45) + (far ? (bike ? 1.1 : 1.3) : 0);
       // free look orbits the camera around the vehicle so the view turns to the right when lk > 0 (the camera swings
       // round to the vehicle's left), and the view settles on the vehicle itself
       const cfo = lk === 0 ? cf : cf.clone().applyAxisAngle(up, -lk);

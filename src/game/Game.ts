@@ -232,7 +232,7 @@ export class Game {
     let dt = realDt;
     if (this.state === 'crash') dt = realDt * this.crash.updateTimeScale(realDt);
     this.gameTime += dt;
-    if (input.pressed('camera') && this.state !== 'crash') { this.rig.mode = this.rig.mode === 'chase' ? 'hood' : 'chase'; this.settings.camera = this.rig.mode; }
+    if (input.pressed('camera') && this.state !== 'crash') { this.rig.mode = this.rig.mode === 'chase' ? 'hood' : this.rig.mode === 'hood' ? 'far' : 'chase'; this.settings.camera = this.rig.mode; }
 
     const p = this.player;
     const ph = p.phys;

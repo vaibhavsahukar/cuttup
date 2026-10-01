@@ -9,7 +9,7 @@ export interface Settings {
   fullscreen: boolean;
   volumes: { master: number; engine: number; sfx: number };
   units: 'mph' | 'kph';
-  camera: 'chase' | 'hood';
+  camera: 'chase' | 'hood' | 'far';
   difficulty: number; // 0 easy .. 3 insane
   timeOfDay: TimeChoice;
   weather: WeatherChoice;
