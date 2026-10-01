@@ -40,7 +40,7 @@ export function buildCivic(color: number, shadows = true): VehicleModel {
     const z = R + 0.01 + (q / (N - 1)) * (L - 0.02);
     const hw = lerpK(HW, z), yTop = lerpK(DECK, z);
     const endT = Math.min(F - z, z - R);
-    const chin = 0.17 - 0.07 * Math.max(0, 1 - endT / 0.12);
+    const chin = 0.17; void endT;
     let arch = chin;
     for (const wz of [AX_F, AX_R]) { const dz = (z - wz) / (WR * 1.2); if (Math.abs(dz) < 1) arch = Math.max(arch, WR + Math.sqrt(1 - dz * dz) * WR * 0.78); }
     const belt = yTop - 0.17, inner = hw * 0.62;
@@ -87,19 +87,19 @@ export function buildCivic(color: number, shadows = true): VehicleModel {
     // triple centre exhaust tips come below
   }
   box('chrome', -0.2, 0.66, F + 0.012, 0.08, 0.07, 0.01); // H badge
-  box('carbon', 0, 0.1, F - 0.03, 1.5, 0.03, 0.06); // splitter lip
+  box('carbon', 0, 0.2, F - 0.03, 1.5, 0.03, 0.06); // splitter lip
   // bonnet crease lines
   for (const sx of [1, -1]) box('dark', sx * 0.38, lerpK(DECK, 1.4) + 0.004, 1.4, 0.01, 0.005, 1.1);
   // ---- rear: dark lower diffuser with the centre triple exhaust, plate recess, big wing ----
-  box('dark', 0, 0.36, R + 0.006, 1.5, 0.3, 0.02); // diffuser panel
-  box('carbon', 0, 0.17, R + 0.0, 1.5, 0.05, 0.1); // rear lip
+  box('dark', 0, 0.38, R + 0.006, 1.5, 0.3, 0.02); // diffuser panel
+  box('carbon', 0, 0.2, R + 0.0, 1.5, 0.04, 0.08); // rear lip
   for (const x of [-0.16, 0, 0.16]) disc('chrome', x, 0.3, R - 0.005, 0.05, 0.04);
   box('dark', 0, 0.72, R + 0.006, 0.5, 0.11, 0.02); // plate recess
   for (const sx of [1, -1]) {
-    box('carbon', sx * 0.5, 1.15, R + 0.38, 0.05, 0.2, 0.14); // wing uprights
-    box('carbon', sx * 0.86, 1.25, R + 0.3, 0.03, 0.14, 0.38); // end plate
+    box('carbon', sx * 0.5, 1.15, R + 0.26, 0.05, 0.2, 0.14); // wing uprights
+    box('carbon', sx * 0.86, 1.25, R + 0.18, 0.03, 0.14, 0.38); // end plate
   }
-  box('carbon', 0, 1.3, R + 0.3, 1.74, 0.04, 0.4); // wing blade
+  box('carbon', 0, 1.3, R + 0.18, 1.74, 0.04, 0.4); // wing blade
 
   const root = new THREE.Group(), chassis = new THREE.Group();
   root.add(chassis);
