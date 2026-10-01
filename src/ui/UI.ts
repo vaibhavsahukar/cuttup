@@ -133,6 +133,7 @@ export class UI {
 
   show(id: ScreenId, extra: ScreenId[] = []) {
     this.current = id;
+    this.previewed = null;
     document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('on', s.id === id || extra.includes(s.id as ScreenId)));
     if (id === 'garage') this.buildGarage();
     if (id === 'maps') this.buildMaps();
@@ -532,14 +533,17 @@ export class UI {
   activate() {
     const bs = this.buttons();
     const el = bs[this.focusIdx];
-    // garage: first A on a vehicle previews it, A again on the same one presses "Select vehicle"
-    if (this.current === 'garage' && el?.closest('.list')) {
-      if (this.previewed === el.textContent) {
+    // garage / maps: first A on an item picks it, A again on the same one presses the screen's confirm button
+    const confirm = this.current === 'garage' && el?.closest('.list') ? '#garage [data-a="choose"]'
+      : this.current === 'maps' && el?.closest('.cards') ? '#maps [data-a="go"]' : null;
+    if (confirm) {
+      const key = el.dataset.m ?? el.textContent;
+      if (this.previewed === key) {
         this.previewed = null;
-        (document.querySelector('#garage [data-a="choose"]') as HTMLElement | null)?.click();
+        (document.querySelector(confirm) as HTMLElement | null)?.click();
       } else {
         el.click();
-        this.previewed = el.textContent;
+        this.previewed = key;
       }
       return;
     }
