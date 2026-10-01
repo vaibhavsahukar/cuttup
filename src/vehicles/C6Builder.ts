@@ -41,6 +41,19 @@ export function buildC6(color: number, shadows = true): VehicleModel {
     if (sx < 0 && g.index) { const a = g.index.array as any; for (let i = 0; i < a.length; i += 3) { const t = a[i]; a[i] = a[i + 1]; a[i + 1] = t; } }
     addGeo(tag, g);
   };
+  /** a lamp lying flat on the body: an outline given as (x, z) points, laid on the surface so it follows the curve and does not stick out */
+  const lampShape = (tag: Tag, sx: number, outline: [number, number][], lift = 0.03) => {
+    const surf = (x: number, z: number) => { const hw = lerpK(HW, z), t = Math.min(1, Math.max(0, (x / hw - 0.6) / 0.355)); return lerpK(DECK, z) - 0.008 - 0.042 * t * t + lift; };
+    const ptsB: [number, number][] = [];
+    for (let i = 0; i < outline.length; i++) { const a = outline[i], b = outline[(i + 1) % outline.length]; for (let k = 0; k < 8; k++) ptsB.push([a[0] + (b[0] - a[0]) * k / 8, a[1] + (b[1] - a[1]) * k / 8]); }
+    let cx = 0, cz = 0; for (const o of outline) { cx += o[0]; cz += o[1]; } cx /= outline.length; cz /= outline.length;
+    const ring = (f: number) => ptsB.map(([x, z]) => { const px = cx + (x - cx) * f, pz = cz + (z - cz) * f; return [sx * px, surf(px, pz), pz] as [number, number, number]; });
+    const rs = [ring(1), ring(0.66), ring(0.33)], c: [number, number, number] = [sx * cx, surf(cx, cz), cz], tri: number[] = [];
+    const n = ptsB.length;
+    for (let r = 0; r < 2; r++) for (let i = 0; i < n; i++) { const a = rs[r][i], b = rs[r][(i + 1) % n], d = rs[r + 1][i], e = rs[r + 1][(i + 1) % n]; tri.push(...a, ...d, ...b, ...b, ...d, ...e, ...a, ...b, ...d, ...b, ...e, ...d); }
+    for (let i = 0; i < n; i++) { const a = rs[2][i], b = rs[2][(i + 1) % n]; tri.push(...c, ...a, ...b, ...c, ...b, ...a); }
+    push(tag, tri);
+  };
   // lower body with arches
   const N = 96, secs: Sec[] = [];
   for (let q = 0; q < N; q++) {
@@ -75,7 +88,7 @@ export function buildC6(color: number, shadows = true): VehicleModel {
   for (const sx of [1, -1]) {
     // exposed teardrop headlamps lying along the front fenders
     // C6 lamps: flush teardrop units on the front corners of the nose, wide at the nose and tapering back and inwards
-    faceLamp('head', sx, [[0.882, 0.543], [0.896, 0.475], [0.891, 0.348], [0.86, 0.286], [0.68, 0.258], [0.478, 0.284], [0.539, 0.39], [0.68, 0.488], [0.786, 0.526]], 2.2, 2.235); // fin shaped lamp on the nose corner, pointed at the inner bottom, from the mockup
+    lampShape('head', sx, [[0.882, F - 0.643], [0.896, F - 0.522], [0.891, F - 0.297], [0.86, F - 0.19], [0.68, F - 0.14], [0.478, F - 0.185], [0.539, F - 0.373], [0.68, F - 0.545], [0.786, F - 0.613]]); // fin shaped lamp lying on the fender top at the nose corner, pointed inner tip towards the nose, from the mockups
     box('dark', sx * 0.5, 0.16, F, 0.2, 0.1, 0.04); // fog lamp
     box('amber', sx * (hwAt(1.9) + 0.014), 0.52, 1.9, 0.012, 0.05, 0.16); // side marker
     // side cove behind the front wheel with its gill, rear fender duct, door line, shoulder trim
