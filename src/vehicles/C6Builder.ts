@@ -12,7 +12,7 @@ const L = 4.46, F = L / 2, R = -F;
 const AX_F = 1.3, AX_R = -1.39, WR_F = 0.327, WR_R = 0.345, WX = 0.82, G = 0.14;
 
 const DECK: [number, number][] = [[F, 0.56], [2.15, 0.64], [2.0, 0.7], [1.6, 0.78], [1.0, 0.88], [0.5, 0.95], [0, 0.96], [-0.8, 0.97], [-1.4, 0.98], [-1.8, 0.99], [-2.05, 0.96], [R, 0.88]];
-const HW: [number, number][] = [[F, 0.62], [2.15, 0.8], [1.9, 0.93], [1.5, 0.965], [0.9, 0.955], [0.2, 0.94], [-0.5, 0.945], [-1.1, 0.965], [-1.6, 0.965], [-2.0, 0.93], [-2.15, 0.86], [R, 0.76]];
+const HW: [number, number][] = [[F, 0.7], [2.15, 0.83], [1.9, 0.93], [1.5, 0.965], [0.9, 0.955], [0.2, 0.94], [-0.5, 0.945], [-1.1, 0.965], [-1.6, 0.965], [-2.0, 0.93], [-2.15, 0.86], [R, 0.76]];
 const ROOF: [number, number][] = [[0.5, 0.95], [0.3, 1.08], [0.1, 1.2], [-0.1, 1.25], [-0.4, 1.25], [-0.8, 1.2], [-1.2, 1.09], [-1.65, 1.0]];
 
 export function buildC6(color: number, shadows = true): VehicleModel {
@@ -47,7 +47,7 @@ export function buildC6(color: number, shadows = true): VehicleModel {
     const z = R + 0.01 + (q / (N - 1)) * (L - 0.02);
     const hw = lerpK(HW, z), yTop = lerpK(DECK, z);
     const endT = Math.min(F - z, z - R);
-    const chin = G + (z > 0 ? 0.3 : 0.14) * Math.max(0, 1 - endT / (z > 0 ? 0.55 : 0.3));
+    const chin = G + 0.16 * Math.max(0, 1 - endT / 0.4);
     let arch = chin;
     for (const [wz, r] of [[AX_F, WR_F], [AX_R, WR_R]]) { const dz = (z - wz) / (r * 1.18); if (Math.abs(dz) < 1) arch = Math.max(arch, r + Math.sqrt(1 - dz * dz) * r * 0.8); }
     const belt = yTop - 0.15, inner = hw * 0.62, crown = 0;
@@ -74,8 +74,8 @@ export function buildC6(color: number, shadows = true): VehicleModel {
   const hwAt = (z: number) => lerpK(HW, z);
   for (const sx of [1, -1]) {
     // exposed teardrop headlamps lying along the front fenders
-    // C6 lamps: tall rounded units in the front corners of the nose, the inner end tapering up under the hood line
-    faceLamp('head', sx, [[0.4, 0.5], [0.44, 0.62], [0.56, 0.7], [0.72, 0.72], [0.84, 0.66], [0.88, 0.56], [0.84, 0.44], [0.7, 0.4], [0.54, 0.42], [0.44, 0.44]], 2.12, 2.2);
+    // C6 lamps: flush teardrop units on the front corners of the nose, wide at the nose and tapering back and inwards
+    lampOn('head', sx, 2.2, 1.72, (z) => lerpK([[2.2, 0.5], [2.1, 0.46], [1.9, 0.52], [1.72, 0.66]], z), (z) => lerpK([[2.2, 0.66], [2.1, 0.84], [1.95, 0.92], [1.8, 0.88], [1.72, 0.76]], z), 0.025);
     box('dark', sx * 0.5, 0.34, F, 0.2, 0.1, 0.04); // fog lamp
     box('amber', sx * (hwAt(1.9) + 0.014), 0.52, 1.9, 0.012, 0.05, 0.16); // side marker
     // side cove behind the front wheel with its gill, rear fender duct, door line, shoulder trim
