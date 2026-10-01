@@ -22,6 +22,7 @@ import { Weather } from '../world/Weather';
 import { Features } from '../world/Features';
 import { StationRenderer } from '../world/Stations';
 import { Fork, FORK_SPAN, COMMIT_X, JOIN_X } from '../world/Fork';
+import { FlyCam } from '../dev/FlyCam';
 import { type ChunkMods } from '../world/ChunkManager';
 import { timeSetting } from '../world/TimeOfDay';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -207,6 +208,7 @@ export class Game {
   /** returns true while the run continues */
   update(realDt: number) {
     const input = this.input;
+    if (this.dev) return this.devStep(realDt);
     let dt = realDt;
     if (this.state === 'crash') dt = realDt * this.crash.updateTimeScale(realDt);
     this.gameTime += dt;
@@ -285,6 +287,16 @@ export class Game {
         this.camera.lookAt(this.rig.focus);
       }
     } else this.rig.update(realDt, p, input.lookback, input.lookYaw);
+    this.ambient(realDt, ph.s, p.model.root.position);
+    this.audio.update(ph.rpm, this.state === 'driving' ? ph.throttle : 0.2, Math.abs(ph.v), ph.slip + ph.wheelspin * 0.4 + (ph.onGrass ? 0.2 : 0) * 0, this.scrape, this.state !== 'crash' && this.state !== 'done');
+    this.scrape = Math.max(0, this.scrape - realDt * 4);
+    return this.state !== 'done';
+  }
+
+
+  /** time of day, weather, sky and lamp lights: everything that carries on around the camera */
+  private ambient(realDt: number, sView: number, focus: THREE.Vector3) {
+    const p = this.player;
     this.env.tick(realDt);
     // weather: rain builds and eases off; grip, sky, fog, the road surface and the sound all follow it
     this.weather.update(realDt, this.camera.position, this.player.worldVel, () => this.audio.thunder());
@@ -299,17 +311,36 @@ export class Game {
     this.player.phys.gripScale = this.weather.grip;
     this.traffic.wet = w;
     this.audio.rain(this.state === 'done' ? 0 : w);
-    this.env.update(this.camera.position, p.model.root.position);
+    this.env.update(this.camera.position, focus);
     if (this.lampLights.length) {
-      const first = Math.floor((ph.s - 10 - 8) / 32) + 1;
+      const first = Math.floor((sView - 10 - 8) / 32) + 1;
       for (let i = 0; i < this.lampLights.length; i++) {
         const k = first + (i >> 1);
         this.path.toWorld(k * 32 + 8, (i & 1 ? 1 : -1) * 2.9, 10.3, this.lampLights[i].position);
       }
     }
-    this.audio.update(ph.rpm, this.state === 'driving' ? ph.throttle : 0.2, Math.abs(ph.v), ph.slip + ph.wheelspin * 0.4 + (ph.onGrass ? 0.2 : 0) * 0, this.scrape, this.state !== 'crash' && this.state !== 'done');
-    this.scrape = Math.max(0, this.scrape - realDt * 4);
-    return this.state !== 'done';
+  }
+
+  /** DEV MODE: a free flying camera over a frozen world (the map still builds around the camera) */
+  dev = false;
+  private fly = new FlyCam();
+  setDev(on: boolean) {
+    if (on === this.dev) return;
+    this.dev = on;
+    if (on) this.fly.enable(this.camera, this.renderer.domElement); else { this.fly.disable(); this.env.fogMul = 1; this.env.applyHour(); this.rig.update(1 / 60, this.player, false, 0); }
+  }
+  private devStep(realDt: number) {
+    if (this.fly.taps.has('KeyF')) { this.env.fogMul = this.env.fogMul > 1 ? 1 : 12; this.env.applyHour(); }
+    this.fly.taps.clear();
+    this.fly.update(realDt, this.camera);
+    const pr = projectToRoad(this.path, this.camera.position, this.sGuess);
+    this.sGuess = pr.s;
+    this.chunks.update(pr.s);
+    this.stations.update(pr.s);
+    this.forkStep(pr.s, true);
+    this.ambient(realDt, pr.s, this.camera.position);
+    this.audio.update(0, 0, 0, 0, 0, false);
+    return true;
   }
 
   nightNow = 0;
@@ -445,8 +476,9 @@ export class Game {
   }
 
   /** forks: build the branch ahead of time, decide which road the player took, and retire the other one */
-  private forkStep(s: number) {
+  private forkStep(s: number, view = false) {
     const ph = this.player.phys;
+    const pd = view ? this.layout.laneCenter(2) : ph.d;
     for (const o of this.oldChunks) if (s > o.until) { this.scene.remove(o.cm.root); o.cm.dispose(); }
     this.oldChunks = this.oldChunks.filter((o) => s <= o.until);
     for (const o of this.bridges) if (s > o.until) this.scene.remove(o.g);
@@ -478,9 +510,9 @@ export class Game {
     }
     if (fk.state !== 'branch') this.traffic.forkTarget = (c) => (c.s > fk.sF - 40 && c.s < fk.sF + fk.releaseX ? fk.rampIn(c.s) + this.layout.laneWidth / 2 + 0.3 : null);
     if (fk.state !== 'branch') for (const c of this.traffic.cars) if (c.exitFork && c.s > fk.sF + fk.releaseX) this.traffic.release(c);
-    if (fk.state === 'open' && this.state === 'driving') {
-      if (x > COMMIT_X && ph.d > this.layout.playerMax + 0.5) this.takeFork(fk);
-      else if (x > JOIN_X + 30 && ph.d <= this.layout.playerMax + 0.5) {
+    if (fk.state === 'open' && (this.state === 'driving' || view)) {
+      if (!view && x > COMMIT_X && pd > this.layout.playerMax + 0.5) this.takeFork(fk);
+      else if (x > JOIN_X + 30 && pd <= this.layout.playerMax + 0.5) {
         // stayed on the main road: the branch drifts off and goes when it is out of sight
         fk.state = 'main';
         // cars that took the ramp keep following it until they are gone

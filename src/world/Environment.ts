@@ -27,6 +27,8 @@ export class Environment {
   /** rain (0..1): greys the sky, pulls the fog in and dims the sun */
   wet = 0;
   private fogBase: [number, number] = [0, 0];
+  /** dev mode: pushes the fog out so the whole map can be seen */
+  fogMul = 1;
   private keys: { h: number; sky: THREE.Color; hor: THREE.Color; fog: THREE.Color; sun: THREE.Color; sunI: number; amb: number }[];
   private backMats: { m: THREE.MeshBasicMaterial; base: THREE.Color }[] = [];
 
@@ -131,8 +133,8 @@ export class Environment {
       this.sun.intensity *= 1 - 0.7 * w;
       this.hemi.intensity *= 1 - 0.25 * w;
     }
-    this.fog.near = this.fogBase[0] * (1 - 0.5 * w);
-    this.fog.far = this.fogBase[1] * (1 - 0.4 * w);
+    this.fog.near = this.fogBase[0] * (1 - 0.5 * w) * this.fogMul;
+    this.fog.far = this.fogBase[1] * (1 - 0.4 * w) * this.fogMul;
     this.night = this.nightFactor > 0.6;
     const bright = 1 - this.nightFactor * 0.85;
     for (const bm of this.backMats) bm.m.color.copy(bm.base).multiplyScalar(bright).lerp(this.fog.color, 0.2);

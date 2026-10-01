@@ -18,7 +18,7 @@ export interface UIHandlers {
   play(): void; garage(): void; models(): void; previewModel(key: string): void; maps(): void; settings(): void; quit(): void;
   selectVehicle(id: string): void; previewVehicle(id: string): void;
   selectMap(id: string): void; startMap(id: string): void;
-  back(): void; resume(): void; restart(): void; toMenu(): void;
+  back(): void; dev(): void; resume(): void; restart(): void; toMenu(): void;
   settingsChanged(): void; click(): void;
 }
 
@@ -65,6 +65,7 @@ export class UI {
       <div id="settings" class="screen"><div class="panel"></div></div>
       <div id="hud" class="screen">
         <div class="copvig"><i></i></div>
+        <div class="devhint" hidden>DEV MODE · WASD move · Space / E up · Ctrl / Q down · Shift fast · drag mouse to look · wheel = speed · F fog · F2 exit</div>
         <div class="copvig ragevig"><i></i></div>
         <div class="ragetag" hidden>ROAD RAGE</div>
         <div class="hbind" hidden>HIGH BEAM</div>
@@ -84,7 +85,7 @@ export class UI {
       <div id="pause" class="screen"><div class="panel center">
         <h2>Paused</h2>
         <button data-a="resume" class="primary">Resume</button><button data-a="restart">Restart</button>
-        <button data-a="settings">Settings</button><button data-a="menu">Quit to menu</button></div></div>
+        <button data-a="settings">Settings</button><button data-a="dev">Dev mode: fly camera</button><button data-a="menu">Quit to menu</button></div></div>
       <div id="results" class="screen"><div class="panel center"></div></div>
       <div id="flash"></div>`);
 
@@ -119,7 +120,7 @@ export class UI {
       const a = (e.target as HTMLElement).dataset.a;
       if (!a) return;
       this.h.click();
-      if (a === 'resume') this.h.resume(); else if (a === 'restart') this.h.restart(); else if (a === 'menu') this.h.toMenu();
+      if (a === 'resume') this.h.resume(); else if (a === 'restart') this.h.restart(); else if (a === 'menu') this.h.toMenu(); else if (a === 'dev') this.h.dev();
       else if (a === 'settings') { this.settingsReturn = 'pause'; this.h.settings(); }
     });
     const hint = $('#menuHint');
@@ -377,6 +378,8 @@ export class UI {
     el.classList.toggle('filling', filling);
     (el.querySelector('.nx') as HTMLElement).textContent = filling ? 'FILLING' : level <= 0 ? 'EMPTY' : `GAS ${dist}`;
   }
+  /** dev mode: hide the game HUD and show the controls hint */
+  devMode(on: boolean) { $('#hud').classList.toggle('dev', on); ($('#hud .devhint') as HTMLElement).hidden = !on; }
   highBeam(on: boolean) { const e = $('#hud .hbind'); if (e.hidden === on) e.hidden = !on; }
   private lastVig = -1;
   /** red vignette round the screen border while a cop is near; `level` 0..1 grows as the nearest cop closes in */

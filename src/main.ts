@@ -67,6 +67,7 @@ async function boot() {
   addEventListener('resize', resize);
 
   const startGame = (mapId: string, vehicleId: string) => {
+    game?.setDev(false); ui.devMode(false);
     game?.dispose();
     renderScale = 1; renderer.setPixelRatio(basePR());
     lastRun = { map: mapId, vehicle: vehicleId };
@@ -90,7 +91,7 @@ async function boot() {
     mode = 'results';
     ui.results(r, lastRun.map, lastRun.vehicle, rank, st.units);
   };
-  const toMenuScene = () => { game?.dispose(); game = null; mode = 'menu'; };
+  const toMenuScene = () => { game?.setDev(false); ui.devMode(false); game?.dispose(); game = null; mode = 'menu'; };
 
   const ui: UI = new UI(save, {
     play: () => startGame(st.map, st.vehicle),
@@ -110,6 +111,7 @@ async function boot() {
       ui.show('menu');
     },
     resume: () => { mode = 'game'; ui.show('hud'); input.clearPressed(); },
+    dev: () => { if (!game) return; game.setDev(!game.dev); ui.devMode(game.dev); mode = 'game'; ui.show('hud'); input.clearPressed(); },
     restart: () => startGame(lastRun.map, lastRun.vehicle),
     toMenu: () => { toMenuScene(); preview.show(st.vehicle); ui.show('menu'); },
     settingsChanged: () => {
@@ -136,6 +138,8 @@ async function boot() {
       else if (ui.current !== 'menu' && ui.current !== 'results') ui.h.back();
     }
   });
+  // DEV MODE: F2 toggles the free flying camera during a run
+  addEventListener('keydown', (e) => { if (e.code === 'F2' && !e.repeat && mode === 'game' && game) { game.setDev(!game.dev); ui.devMode(game.dev); e.preventDefault(); } });
   // crash screen: stays until the player presses Enter or the gamepad A button
   addEventListener('keydown', (e) => { if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !e.repeat && mode === 'game' && game?.state === 'crash') { game.continueCrash(); e.preventDefault(); } });
   let padAHeld = true; // a fresh press is needed: A held while driving must not count

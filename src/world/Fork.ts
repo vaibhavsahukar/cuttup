@@ -145,7 +145,8 @@ export class Fork {
     if (d >= this.dC) {
       // the ramp grows out of the highway's edge as a taper (its ground only appears once it is full width)
       const x = s - this.sF;
-      if (x >= TAPER) return d;
+      // props and far ground (well beyond the road's right edge) are not part of the taper
+      if (x >= TAPER || (!terrain && d > this.dC + 12)) return d;
       return terrain ? (x < 0 ? this.dC : this.dC + (d - this.dC) * (x >= TAPER - 8 ? 1 : 0)) : this.dC + (d - this.dC) * smoothstep(0, TAPER, x);
     }
     return this.dC + (d - this.dC) * this.unfold(s);
