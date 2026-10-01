@@ -52,8 +52,12 @@ export class Features {
   }
   /** the next fork start after s (Infinity on maps without forks) */
   forkAfter(s: number) { this.ensure(s); return this.forkS.find((x) => x > s) ?? Infinity; }
-  /** no overpass across a fork (it would cross the new highway) */
-  noOverpass(s: number) { this.ensure(s); return this.forkS.some((x) => s > x - 200 && s < x + FORK_SPAN); }
+  /** no overpass across a fork (it would cross the new highway) or a gas station */
+  noOverpass(s: number) {
+    this.ensure(s);
+    // its cross street would run through a gas station
+    return this.forkS.some((x) => s > x - 200 && s < x + FORK_SPAN) || this.stations.some((st) => s > st.s0 - 160 && s < st.s0 + this.len(st) + 160);
+  }
   len(st: Station) { return st.ramp ? RAMP_LEN : LOT_LEN; }
   /** the station whose stretch of road (plus a margin) contains s */
   at(s: number, margin = 0): Station | undefined {
@@ -95,8 +99,10 @@ export class Features {
     if (!st || !st.ramp) return 0;
     const x = s - st.s0;
     // open over the joined parts of the ramp, closing smoothly at both ends of each opening
-    const open = (1 - smoothstep(105, 120, x)) * smoothstep(-6, 0, x) + smoothstep(420, 435, x) * (1 - smoothstep(RAMP_LEN, RAMP_LEN + 6, x));
-    return -7 * Math.min(1, open);
+    // open wherever the lane still overlaps the wall (its inner edge within about two metres of it): tied to the lane
+    // itself, so the wall can never stand in the lane however the ramp is shaped
+    const clear = smoothstep(this.edge + 2.4, this.edge + 3.6, this.rampLane(x).inner);
+    return -7 * smoothstep(-6, 0, x) * (1 - smoothstep(RAMP_LEN, RAMP_LEN + 6, x)) * (1 - clear);
   }
   /** 0..1: how much the ground right of the road is flattened to road level (station area) */
   flatten(s: number, d: number) {
@@ -136,13 +142,13 @@ export class Features {
     // separated by the island: on whichever side the vehicle already is
     return d > hi + 0.5 ? { lo: r.inner, hi: r.outer } : null;
   }
-  /** the pump lane: driving through here slowly fills the tank */
+  /** the pump lane: driving through here fills the tank */
   inRefuel(s: number, d: number) {
     const st = this.at(s);
     if (!st) return false;
     const x = s - st.s0;
-    if (st.ramp) { const r = this.rampLane(x); return x > 195 && x < 325 && Math.abs(d - r.c) < 3.2; }
-    return x > 55 && x < 145 && d > this.edge + 1 && d < this.edge + 13;
+    if (st.ramp) { const r = this.rampLane(x); return x > 180 && x < 335 && Math.abs(d - r.c) < 3.8; }
+    return x > 45 && x < 155 && d > this.edge + 0.5 && d < this.edge + 13.5;
   }
   /** where a run that starts at a station puts the car (x into the stretch, d) */
   startPose(st: Station) {

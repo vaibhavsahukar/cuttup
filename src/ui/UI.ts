@@ -86,7 +86,7 @@ export class UI {
         <h2>Paused</h2>
         <button data-a="resume" class="primary">Resume</button><button data-a="restart">Restart</button>
         <button data-a="settings">Settings</button><button data-a="dev">Dev mode: fly camera</button><button data-a="menu">Quit to menu</button></div></div>
-      <div id="results" class="screen"><div class="panel center"></div></div>
+      <div id="results" class="screen"><div class="over"></div></div>
       <div id="flash"></div>`);
 
     $('#menu').addEventListener('click', (e) => {
@@ -366,17 +366,17 @@ export class UI {
   }
   private lastFuel = '';
   /** fuel gauge (bottom left) with the distance to the next gas station */
-  fuel(level: number, toNext: number, units: 'mph' | 'kph', filling: boolean) {
+  fuel(level: number, toNext: number, units: 'mph' | 'kph', status: 'filling' | 'filled' | null) {
     const dist = units === 'mph' ? `${(Math.max(0, toNext) / 1609.34).toFixed(1)} mi` : `${(Math.max(0, toNext) / 1000).toFixed(1)} km`;
-    const key = `${Math.round(level * 200)}|${dist}|${filling}`;
+    const key = `${Math.round(level * 200)}|${dist}|${status}`;
     if (key === this.lastFuel) return;
     this.lastFuel = key;
     const el = $('#hud .fuel');
     const i = el.querySelector('i') as HTMLElement;
     i.style.width = `${Math.round(level * 100)}%`;
     el.classList.toggle('low', level < 0.2);
-    el.classList.toggle('filling', filling);
-    (el.querySelector('.nx') as HTMLElement).textContent = filling ? 'FILLING' : level <= 0 ? 'EMPTY' : `GAS ${dist}`;
+    el.classList.toggle('filling', status !== null);
+    (el.querySelector('.nx') as HTMLElement).textContent = status === 'filling' ? 'FILLING' : status === 'filled' ? 'FILLED' : level <= 0 ? 'EMPTY' : `GAS ${dist}`;
   }
   /** dev mode: hide the game HUD and show the controls hint */
   devMode(on: boolean) { $('#hud').classList.toggle('dev', on); ($('#hud .devhint') as HTMLElement).hidden = !on; }
@@ -432,17 +432,15 @@ export class UI {
 
   // ---------------- results ----------------
   results(r: RunResult, mapId: string, vehicleId: string, rank: number, units: 'mph' | 'kph') {
+    void mapId; void rank;
     const k = units === 'mph' ? MPH : KPH;
-    const board = this.save.data.leaderboard[mapId] ?? [];
     const dist = units === 'mph' ? `${(r.distance / 1609.34).toFixed(2)} mi` : `${(r.distance / 1000).toFixed(2)} km`;
     const how = r.crashKind === 'fuel' ? (r.caught ? 'Ran out of gas and got caught' : 'Ran out of gas') : r.caught ? 'Caught by the police' : { car: 'Rear-ended / side-swiped traffic', headon: 'Head-on collision', barrier: 'Hit the barrier', tree: 'Left the road', rock: 'Hit a rock', lowside: 'Lowside: the bike slid out from under you', highside: 'Highside: the rear grabbed and threw you', looped: 'Looped it: flipped over backwards', endo: 'Went over the bars', tipover: 'Fell over', fuel: 'Ran out of gas' }[r.crashKind];
-    $('#results .panel').innerHTML = `
-      <div>
-        <h2>Run over · ${esc(getMap(mapId).name)}</h2>
-        ${r.message ? `<div class="shame small">${esc(r.message)}</div>` : ''}
-        <div class="big">${r.score.toLocaleString()}</div>
-        ${r.prevBest > 0 && r.score > r.prevBest ? `<div class="newbest">NEW PERSONAL BEST · +${(r.score - r.prevBest).toLocaleString()}</div>` : ''}
-        ${rank === 0 ? '<div class="newbest">NEW MAP RECORD</div>' : rank > 0 ? `<div class="newbest">#${rank + 1} ON THE LEADERBOARD</div>` : ''}
+    // the crash's phrase up top, the run's numbers bottom left, what next bottom right: nothing else
+    const phrase = r.message || (r.crashKind === 'fuel' ? 'Out of gas' : r.caught ? 'Caught' : 'Wrecked');
+    $('#results .over').innerHTML = `
+      <div class="phrase">${esc(phrase)}</div>
+      <div class="bottom">
         <div class="kv">
           <span>Vehicle</span><b>${esc(getVehicle(vehicleId).name)}</b>
           <span>Distance</span><b>${dist}</b>
@@ -452,16 +450,14 @@ export class UI {
           <span>Time</span><b>${r.time.toFixed(1)} s</b>
           <span>Wreck</span><b>${how}</b>
         </div>
-      </div>
-      <div><h2>Best runs · local</h2>
-        <table>${board.map((e: RunEntry, i) => `<tr class="${i === rank ? 'me' : ''}"><td>${i + 1}</td><td>${e.score.toLocaleString()}</td><td>${esc(getVehicle(e.vehicle).name)}</td><td>${Math.round(e.topSpeed * k)}</td></tr>`).join('') || '<tr><td>No runs</td></tr>'}</table></div>
-      <div class="btns">
-        <div class="rb"><button data-a="retry" class="primary">Retry</button><span class="padkey a" title="Controller A">A</span></div>
-        <div class="rb"><button data-a="vehicle">Change vehicle</button><span class="padkey x" title="Controller X">X</span></div>
-        <div class="rb"><button data-a="map">Change map</button><span class="padkey y" title="Controller Y">Y</span></div>
-        <div class="rb"><button data-a="menu">Main menu</button><span class="padkey b" title="Controller B">B</span></div>
+        <div class="btns">
+          <div class="rb"><button data-a="retry" class="primary">Retry</button><span class="padkey a" title="Controller A">A</span></div>
+          <div class="rb"><button data-a="vehicle">Change vehicle</button><span class="padkey x" title="Controller X">X</span></div>
+          <div class="rb"><button data-a="map">Change map</button><span class="padkey y" title="Controller Y">Y</span></div>
+          <div class="rb"><button data-a="menu">Main menu</button><span class="padkey b" title="Controller B">B</span></div>
+        </div>
       </div>`;
-    $('#results .panel').onclick = (e) => {
+    $('#results .over').onclick = (e) => {
       const a = (e.target as HTMLElement).dataset.a;
       if (!a) return;
       this.h.click();

@@ -76,6 +76,8 @@ export class Police {
   playerIsBike = false;
   /** lowest lateral position a unit may drive at s (a fork's new highway is still folded up) */
   minD: ((s: number) => number) | null = null;
+  /** the drivable area at s for a vehicle at d (lo..hi before its half width); null = the plain road */
+  range: ((s: number, d: number, lo: number, hi: number) => { lo: number; hi: number }) | null = null;
   /** which unit the next dispatch sends (highway: a mixed pack; backroad: the single unit for the current tier) */
   private nextKind(score: number): UnitKind {
     const s = score / this.diff.copTier;
@@ -176,12 +178,16 @@ export class Police {
     // tell the traffic where the cops are so that cars ahead of them pull over and clear the way
     this.traffic.copAlerts = this.cops.map((cop) => ({ s: cop.car.s, d: cop.car.d, v: cop.car.v }));
     const hw = this.map.road === 'highway';
-    const dMin = (hw ? this.layout.playerMin : this.layout.softMin) + 1.1;
-    const dMax = (hw ? this.layout.playerMax : this.layout.softMax) - 1.1;
-    for (const cop of this.cops) this.drive(cop, dt, player, playerVl, dMin, dMax);
+    const baseLo = hw ? this.layout.playerMin : this.layout.softMin, baseHi = hw ? this.layout.playerMax : this.layout.softMax;
+    // each unit steers within the drivable area where it is (a gas station's ramp or lot, the fork's ramp)
+    const go = (cop: Cop) => {
+      const r = this.range ? this.range(cop.car.s, cop.car.d, baseLo, baseHi) : { lo: baseLo, hi: baseHi };
+      this.drive(cop, dt, player, playerVl, r.lo + 1.1, r.hi - 1.1);
+    };
+    for (const cop of this.cops) go(cop);
     for (const r of this.ragers) {
       r.rageT += dt;
-      this.drive(r, dt, player, playerVl, dMin, dMax);
+      go(r);
       if (r.car.honkCd <= 0 && Math.abs(player.s - r.car.s) < 60) { this.traffic.onHonk?.(r.car, 1); r.car.honkCd = 1.2 + Math.random(); }
       r.car.honkCd -= dt;
       // they give up after a while, or once they are far behind

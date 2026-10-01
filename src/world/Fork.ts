@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RoadPath, projectToRoad, type Frame } from './RoadPath';
 import type { Layout, MapSpec } from '../data/maps';
 import { smoothstep } from '../core/math';
+import { TRAFFIC_COLORS, TRAFFIC_TYPES, type TrafficType } from '../vehicles/Factory';
 
 /** how long the fork's footprint is (m), counted from where the ramp leaves the shoulder */
 export const FORK_SPAN = 1300;
@@ -23,6 +24,15 @@ const CLEARANCE = 8.2;
 const fr: Frame = { x: 0, y: 0, z: 0, heading: 0, k: 0, grade: 0 };
 const v3 = new THREE.Vector3();
 const STEP = 4;
+/** the new highway's road beyond the bridge's west end (on the ground, out into the fog) */
+const WEST_ROAD = 450;
+/** the bridge's west approach: from the deck down to the ground */
+const WEST_SLOPE = 140;
+/** deck cars ride the new highway east of the join (while it is not the player's road) out to here */
+const DECK_EAST = 650;
+
+/** a car on the new highway outside the simulated road: over the bridge, or ahead on the branch the player is not on */
+export interface DeckCar { t: number; d: number; v: number; dir: 1 | -1; lane: number; type: TrafficType; color: number; obj: THREE.Object3D }
 
 /** a smooth bump of curvature: 0 at a, full by a+e, full until b-e, 0 at b */
 const bump = (x: number, a: number, b: number, e: number) => {
@@ -221,32 +231,30 @@ export class Fork {
   midMain(s: number) { if (s - this.sF < TAPER - 8) return Infinity; return this.seam(this.seamM, s, this.sF - 60, Infinity); }
   /** branch coordinates: how far left the branch's scenery reaches at branch s */
   midBranch(s: number) { return this.seam(this.seamB, s, this.sF, -Infinity); }
-  /** main road ground rises to meet the climbing ramp beside it (an embankment) */
-  mainLift(s: number, d: number) {
-    const x = s - this.sF;
-    if (x < 0 || x > JOIN_H2 + 300 || d <= 0) return 0;
-    const lim = this.midMain(s);
-    if (!isFinite(lim)) return 0;
-    // the ramp's rise beside this point of the main road
-    const r = this.lookup(this.mRise, s);
-    return r * smoothstep(lim - 40, lim - 1, d) * smoothstep(this.sepX, this.sepX + 60, x);
-  }
-  /** branch ground falls away from the raised ramp and road to the old road's level */
+  /** how far the new highway stands above the old road's level here (the retaining walls beside it are this tall) */
+  raised(s: number) { return this.rise(s - this.sF); }
+  /** branch ground beside the raised ramp and road lies at the old road's level, below its retaining walls */
   branchLift(s: number, d: number) {
     const r = this.rise(s - this.sF);
     if (r <= 0) return 0;
     const a = Math.abs(d) - (this.layout.roadHalfWidth - 1);
-    return -r * smoothstep(3, 45, a);
+    return -r * smoothstep(1.85, 1.95, a);
   }
   /** main road: keep its right side clear where the ramp tapers out of it */
   taperClear(s: number, d: number) { const x = s - this.sF; return x > -90 && x < TAPER + 30 && d > 0 && d < this.layout.roadHalfWidth + 70; }
-  /** main road: no scenery under the bridge */
-  underBridge(s: number) { return Math.abs(s - this.sX) < 40; }
+  /** main road scenery: is main (s, d) on or right beside the new highway's bridge or its road beyond the bridge */
+  onDeck(s: number, d: number) {
+    const D = this.deck;
+    this.main.toWorld(s, d, 0, v3);
+    const px = v3.x - D.ox, pz = v3.z - D.oz;
+    const t = px * D.fx + pz * D.fz, l = px * D.rx + pz * D.rz;
+    return t > D.tWest - 20 && t < 30 && l > D.dLo - 14 && l < D.dHi + 14;
+  }
   /** main road: the right barrier is open where the ramp touches the highway */
   mainBarrierDrop(s: number) {
     const x = s - this.sF;
-    if (x < -8 || x > this.sepX + 12) return 0;
-    return -7 * Math.min(1, smoothstep(-8, 0, x) * (1 - smoothstep(this.sepX - 6, this.sepX + 8, x)));
+    if (x < -8 || x > this.sepX + 18) return 0;
+    return -7 * Math.min(1, smoothstep(-8, 0, x) * (1 - smoothstep(this.sepX + 4, this.sepX + 16, x)));
   }
   /** branch: its median barrier (the ramp's inner rail while folded) is sunk where the ramp still touches the highway */
   branchMedianDrop(s: number) {
@@ -256,10 +264,18 @@ export class Fork {
     const wedge = -7 * smoothstep(this.uA - 10, this.uA - 4, s) * (1 - smoothstep(this.uB + 4, this.uB + 10, s));
     return Math.min(joined, wedge);
   }
+  /** branch: while the left side opens out at the join its pieces sweep across the lanes: sink them under the deck */
+  wedgeSink(s: number, d: number) { return s > this.uA - 1 && s < this.uB + 1 && d < this.dC - 0.05 ? -7 : 0; }
   /** branch coordinates: lowest drivable d at s (the folded left side is not there yet) */
   branchMin(s: number) { return this.fold(s, this.layout.playerMin); }
 
-  /** the new highway west of where the ramp joins it: a straight bridge back over the old road and down the far side */
+  /**
+   * The new highway west of where the ramp joins it: a straight deck back over the old road, an earth ramp down to the
+   * ground on the far side and the road carrying on from there. Its eastbound side has four lanes: the ramp comes in
+   * alongside as the fifth (the right lane) at the join. Everything is placed along the deck line: t metres from the
+   * join (negative = west), d across it in the new highway's coordinates.
+   */
+  deck = { ox: 0, oz: 0, y: 0, fx: 0, fz: 0, rx: 0, rz: 0, heading: 0, yRoad: 0, groundRoad: 0, t0: 0, t1: 12, tSlope: 0, tWest: 0, dLo: 0, dHi: 0 };
   private buildBridge(roadMat?: THREE.Material) {
     const L = this.layout, E = L.roadHalfWidth - 1, M = L.medianHalf;
     const b = this.branch, sJ = this.sF + JOIN_H2;
@@ -267,12 +283,16 @@ export class Fork {
     const fx = Math.sin(fr.heading), fz = Math.cos(fr.heading);
     const rx = -Math.cos(fr.heading), rz = Math.sin(fr.heading);
     const o = b.toWorld(sJ, 0, 0, new THREE.Vector3());
-    const yTop = o.y - 0.04;
-    // distance back from the join to the far side of the old road
+    const yRoad = o.y - 0.02; // a hair under the branch's own surface where the two overlap at the join
+    // distance back from the join to the old road's centre line, along the deck
     const cx = this.main.frame(this.sX);
     const back = (o.x - cx.x) * fx + (o.z - cx.z) * fz;
-    const t0 = -(back + E + 150), t1 = 6;
-    const ground = cx.y;
+    const t1 = 12, t0 = -(back + E + 150); // past the join a little: it covers the strip where the new highway's left side opens out
+    const ground = cx.y, groundRoad = ground + 0.3; // city ground stands about 0.25 m above the road level
+    const tSlope = t0 - WEST_SLOPE, tWest = tSlope - WEST_ROAD;
+    const eR = this.dC - 0.15; // right edge of the eastbound side (four lanes); the ramp is the fifth
+    const dLo = -(E + 1.6), dHi = eR + 0.5;
+    this.deck = { ox: o.x, oz: o.z, y: o.y, fx, fz, rx, rz, heading: fr.heading, yRoad, groundRoad, t0, t1, tSlope, tWest, dLo, dHi };
     const g = this.bridge;
     const put = (geo: THREE.BufferGeometry, mat: THREE.Material, t: number, d: number, y: number, pitch = 0) => {
       const mesh = new THREE.Mesh(geo, mat);
@@ -285,34 +305,46 @@ export class Fork {
     };
     const concrete = new THREE.MeshStandardMaterial({ color: 0x8d8c88, roughness: 0.95 });
     const dark = new THREE.MeshStandardMaterial({ color: 0x55565a, roughness: 1 });
-    const len = t1 - t0, tm = (t0 + t1) / 2;
-    const W = 2 * E + 3.2;
-    // slab, then the two carriageways with lane markings, the median and its barrier, parapets
-    put(new THREE.BoxGeometry(W, 1.3, len), concrete, tm, -0.2, yTop - 0.7);
-    if (roadMat) {
-      for (const side of [1, -1]) {
-        const geo = new THREE.PlaneGeometry(E - M, len).rotateX(-Math.PI / 2);
-        const uv = geo.attributes.uv as THREE.BufferAttribute;
-        const pos = geo.attributes.position as THREE.BufferAttribute;
-        for (let i = 0; i < uv.count; i++) {
-          // u runs from the median edge (0) to the outer edge (1); plane x runs left to right in this frame
-          // local +x is the road's left once yawed, so the right carriageway's outer edge is at -x
-          const xl = pos.getX(i) / (E - M);
-          uv.setXY(i, side > 0 ? 0.5 - xl : 0.5 + xl, pos.getZ(i) / 12);
+    const WS = dHi - dLo, dS = (dLo + dHi) / 2;
+    /** carriageways (with lane markings), median strip and barrier for a straight section from tA (height yA) to tB (yB) */
+    const surface = (tA: number, tB: number, yA: number, yB: number) => {
+      const run = tB - tA, len = Math.hypot(run, yB - yA), pitch = -Math.atan2(yB - yA, run);
+      const tm = (tA + tB) / 2, ym = (yA + yB) / 2;
+      if (roadMat) {
+        for (const [d0, d1] of [[-E, -M], [M, eR]] as const) {
+          const w = d1 - d0;
+          const geo = new THREE.PlaneGeometry(w, len).rotateX(-Math.PI / 2);
+          const uv = geo.attributes.uv as THREE.BufferAttribute;
+          const pos = geo.attributes.position as THREE.BufferAttribute;
+          for (let i = 0; i < uv.count; i++) {
+            // local +x is the road's left once yawed; u runs from the median edge (0) to the outer edge (1)
+            const dd = (d0 + d1) / 2 - pos.getX(i);
+            uv.setXY(i, (Math.abs(dd) - M) / (E - M), pos.getZ(i) / 12);
+          }
+          put(geo, roadMat, tm, (d0 + d1) / 2, ym, pitch);
         }
-        put(geo, roadMat, tm, side * (M + E) / 2, yTop + 0.02);
       }
-    }
-    put(new THREE.BoxGeometry(2 * M, 0.06, len), dark, tm, 0, yTop + 0.01);
-    put(new THREE.BoxGeometry(0.7, 0.95, len), concrete, tm, 0, yTop + 0.48);
-    put(new THREE.BoxGeometry(0.4, 1.1, len), concrete, tm, -(E + 1.0), yTop + 0.55);
-    // the ramp comes in alongside the right edge: no parapet there for the last stretch
+      put(new THREE.BoxGeometry(2 * M, 0.06, len), dark, tm, 0, ym - 0.01, pitch);
+      put(new THREE.BoxGeometry(0.7, 0.95, len), concrete, tm, 0, ym + 0.46, pitch);
+    };
+    // the deck: slab, road, parapets (the right one stops where the ramp comes in alongside)
+    const len = t1 - t0, tm = (t0 + t1) / 2;
+    put(new THREE.BoxGeometry(WS, 1.3, len), concrete, tm, dS, yRoad - 0.7);
+    surface(t0, t1, yRoad, yRoad);
+    put(new THREE.BoxGeometry(0.4, 1.1, len), concrete, tm, -(E + 1.0), yRoad + 0.55);
     const rEnd = t1 - 60;
-    put(new THREE.BoxGeometry(0.4, 1.1, rEnd - t0), concrete, (t0 + rEnd) / 2, E + 0.9, yTop + 0.55);
-    // down to the ground on the far side
-    const rampLen = 140, drop = yTop - ground + 0.3;
-    const pitch = Math.atan2(drop, rampLen);
-    put(new THREE.BoxGeometry(W, 1.3, Math.hypot(rampLen, drop)), dark, t0 - rampLen / 2, -0.2, ground + drop / 2 - 0.7, -pitch);
+    put(new THREE.BoxGeometry(0.4, 1.1, rEnd - t0), concrete, (t0 + rEnd) / 2, eR + 0.3, yRoad + 0.55);
+    // the west approach: an earth ramp between retaining walls, then the road on the ground
+    const drop = yRoad - 0.05 - (ground - 0.5);
+    const prof = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(WEST_SLOPE, 0), new THREE.Vector2(WEST_SLOPE, drop), new THREE.Vector2(0, groundRoad - 0.05 - (ground - 0.5))]);
+    const wedge = new THREE.ExtrudeGeometry(prof, { depth: WS, bevelEnabled: false }).translate(0, 0, -WS / 2).rotateY(-Math.PI / 2);
+    put(wedge, concrete, tSlope, dS, ground - 0.5);
+    surface(tSlope, t0, groundRoad, yRoad);
+    for (const [d, a2, b2] of [[-(E + 1.0), tSlope, t0], [eR + 0.3, tSlope, t0]] as const) {
+      const run = b2 - a2, rise = yRoad - groundRoad;
+      put(new THREE.BoxGeometry(0.4, 1.1, Math.hypot(run, rise)), concrete, (a2 + b2) / 2, d, (groundRoad + yRoad) / 2 + 0.55, -Math.atan2(rise, run));
+    }
+    surface(tWest, tSlope, groundRoad, groundRoad);
     // piers: never on the old road's lanes
     const pier = new THREE.BoxGeometry(1.7, 1, 1.7).translate(0, 0.5, 0);
     for (let t = t0 + 12; t < -10; t += 28) {
@@ -320,10 +352,99 @@ export class Fork {
         v3.set(o.x + fx * t + rx * d, 0, o.z + fz * t + rz * d);
         const p = projectToRoad(this.main, v3, this.sX);
         if (Math.abs(p.d) > M - 0.2 && Math.abs(p.d) < E + 2.5) continue;
-        const h = yTop - 1.3 - (ground - 0.5);
         const mesh = put(pier, concrete, t, d, ground - 0.5);
-        mesh.scale.y = h;
+        mesh.scale.y = yRoad - 1.35 - (ground - 0.5);
       }
     }
+    this.fillDeck();
+  }
+
+  /** height of the new highway's surface at deck position t (west of the join) */
+  private deckY(t: number) {
+    const D = this.deck;
+    if (t >= D.t0) return D.yRoad;
+    if (t >= D.tSlope) return D.groundRoad + ((t - D.tSlope) / (D.t0 - D.tSlope)) * (D.yRoad - D.groundRoad);
+    return D.groundRoad;
+  }
+
+  // ---------------- traffic on the new highway outside the simulated road ----------------
+  /** cars over the bridge (both ways), and on the new highway east of the join while the player is not on it */
+  deckCars: DeckCar[] = [];
+  private nextIn = new Map<string, number>();
+  private newDeckCar(t: number, dir: 1 | -1, lane: number, v: number, type?: TrafficType, color?: number): DeckCar {
+    const L = this.layout;
+    let ty = type ?? TRAFFIC_TYPES[Math.floor(Math.random() * TRAFFIC_TYPES.length)];
+    if (!type && ty === 'schoolbus' && Math.random() < 0.8) ty = 'sedan';
+    const col = color ?? (ty === 'schoolbus' ? 0xf2b400 : TRAFFIC_COLORS[Math.floor(Math.random() * TRAFFIC_COLORS.length)]);
+    const c: DeckCar = { t, d: dir > 0 ? L.laneCenter(lane) : -L.laneCenter(lane), v, dir, lane, type: ty, color: col, obj: new THREE.Object3D() };
+    this.deckCars.push(c);
+    return c;
+  }
+  /** the flow speed of a deck lane (left lanes run faster, like the real traffic) */
+  private laneSpeed(flow: number, lane: number) { return flow * (1.06 - lane * 0.035) * (0.93 + Math.random() * 0.1); }
+  /** start with the bridge already busy */
+  private fillDeck(flow = 27) {
+    const D = this.deck;
+    for (const [dir, lanes] of [[1, 4], [-1, 5]] as const) {
+      for (let l = 0; l < lanes; l++) {
+        for (let t = D.tWest + Math.random() * 120; t < DECK_EAST; t += 70 + Math.random() * 160) this.newDeckCar(t, dir, l, this.laneSpeed(flow, l));
+      }
+    }
+  }
+  /**
+   * Move the deck cars. `taken`: the player is on the new highway, so it is simulated east of the join and deck cars
+   * hand over to the real traffic there (`handIn`, true once taken over); real oncoming cars come back to the deck
+   * through `adoptOncoming`.
+   */
+  updateDeck(dt: number, flow: number, taken: boolean, handIn: (c: DeckCar, s: number) => boolean) {
+    const D = this.deck, sJ = this.sF + JOIN_H2;
+    const cars = this.deckCars;
+    // follow the car ahead in the lane (no overtaking on the deck)
+    for (const c of cars) {
+      let gap = Infinity, vA = c.v;
+      for (const o of cars) {
+        if (o === c || o.dir !== c.dir || o.lane !== c.lane) continue;
+        const g2 = (o.t - c.t) * c.dir;
+        if (g2 > 0 && g2 < gap) { gap = g2; vA = o.v; }
+      }
+      if (gap < 26) c.v = Math.min(c.v, vA * 0.98);
+      c.t += c.v * c.dir * dt;
+    }
+    // hand over, retire, and feed new cars in at the far ends
+    this.deckCars = cars.filter((c) => {
+      // (handIn says no while the player is right where the car would appear: it stays a deck car a little longer)
+      if (taken && c.dir > 0 && c.t >= 6) return !handIn(c, sJ + c.t);
+      if (taken && c.dir < 0 && c.t > 12) return !handIn(c, sJ + c.t);
+      return c.dir > 0 ? c.t < DECK_EAST : c.t > D.tWest - 5;
+    });
+    for (const [dir, lanes] of [[1, 4], [-1, 5]] as const) {
+      if (dir < 0 && taken) continue; // the real oncoming traffic feeds the deck now
+      for (let l = 0; l < lanes; l++) {
+        const key = `${dir}:${l}`;
+        const left = (this.nextIn.get(key) ?? 0) - dt;
+        this.nextIn.set(key, left);
+        if (left > 0) continue;
+        const t = dir > 0 ? D.tWest : DECK_EAST;
+        if (this.deckCars.some((c) => c.dir === dir && c.lane === l && Math.abs(c.t - t) < 40)) continue;
+        this.newDeckCar(t, dir, l, this.laneSpeed(flow, l));
+        this.nextIn.set(key, (70 + Math.random() * 170) / flow);
+      }
+    }
+    // place them
+    for (const c of this.deckCars) {
+      if (c.t <= D.t1) {
+        c.obj.position.set(D.ox + D.fx * c.t + D.rx * c.d, this.deckY(c.t), D.oz + D.fz * c.t + D.rz * c.d);
+        const slope = c.t > D.tSlope && c.t < D.t0 ? (D.yRoad - D.groundRoad) / (D.t0 - D.tSlope) : 0;
+        c.obj.rotation.set(-Math.atan(slope) * c.dir, D.heading + (c.dir < 0 ? Math.PI : 0), 0, 'YXZ');
+      } else {
+        this.branch.frame(sJ + c.t, fr);
+        this.branch.toWorld(sJ + c.t, c.d, 0, c.obj.position, fr);
+        c.obj.rotation.set(-Math.atan(fr.grade) * c.dir, fr.heading + (c.dir < 0 ? Math.PI : 0), 0, 'YXZ');
+      }
+    }
+  }
+  /** a real oncoming car reaching the join carries on west over the bridge as a deck car */
+  adoptOncoming(s: number, lane: number, v: number, type: TrafficType, color: number) {
+    this.newDeckCar(s - (this.sF + JOIN_H2), -1, lane, v, type, color);
   }
 }

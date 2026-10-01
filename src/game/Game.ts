@@ -14,14 +14,14 @@ import { CameraRig } from './CameraRig';
 import type { Input } from '../input/Input';
 import type { AudioEngine } from '../audio/AudioEngine';
 import { QUALITY, type Settings } from '../storage/Save';
-import { clamp } from '../core/math';
+import { clamp, smoothstep } from '../core/math';
 import { Police } from '../traffic/Police';
 import { randomCrashMessage } from '../data/crashMessages';
 import { difficultyOf } from '../data/difficulty';
 import { Weather } from '../world/Weather';
 import { Features } from '../world/Features';
 import { StationRenderer } from '../world/Stations';
-import { Fork, FORK_SPAN, COMMIT_X } from '../world/Fork';
+import { Fork, FORK_SPAN, COMMIT_X, type DeckCar } from '../world/Fork';
 import { FlyCam } from '../dev/FlyCam';
 import { type ChunkMods } from '../world/ChunkManager';
 import { timeSetting } from '../world/TimeOfDay';
@@ -67,9 +67,12 @@ export class Game {
   weather: Weather;
   features: Features;
   stations: StationRenderer;
-  /** fuel left, 0..1 (a full tank lasts roughly 3 to 4 miles of hard driving) */
+  /** fuel left, 0..1 (a full tank lasts roughly 7 to 8 miles of hard driving) */
   fuel = 1;
-  refueling = false;
+  /** what the fuel gauge says at a gas station: filling at the pump, or filled (until you have left the pumps) */
+  fuelStatus: 'filling' | 'filled' | null = null;
+  private pumpAway = 99; // seconds since the car was last in a pump lane
+  private tankFullShown = false;
   private lowFuelWarned = false;
   private stallT = 0;
   /** the run ended because the tank ran dry (the car just sits there; no crash cinematic) */
@@ -79,7 +82,7 @@ export class Game {
   private branchChunks: ChunkManager | null = null;
   private oldChunks: { cm: ChunkManager; until: number }[] = [];
   /** interchange bridges standing in the world until the player is well past them */
-  private bridges: { g: THREE.Group; until: number }[] = [];
+  private bridges: { g: THREE.Group; until: number; fk: Fork }[] = [];
   /** the fork whose branch the active scenery belongs to (its folded start shapes it) */
   private chunksFork: Fork | null = null;
   private quality!: { chunksAhead: number; propDensity: number; shadows: boolean };
@@ -157,10 +160,12 @@ export class Game {
     const ground = (p: THREE.Vector3) => this.groundAt(p);
     this.particles.groundY = ground;
     this.crash = new CrashScene(this.scene, this.path, this.particles, ground);
-    if (this.map.road === 'highway') this.crash.bounds = { min: this.layout.playerMin, max: this.layout.playerMax };
+    if (this.map.road === 'highway') this.crash.range = (s2, d2) => this.driveRange(s2, d2, this.layout.playerMin, this.layout.playerMax);
     this.crash.onPileup = (v) => { this.audio.crash(clamp(v / 40, 0.2, 0.7)); this.rig.addShake(0.5); };
     this.police = new Police(this.traffic, this.path, this.map, this.layout, this.particles, ground);
     this.police.diff = difficultyOf(settings.difficulty);
+    // cops drive wherever the player can: into gas stations, up the fork's ramp
+    this.police.range = (s2, d2, lo, hi) => this.driveRange(s2, d2, lo, hi);
     this.police.onRage = (on) => this.onPopup?.(on ? { text: 'ROAD RAGE!', sub: 'The driver you cut off is coming after you', color: '#ff7a1a', big: true } : { text: 'THEY GAVE UP', sub: 'Road rage over', color: '#9ad' });
     this.police.onCleared = () => this.onPopup?.({ text: 'WANTED LEVEL CLEARED', sub: 'You lost them', color: '#6cf', big: true });
     this.police.playerIsBike = this.spec.kind === 'bike';
@@ -271,6 +276,7 @@ export class Game {
     this.stations.update(ph.s);
     this.forkStep(ph.s);
     if (this.state !== 'crash') p.sync(dt);
+    this.deckTraffic(dt);
     this.traffic.sync(dt, ph.s);
     this.particles.update(dt);
 
@@ -399,13 +405,18 @@ export class Game {
     const ph = this.player.phys;
     if (this.state !== 'driving') return;
     const range = this.player.bike ? 14500 : 15600; // metres on a tank at the base burn rate: about 7 to 8 miles driven hard
-    this.fuel = Math.max(0, this.fuel - (Math.max(0, ds) / range) * (0.5 + 0.8 * ph.throttle) - dt * 0.0003);
-    this.refueling = this.features.inRefuel(ph.s, ph.d) && Math.abs(ph.v) < 13.4;
-    if (this.refueling && this.fuel < 1) {
-      const before = this.fuel;
-      this.fuel = Math.min(1, this.fuel + dt * 0.25);
-      if (before < 1 && this.fuel >= 1) this.onPopup?.({ text: 'TANK FULL', color: '#4dff88' });
+    // the pump lane fills the tank quickly at anything under about 50 mph (no need to stop)
+    const inLane = this.features.inRefuel(ph.s, ph.d);
+    const atPump = inLane && Math.abs(ph.v) < 22;
+    if (!atPump) this.fuel = Math.max(0, this.fuel - (Math.max(0, ds) / range) * (0.5 + 0.8 * ph.throttle) - dt * 0.0003);
+    else if (this.fuel < 1) {
+      this.fuel = Math.min(1, this.fuel + dt * 0.55);
+      // one TANK FULL per visit to the pumps
+      if (this.fuel >= 1 && !this.tankFullShown) { this.tankFullShown = true; this.onPopup?.({ text: 'TANK FULL', color: '#4dff88' }); }
     }
+    this.pumpAway = inLane ? 0 : this.pumpAway + dt;
+    if (this.pumpAway > 3) this.tankFullShown = false;
+    this.fuelStatus = atPump && this.fuel < 0.999 ? 'filling' : this.fuel >= 0.995 && this.pumpAway < 3 ? 'filled' : null;
     if (this.fuel > 0.4) this.lowFuelWarned = false;
     if (!this.lowFuelWarned && this.fuel < 0.25) {
       this.lowFuelWarned = true;
@@ -460,20 +471,18 @@ export class Game {
       medianDrop: own ? (s) => own.branchMedianDrop(s) : undefined,
       roadLift: own ? (s) => (s - own.sF < 260 ? 0.02 : 0) : undefined,
       // the new highway's far side wall only rises once its lanes have unfolded (folded, it would wall off the ramp)
-      leftDrop: own ? (s) => -7 * (1 - Math.min(1, Math.max(0, (own.unfold(s) - 0.85) / 0.15))) : undefined,
+      leftDrop: own ? (s) => -7 * (1 - smoothstep(own.uB + 2, own.uB + 8, s)) : undefined,
+      roadSink: own ? (s, d) => own.wedgeSink(s, d) : undefined,
       noProps: (s, d) => {
         if (own && Math.abs(d) < 6 && own.unfold(s) < 1) return true; // the median (lamp posts) is not there yet while the road is folded
         if (own && d < 0 && (own.unfold(s) < 1 || d < own.midBranch(s) + 24)) return true;
         const f = ahead();
-        return !!f && ((d > 0 && d > f.midMain(s) - 24) || f.underBridge(s) || f.taperClear(s, d));
+        return !!f && ((d > 0 && d > f.midMain(s) - 24) || f.onDeck(s, d) || f.taperClear(s, d));
       },
       noOverpass: own ? (s) => s < own.sF + FORK_SPAN + 100 : undefined,
-      lift: (s, d) => {
-        let l = own ? own.branchLift(s, d) : 0;
-        const f = ahead();
-        if (f) l += f.mainLift(s, d);
-        return l;
-      },
+      // the raised ramp and new highway stand between retaining walls: their own ground lies at the old road's level
+      lift: own ? (s, d) => own.branchLift(s, d) : undefined,
+      skirt: own ? (s) => own.raised(s) : undefined,
     };
   }
 
@@ -490,7 +499,7 @@ export class Game {
       if (sF - s > 1900 || !isFinite(sF)) return;
       const fk = new Fork(this.path, this.map, this.layout, sF, this.chunks.roadMat);
       this.scene.add(fk.bridge);
-      this.bridges.push({ g: fk.bridge, until: sF + FORK_SPAN });
+      this.bridges.push({ g: fk.bridge, until: sF + FORK_SPAN, fk });
       this.fork = fk;
       this.features.fork = fk;
       // the new highway builds further ahead than the road: its far side must already be there when the bridge over the old road is in view
@@ -530,8 +539,30 @@ export class Game {
     // traffic and cops on the new highway stay off its folded up lanes
     const cf = this.chunksFork;
     if (cf && s < cf.uB + 600) {
-      for (const c of this.traffic.cars) if (!c.cop && !c.rage && !c.wrecked && c.s > cf.sF && c.s < cf.uB && c.d < cf.branchMin(c.s) - 0.5) this.traffic.release(c);
+      for (const c of this.traffic.cars) {
+        if (c.cop || c.rage || c.wrecked || c.s <= cf.sF || c.s >= cf.uB || c.d >= cf.branchMin(c.s) - 0.5) continue;
+        // oncoming traffic reaching the join carries on west over the bridge
+        if (c.dir < 0) cf.adoptOncoming(c.s, c.lane, c.v, c.type, c.color ?? 0xffffff);
+        this.traffic.release(c);
+      }
     } else if (cf) { this.chunksFork = null; this.traffic.spawnOk = null; this.police.minD = null; }
+  }
+
+  /** traffic over the interchange bridges (and on a new highway the player is not on); drawn with the real traffic */
+  private deckTraffic(dt: number) {
+    const ghosts: DeckCar[] = [];
+    for (const b of this.bridges) {
+      const fk = b.fk;
+      // on the new highway, deck cars that reach the simulated road become real traffic there
+      fk.updateDeck(dt, this.traffic.flow, fk.state === 'branch', (c, s) => {
+        const ph = this.player.phys;
+        if (Math.abs(s - ph.s) < 9 && Math.abs(c.d - ph.d) < 2.6) return false;
+        if (s > ph.s - 250 && s < ph.s + this.traffic.spawnAhead + 200) this.traffic.adopt(c.dir, s, c.lane, c.v, c.type, c.color);
+        return true;
+      });
+      for (const c of fk.deckCars) ghosts.push(c);
+    }
+    this.traffic.ghosts = ghosts;
   }
 
   /** the player took the ramp: from the fork on, the road IS the new highway */
@@ -551,6 +582,11 @@ export class Game {
     this.sGuess = ph.s;
     for (const m of movers) {
       const q2 = projectToRoad(this.path, m.p, m.c.s); m.c.s = q2.s; m.c.d = Math.max(q2.d, fk.branchMin(q2.s) + 1.2);
+      // a cop or rager that was still on the old highway (not on the ramp) would land on the grass: it follows the
+      // player up the ramp instead, a little way behind
+      if ((m.c.cop || m.c.rage) && (q2.d < fk.branchMin(q2.s) + 0.5 || q2.d > this.layout.playerMax - 0.5 || q2.s > ph.s - 8)) {
+        m.c.d = this.layout.laneCenter(4); m.c.s = ph.s - 30 - 14 * movers.indexOf(m); m.c.yaw = 0;
+      }
       if (m.c.exitFork) { m.c.exitFork = false; m.c.lane = 4; m.c.targetLane = 4; m.c.lcT = 1; }
     }
     this.traffic.forkTarget = null;
@@ -561,8 +597,31 @@ export class Game {
     this.branchChunks = null;
     this.chunksFork = fk;
     this.traffic.spawnOk = (s2, d2) => !(s2 > fk.sF - 50 && s2 < fk.uB + 40 && d2 < fk.branchMin(s2) + 1);
+    // the new highway's traffic, spread out ahead (the old road's cars past the fork were left behind with it)
+    this.traffic.populate(ph.s, this.scoring.distance, 60);
     this.police.minD = (s2) => (s2 > fk.sF && s2 < fk.uB + 40 ? fk.branchMin(s2) : -999);
     this.onPopup?.({ text: 'NEW HIGHWAY', sub: 'you took the fork', color: '#6cf', big: true });
+  }
+
+  /**
+   * Where a vehicle at (s, d) can drive (the edges of the paved, walled area): the road itself (lo..hi), widened by a
+   * gas station's ramp or lot, the fork's ramp while it is open, and the new highway's open part after a fork.
+   * The player, the cops and the wrecks all use it.
+   */
+  driveRange(s: number, d: number, lo: number, hi: number) {
+    const lim = this.features.limits(s, d, lo, hi);
+    let rlo = lim ? lim.lo : lo, rhi = lim ? lim.hi : hi;
+    const fk = this.fork;
+    if (fk && fk.state === 'open') {
+      // the fork's ramp: open to the highway at first, then walled off behind its island
+      const x = s - fk.sF;
+      if (x > 0 && x < fk.sepX) rhi = Math.max(rhi, fk.rampOut(s));
+      else if (x >= fk.sepX && x < FORK_SPAN && d > this.layout.playerMax + 0.5) { rlo = fk.rampIn(s); rhi = fk.rampOut(s); }
+    }
+    // the new highway's folded up left side is not drivable yet
+    const cf = this.chunksFork;
+    if (cf && s < cf.uB + 20 && s > cf.sF) rlo = Math.max(rlo, cf.branchMin(s));
+    return { lo: rlo, hi: rhi };
   }
 
   /** barriers / road edges */
@@ -571,17 +630,7 @@ export class Game {
     const L = this.layout;
     const half = this.player.collW / 2;
     ph.onGrass = (ph.d < L.softMin || ph.d > L.softMax) && !this.features.paved(ph.s, ph.d);
-    const lim = this.features.limits(ph.s, ph.d, L.playerMin, L.playerMax);
-    let rlo = lim ? lim.lo : L.playerMin, rhi = lim ? lim.hi : L.playerMax;
-    const fk = this.fork;
-    if (fk && fk.state === 'open') {
-      // the fork's ramp: open to the highway at first, then walled off behind its island
-      const x = ph.s - fk.sF;
-      if (x > 0 && x < fk.sepX) rhi = Math.max(rhi, fk.rampOut(ph.s));
-      else if (x >= fk.sepX && x < FORK_SPAN && ph.d > L.playerMax + 0.5) { rlo = fk.rampIn(ph.s); rhi = fk.rampOut(ph.s); }
-    }
-    // the new highway's folded up left side is not drivable yet
-    if (this.chunksFork && ph.s < this.chunksFork.uB + 20 && ph.s > this.chunksFork.sF) rlo = Math.max(rlo, this.chunksFork.branchMin(ph.s));
+    const { lo: rlo, hi: rhi } = this.driveRange(ph.s, ph.d, L.playerMin, L.playerMax);
     const lo = rlo + half, hi = rhi - half;
     if (ph.d <= lo + 0.1 || ph.d >= hi - 0.1) this.wallContact = true;
     if (ph.d < lo || ph.d > hi) {

@@ -29,7 +29,7 @@ console.log('refuel', await page.evaluate(() => {
   g.fuel = 0.3;
   ph.s = st.s0 + 150; ph.d = F.rampLane(150).c; ph.psi = 0; ph.vl = 0;
   let filled = 0, minV = 99; const t0 = g.fuel;
-  for (let i = 0; i < 300; i++) { const x = ph.s - st.s0; ph.d = F.rampLane(x).c; ph.psi = 0; ph.vl = 0; ph.v = 9; a.advance(1 / 30, 1 / 30); if (g.refueling) filled++; minV = Math.min(minV, ph.v); }
+  for (let i = 0; i < 300; i++) { const x = ph.s - st.s0; ph.d = F.rampLane(x).c; ph.psi = 0; ph.vl = 0; ph.v = 9; a.advance(1 / 30, 1 / 30); if (g.fuelStatus === 'filling') filled++; minV = Math.min(minV, ph.v); }
   return { fuelBefore: t0, fuelAfter: +g.fuel.toFixed(2), framesFilling: filled, state: g.state, x: Math.round(ph.s - st.s0) };
 }));
 await page.evaluate(() => { const a = (window as any).__app, g = a.game, F = g.features; const st = F.next(g.player.phys.s - 200); const ph = g.player.phys; ph.s = st.s0 + 240; ph.d = F.rampLane(240).c; ph.v = 4; (window as any).__app.advance(0.5, 1 / 30); });

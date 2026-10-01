@@ -35,18 +35,43 @@ export function streetLightGeo() {
 export function lampHeadGeo() {
   return merge([part(box(0.8, 0.06, 0.38), 0xffffff, 2.9, 10.72, 0), part(box(0.8, 0.06, 0.38), 0xffffff, -2.9, 10.72, 0)]);
 }
-export function overpassGeo(span: number) {
-  // deck spans local X, road runs along local Z
+/**
+ * A city street bridging the highway: the deck (local X across the highway, the street along X), earth ramps down to
+ * the ground on both sides between retaining walls, and the street carrying on along the ground out to `reach`.
+ */
+export function overpassGeo(span: number, reach: number) {
+  const asphalt = 0x3b3c3f, concrete = 0x8d8c88, curb = 0xa3a29e, line = 0xd8b23a;
+  const top = 8.3, ground = 0.37, slope = 95, W = 11, road = 9.4;
   const parts = [
-    part(box(span, 1.4, 11), 0x8d8c88, 0, 7.6, 0),
+    part(box(span, 1.4, W), concrete, 0, 7.6, 0),
     part(box(span, 1.1, 0.3), 0x9d9c98, 0, 8.85, 5.4),
     part(box(span, 1.1, 0.3), 0x9d9c98, 0, 8.85, -5.4),
     part(box(span, 0.25, 11.6), 0x6b6a67, 0, 6.8, 0),
+    part(box(span, 0.06, road), asphalt, 0, top + 0.03, 0),
+    part(box(span, 0.02, 0.16), line, 0, top + 0.07, 0),
   ];
   for (const x of [0, span / 2 - 1.2, -span / 2 + 1.2]) {
     parts.push(part(box(1.4, 7, 1.4), 0x85847f, x, 3.5, -3));
     parts.push(part(box(1.4, 7, 1.4), 0x85847f, x, 3.5, 3));
     parts.push(part(box(1.8, 0.8, 9), 0x85847f, x, 6.6, 0));
+  }
+  const x0 = span / 2, x1 = x0 + slope, run = Math.hypot(slope, top - ground), ang = Math.atan2(top - ground, slope);
+  for (const sd of [1, -1]) {
+    // the earth ramp: a solid wedge from the deck end down to the ground
+    const shape = new THREE.Shape([new THREE.Vector2(0, -0.5), new THREE.Vector2(slope, -0.5), new THREE.Vector2(slope, ground - 0.04), new THREE.Vector2(0, top - 0.04)]);
+    const wedge = new THREE.ExtrudeGeometry(shape, { depth: W, bevelEnabled: false }).translate(0, 0, -W / 2);
+    if (sd < 0) wedge.rotateY(Math.PI); // mirrored by a half turn (a negative scale would turn its faces inside out)
+    parts.push(part(wedge, concrete, sd * x0, 0, 0));
+    // its street surface, centre line and low walls
+    const mx = sd * (x0 + slope / 2), my = (top + ground) / 2, rz = -sd * ang;
+    parts.push(part(box(run, 0.06, road), asphalt, mx, my + 0.01, 0, 0, 0, rz));
+    parts.push(part(box(run, 0.02, 0.16), line, mx, my + 0.05, 0, 0, 0, rz));
+    for (const z of [5.3, -5.3]) parts.push(part(box(run, 0.9, 0.3), curb, mx, my + 0.45, z, 0, 0, rz));
+    // the street on the ground, with kerbs, out into the city
+    const len = reach - x1, fx = sd * (x1 + len / 2);
+    parts.push(part(box(len, 0.08, road), asphalt, fx, ground, 0));
+    parts.push(part(box(len, 0.02, 0.16), line, fx, ground + 0.05, 0));
+    for (const z of [5.5, -5.5]) parts.push(part(box(len, 0.16, 1.6), curb, fx, ground + 0.04, z));
   }
   return merge(parts);
 }

@@ -60,8 +60,12 @@ export interface ChunkMods {
   noOverpass?: (s: number) => boolean;
   /** raise or lower the ground beside the road (m) */
   lift?: (s: number, d: number) => number;
+  /** how far the road stands above the ground beside it (m): retaining walls then drop from its edges to the ground */
+  skirt?: (s: number) => number;
   /** raise the carriageway surface a hair (m): where it lies over another road's surface */
   roadLift?: (s: number) => number;
+  /** sink parts of the road's cross section out of sight (m, negative) at (s, d): a fork's lanes while they open out */
+  roadSink?: (s: number, d: number) => number;
 }
 
 const m4 = new THREE.Matrix4();
@@ -117,7 +121,7 @@ export class ChunkManager {
       pool('building', new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), Math.ceil(14 * Math.max(0.6, dens)), bm, true);
       pool('streetlight', P.streetLightGeo(), 2);
       pool('lamp', P.lampHeadGeo(), 2, this.lampMaterial);
-      pool('overpass', P.overpassGeo(2 * layout.roadHalfWidth + 8), 1);
+      pool('overpass', P.overpassGeo(2 * layout.roadHalfWidth + 8, this.edge + 395), 1);
       pool('sign', P.signGeo(), 1);
     } else if (map.id === 'country') {
       pool('barn', P.barnGeo(), 2);
@@ -161,12 +165,18 @@ export class ChunkManager {
         const M = layout.medianHalf;
         // an extra column at the right lane's inner edge, so a fork's ramp (everything left of it folded away) keeps one lane's markings
         const d4 = layout.laneCenter(4) - layout.laneWidth / 2;
-        const rl = (s: number) => this.mods.roadLift?.(s) ?? 0;
+        const rl = (s: number, d: number) => (this.mods.roadLift?.(s) ?? 0) + (this.mods.roadSink?.(s, d) ?? 0);
         add(new Ribbon([{ d: M, h: 0, u: 0 }, { d: d4, h: 0, u: (d4 - M) / (E - M) }, { d: E, h: 0, u: 1 }], ROWS, roadMat, { heightFn: rl }));
         add(new Ribbon([{ d: -E, h: 0, u: 1 }, { d: -M, h: 0, u: 0 }], ROWS, roadMat, { heightFn: rl }));
-        add(new Ribbon([{ d: -M, h: -0.02, u: 0 }, { d: M, h: -0.02, u: 1 }], ROWS, medianMat));
+        add(new Ribbon([{ d: -M, h: -0.02, u: 0 }, { d: M, h: -0.02, u: 1 }], ROWS, medianMat, { heightFn: (s, d) => this.mods.roadSink?.(s, d) ?? 0 }));
         // jersey barrier
         add(new Ribbon(outline([[-0.4, 0], [-0.3, 0.25], [-0.12, 0.95], [0.12, 0.95], [0.3, 0.25], [0.4, 0]]), ROWS, concrete, { vScale: 4, heightFn: (s) => this.mods.medianDrop?.(s) ?? 0 }), true);
+        if (this.mods.skirt) {
+          // retaining walls from the road's edges down to the ground (sunk out of sight where the road is not raised)
+          const sk = (s: number, d: number) => (this.mods.skirt!(s) > 0.05 ? 0 : -60) + (this.mods.roadSink?.(s, d) ?? 0);
+          add(new Ribbon(outline([[E, 0], [E + 1.9, 0], [E + 1.9, -40]]), ROWS, concrete, { vScale: 4, heightFn: sk }));
+          add(new Ribbon(outline([[-E - 1.9, -40], [-E - 1.9, 0], [-E, 0]]), ROWS, concrete, { vScale: 4, heightFn: sk }));
+        }
         if (map.id === 'city') {
           const wallL = add(new Ribbon(outline([[0, 0], [0, 4.2], [0.35, 4.2], [0.35, 0]], E + 1.2), ROWS, concrete, { vScale: 4, heightFn: drop }), true);
           const wallR = add(new Ribbon(outline([[0, 0], [0, 4.2], [0.35, 4.2], [0.35, 0]], -E - 1.55), ROWS, concrete, { vScale: 4, heightFn: (s) => this.mods.leftDrop?.(s) ?? 0 }), true);
@@ -296,6 +306,8 @@ export class ChunkManager {
       for (const w of slot.walls) w.visible = wallsOn;
       const bp = this.pools.building;
       const nb = Math.round(10 * Math.max(0.6, dens));
+      // an overpass carries a cross street out into the city on both sides: no buildings on it
+      const op = index > 2 && hash2(index, 5) < 0.14 && hash2(index - 1, 5) >= 0.14 && !this.mods.noOverpass?.(s0 + 32) && !this.features?.noOverpass(s0 + 32);
       for (let i = 0; i < nb; i++) {
         const sd = side();
         const w = range(rng, 14, 38), dep = range(rng, 14, 38);
@@ -304,11 +316,13 @@ export class ChunkManager {
         const h = far ? range(rng, 40, 190) : range(rng, 12, 60);
         const t = 0.55 + rng() * 0.45;
         col.setRGB(t * range(rng, 0.8, 1), t * range(rng, 0.85, 1), t);
-        this.place(bp, s0 + rng() * CHUNK, d, 0, w, h, dep, col, -1);
+        const sb = s0 + rng() * CHUNK;
+        if (op && Math.abs(sb - (s0 + 32)) < dep / 2 + 9) continue;
+        this.place(bp, sb, d, 0, w, h, dep, col, -1);
       }
       for (let k = 0; k < 2; k++) this.place(this.pools.streetlight, s0 + k * 32 + 8, 0, 0, 1, 1, 1);
       for (let k = 0; k < 2; k++) this.place(this.pools.lamp, s0 + k * 32 + 8, 0, 0, 1, 1, 1);
-      if (index > 2 && hash2(index, 5) < 0.14 && hash2(index - 1, 5) >= 0.14 && !this.mods.noOverpass?.(s0 + 32) && !this.features?.noOverpass(s0 + 32)) this.place(this.pools.overpass, s0 + 32, 0, 0, 1, 1, 1);
+      if (op) this.place(this.pools.overpass, s0 + 32, 0, 0, 1, 1, 1);
       else if (hash2(index, 6) < 0.012) this.place(this.pools.sign, s0 + 20, E + 5, 0, 1.3, 1, 1, undefined, 0.2); // beside the road, past the barrier (its posts span +-3.9 m)
     } else if (this.map.id === 'country') {
       for (let k = 0; k < 2; k++) if (rng() < 0.25) {

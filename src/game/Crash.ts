@@ -34,7 +34,8 @@ export class CrashScene {
   private pileups = 0;
 
   /** lateral limits (barriers) that wrecks bounce off; null = open road edges */
-  bounds: { min: number; max: number } | null = null;
+  /** where bodies are kept (the drivable area at s for a body at d): walls and barriers bounce them back in */
+  range: ((s: number, d: number) => { lo: number; hi: number }) | null = null;
 
   constructor(public scene: THREE.Scene, public path: RoadPath, public particles: Particles, public ground: (p: THREE.Vector3) => number) {
   }
@@ -297,8 +298,9 @@ export class CrashScene {
 
   /** keep bodies on the carriageway: bounce off the median barrier / sound wall */
   private barrier(b: RigidBody, s: number, d: number, half: number) {
-    if (!this.bounds) return;
-    const lo = this.bounds.min + half, hi = this.bounds.max - half;
+    if (!this.range) return;
+    const r = this.range(s, d);
+    const lo = r.lo + half, hi = r.hi - half;
     if (d >= lo && d <= hi) return;
     const f = this.path.frame(s);
     const R = new THREE.Vector3(-Math.cos(f.heading), 0, Math.sin(f.heading));

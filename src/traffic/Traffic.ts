@@ -75,6 +75,8 @@ export class Traffic {
   private time = 0;
   flow: number;
   density = 1; // multiplier
+  /** cars outside the simulated road (over an interchange bridge): only drawn, with the same instanced models */
+  ghosts: { type: TrafficType; color: number; obj: THREE.Object3D }[] = [];
   diff: Difficulty;
   /** the player's high beam is on: close cars ahead get rattled */
   highBeam = false;
@@ -140,7 +142,13 @@ export class Traffic {
     return base * this.diff.density * this.density * (1 + Math.min(1.2, distance / 12000) * this.diff.growth);
   }
 
-  private spawn(dir: 1 | -1, s: number, lane: number, v?: number) {
+  /** a car coming in from outside the simulated road (over a bridge) keeps its look and speed */
+  adopt(dir: 1 | -1, s: number, lane: number, v: number, type: TrafficType, color: number) {
+    if (!this.laneFree(dir, lane, s, 12)) return null;
+    return this.spawn(dir, s, lane, v, { type, color });
+  }
+
+  private spawn(dir: 1 | -1, s: number, lane: number, v?: number, look?: { type: TrafficType; color: number }) {
     const r = this.rng;
     const roll = r();
     let driver: DriverType = roll < this.diff.fast ? 'fast' : roll < 1 - this.diff.scared ? 'slow' : 'scared';
@@ -154,8 +162,9 @@ export class Traffic {
     // the occasional school bus, always a slow driver
     if (type === 'schoolbus') { if (r() < 0.65) type = 'sedan'; else driver = 'slow'; }
     if (this.map.id === 'country' && driver !== 'fast' && r() < 0.22) type = 'boxtruck';
-    if (hw && (type === 'boxtruck') && lane < this.lanesFor(dir) - 2) lane = this.lanesFor(dir) - 1 - Math.floor(r() * 2);
-    if (hw && driver === 'slow' && r() < 0.6) lane = Math.max(lane, this.lanesFor(dir) - 2);
+    if (look) { type = look.type; if (type === 'schoolbus') driver = 'slow'; }
+    if (!look && hw && (type === 'boxtruck') && lane < this.lanesFor(dir) - 2) lane = this.lanesFor(dir) - 1 - Math.floor(r() * 2);
+    if (!look && hw && driver === 'slow' && r() < 0.6) lane = Math.max(lane, this.lanesFor(dir) - 2);
     const dims = trafficDims(type);
     const p = DRIVERS[driver];
     const f = this.flow * (type === 'boxtruck' || type === 'schoolbus' ? 0.85 : 1);
@@ -163,7 +172,7 @@ export class Traffic {
     const nLanes = this.lanesFor(dir);
     const laneK = hw && nLanes > 1 ? 1 + (0.5 - lane / (nLanes - 1)) * 0.16 : 1;
     const v0 = laneK * (driver === 'fast' ? f * range(r, 1.08, 1.22) : driver === 'slow' ? f * range(r, 0.8, 0.92) : f * range(r, 0.86, 1.0));
-    const color = type === 'schoolbus' ? 0xf2b400 : pick(r, TRAFFIC_COLORS);
+    const color = look ? look.color : type === 'schoolbus' ? 0xf2b400 : pick(r, TRAFFIC_COLORS);
     const car: TrafficCar = {
       id: this.nextId++, type, color, model: this.getModel(type, color), L: dims.length, W: dims.width,
       dir, s, d: this.laneD(dir, lane), v: v ?? v0 * 0.95, v0, acc: 0,
@@ -190,16 +199,21 @@ export class Traffic {
   /** proxies are free to create; kept for API compatibility */
   prewarm(_perType = 3) {}
 
-  populate(playerS: number) {
-    // initial fill: evenly from just ahead of the player out to the spawn horizon (before the first frame)
+  /**
+   * Fill the road evenly out to the spawn horizon: at the start of a run (from 150 m behind the player), and on a new
+   * highway after a fork (from `from` metres ahead), so the traffic is spread out instead of arriving in one wall.
+   */
+  populate(playerS: number, distance = 0, from = -150) {
+    const dens = this.densityAt(distance);
     for (const dir of [1, -1] as const) {
       const lanes = this.lanesFor(dir);
-      const perLane = (this.densityAt(0) * (this.spawnAhead + 150)) / 1000;
+      const perLane = (dens * (this.spawnAhead - from)) / 1000;
       for (let l = 0; l < lanes; l++) {
         for (let i = 0; i < perLane; i++) {
-          const s = playerS - 150 + (i + this.rng()) * (1000 / this.densityAt(0));
+          const s = playerS + from + (i + this.rng()) * (1000 / dens);
           if (dir > 0 && Math.abs(s - playerS) < 40) continue;
           if (dir > 0 && l === 0 && this.map.road === 'backroad' && Math.abs(s - playerS) < 60) continue;
+          if (this.spawnOk && !this.spawnOk(s, this.laneD(dir, l))) continue;
           if (this.laneFree(dir, l, s, 20)) this.spawn(dir, s, l);
         }
       }
@@ -229,7 +243,8 @@ export class Traffic {
         // spawn ahead beyond the fog horizon; behind only if traffic would catch up with the player
         const ahead = dir < 0 || player.v > this.flow * 0.8 || this.rng() < 0.5;
         const s = ahead ? ps + this.spawnAhead + range(this.rng, 0, 150) : ps - range(this.rng, 170, 230);
-        if (this.laneFree(dir, l, s, 35) && (!this.spawnOk || this.spawnOk(s, this.laneD(dir, l)))) this.spawn(dir, s, l);
+        // keep new cars spaced out the way the density asks, so an emptied road does not refill as one bunch at the horizon
+        if (this.laneFree(dir, l, s, Math.max(35, 600 / dens)) && (!this.spawnOk || this.spawnOk(s, this.laneD(dir, l)))) this.spawn(dir, s, l);
       }
     }
   }
@@ -563,6 +578,7 @@ export class Traffic {
       for (const s of m.sigL) s.material = left === -1 && blink ? MAT.sigOn : MAT.sigOff;
       for (const s of m.sigR) s.material = left === 1 && blink ? MAT.sigOn : MAT.sigOff;
     }
+    for (const g of this.ghosts) this.instancer.add(g.type, g.obj, g.color, false, false, false);
     this.instancer.end();
   }
 

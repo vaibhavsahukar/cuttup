@@ -18,10 +18,10 @@ await page.evaluate(() => {
 });
 const views: [string, number, number, number, number, number][] = [
   // targets are metres along the ramp (branch s from the fork); camera is behind and above in the branch's own frame
-  ['j1', 720, 0, 90, 1, 0],
-  ['j2', 720, 0, 50, 90, 40],
-  ['j3', 640, 10, 25, 70, 20],
-  ['j4', 760, 0, 40, 60, -30],
+  ['t1', 360, 20, 420, 1, 0],
+  ['t2', 100, 20, 160, 1, 0],
+  ['t3', 250, 20, 160, 1, 0],
+  ['t4', 520, 20, 160, 1, 0],
 ];
 for (const [name, ts, td, h, back, side] of views) {
   await page.evaluate(([ts, td, h, back, side]) => {
