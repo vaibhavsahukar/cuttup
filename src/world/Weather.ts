@@ -25,7 +25,7 @@ export class Weather {
 
   constructor(public choice: WeatherChoice) {
     if (choice === 'rain') this.wet = this.target = 1;
-    else if (choice === 'changing') { this.wet = this.target = Math.random() < 0.35 ? 0.6 + Math.random() * 0.4 : 0; this.spellT = 40 + Math.random() * 80; }
+    else if (choice === 'changing') { this.wet = this.target = Math.random() < 0.2 ? 0.6 + Math.random() * 0.4 : 0; this.spellT = 40 + Math.random() * 80; }
     this.seedPos = new Float32Array(N * 3);
     for (let i = 0; i < N; i++) {
       this.seedPos[i * 3] = (Math.random() - 0.5) * BOX.x;
@@ -40,7 +40,7 @@ export class Weather {
   }
 
   /** grip multiplier for the tyres */
-  get grip() { return 1 - 0.24 * this.wet; }
+  get grip() { return 1 - 0.12 * this.wet; }
 
   update(dt: number, cam: THREE.Vector3, vel: THREE.Vector3, onThunder?: () => void) {
     if (this.choice === 'changing') {
@@ -48,7 +48,7 @@ export class Weather {
       if (this.spellT <= 0) {
         const raining = this.target > 0;
         this.target = raining ? 0 : 0.45 + Math.random() * 0.55;
-        this.spellT = raining ? 50 + Math.random() * 110 : 60 + Math.random() * 100;
+        this.spellT = raining ? 130 + Math.random() * 150 : 35 + Math.random() * 45;
       }
     }
     // rain builds and eases off over about 15 to 20 seconds
