@@ -2,6 +2,7 @@ import { VEHICLES, getVehicle, statBars } from '../data/vehicles';
 import { MAPS, getMap } from '../data/maps';
 import { modelCatalog } from '../data/modelCatalog';
 import { TIME_CHOICES, type TimeChoice } from '../world/TimeOfDay';
+import { MAP_THUMBS } from './mapThumbs';
 import { WEATHER_CHOICES, type WeatherChoice } from '../world/Weather';
 import { ACTIONS, DEFAULT_BINDINGS, DEFAULT_PAD, fmtPad, type Action } from '../input/Input';
 import type { Save, RunEntry, QualityName } from '../storage/Save';
@@ -226,7 +227,7 @@ export class UI {
     $('#maps .cards').innerHTML = MAPS.map((m) => {
       const best = (this.save.data.leaderboard[m.id] ?? [])[0];
       return `<div class="card panel ${m.id === sel ? 'sel' : ''}" data-m="${m.id}">
-        <div class="thumb" style="background:${grad[m.id]}"></div>
+        <div class="thumb" style="background:${MAP_THUMBS[m.id] ? `url(${MAP_THUMBS[m.id]}) center/cover` : grad[m.id]}"></div>
         <div class="t">${esc(m.name)}</div>
         <div class="best">${best ? `BEST ${best.score.toLocaleString()} · ${esc(getVehicle(best.vehicle).name)}` : 'NO RUNS YET'}</div></div>`;
     }).join('');
