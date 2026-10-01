@@ -151,6 +151,8 @@ async function boot() {
   };
   // gamepad menu navigation
   let padPrev: boolean[] = [];
+  // browsers only expose a pad after its first press; that press must not be wasted on revealing the highlight
+  addEventListener('gamepadconnected', () => ui.nav(0));
   const pollPadMenu = () => {
     const p = [...(navigator.getGamepads?.() ?? [])].find((g) => g && g.connected);
     if (!p) return;

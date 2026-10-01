@@ -137,7 +137,9 @@ export class UI {
     if (id === 'models') this.buildModels();
     if (id === 'settings') this.buildSettings();
     if (id === 'menu') $('#menuHint').textContent = `${getVehicle(this.save.data.settings.vehicle).name}  ·  ${getMap(this.save.data.settings.map).name}   —   Arrow keys / D-pad + Enter / (A) to navigate`;
-    this.focusIdx = -1; // no highlight until keyboard / pad navigation starts
+    // no highlight until keyboard navigation starts, but with a pad connected start on the first button
+    // so the first D-pad press already moves instead of just revealing the highlight
+    this.focusIdx = [...(navigator.getGamepads?.() ?? [])].some((g) => g && g.connected) ? 0 : -1;
     this.applyFocus();
   }
   get settingsBack() { return this.settingsReturn; }
@@ -484,7 +486,7 @@ export class UI {
   nav(dir: number) {
     const bs = this.buttons();
     if (!bs.length) return;
-    this.focusIdx = this.focusIdx < 0 ? 0 : (this.focusIdx + dir + bs.length) % bs.length;
+    this.focusIdx = this.focusIdx < 0 ? 0 : (this.focusIdx + dir + bs.length) % bs.length; // dir 0 just reveals the focus
     this.applyFocus();
     bs[this.focusIdx].scrollIntoView({ block: 'nearest' });
   }
