@@ -139,7 +139,7 @@ export class AudioEngine {
       e.o2.frequency.setTargetAtTime(f * 0.5, t, 0.02);
       e.o3.frequency.setTargetAtTime(f * 1.01 * 2, t, 0.02);
       e.lfo.frequency.setTargetAtTime(Math.max(4, f * 0.25), t, 0.02);
-      e.lp.frequency.setTargetAtTime(400 + throttle * 2600 + rpm / sp.redline * 1500, t, 0.03);
+      e.lp.frequency.setTargetAtTime(2600 + throttle * 600 + rpm / sp.redline * 1500, t, 0.03); // stays bright off the throttle (it used to close right down)
       e.nf.frequency.setTargetAtTime(f * 3, t, 0.03);
       e.nG.gain.setTargetAtTime(0.08 + throttle * 0.15, t, 0.05);
       e.g.gain.setTargetAtTime(running ? 0.22 + throttle * 0.4 : 0, t, 0.06);
