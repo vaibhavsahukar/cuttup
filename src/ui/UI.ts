@@ -69,7 +69,7 @@ export class UI {
       <div id="settings" class="screen"><div class="panel"></div></div>
       <div id="hud" class="screen">
         <div class="copvig"><i></i></div>
-        <div class="devhint" hidden>DEV MODE · WASD move · Space / E up · Ctrl / Q down · Shift fast · drag mouse to look · wheel = speed · F fog · F2 exit</div>
+        <div class="devhint" hidden></div>
         <div class="copvig ragevig"><i></i></div>
         <div class="ragetag" hidden>ROAD RAGE</div>
         <div class="hbind" hidden>HIGH BEAM</div>
@@ -402,7 +402,7 @@ export class UI {
     (el.querySelector('.nx') as HTMLElement).textContent = status === 'filling' ? 'FILLING' : status === 'filled' ? 'FILLED' : level <= 0 ? 'EMPTY' : `GAS ${dist}`;
   }
   /** dev mode: hide the game HUD and show the controls hint */
-  devMode(on: boolean) { $('#hud').classList.toggle('dev', on); ($('#hud .devhint') as HTMLElement).hidden = !on; }
+  devMode(on: boolean) { $('#hud').classList.toggle('dev', on); /* the on screen key list is gone: the hint stays hidden */ }
   highBeam(on: boolean) { const e = $('#hud .hbind'); if (e.hidden === on) e.hidden = !on; }
   private lastVig = -1;
   /** red vignette round the screen border while a cop is near; `level` 0..1 grows as the nearest cop closes in */
