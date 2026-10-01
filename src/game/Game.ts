@@ -672,9 +672,9 @@ export class Game {
         if (ph.psi * -side > 0) ph.psi = 0;
       }
       ph.v *= 1 - clamp(into * 0.012, 0.002, 0.2);
-      this.scrape = Math.min(1, 0.4 + into * 0.1);
+      this.scrape = speed > 3 ? Math.min(1, 0.4 + into * 0.1) : 0; // resting against a wall is silent
       if (into > 1.5 && this.bumpCd <= 0) { this.thud(clamp(into / 8, 0.2, 1)); this.rig.addShake(0.3); this.scoring.bump(); this.bumpCd = 0.5; }
-      if (Math.random() < 0.5) {
+      if (speed > 4 && Math.random() < 0.5) { // sparks only while actually scraping
         const pos = this.player.model.root.position.clone();
         const right = new THREE.Vector3(-Math.cos(this.path.frame(ph.s, fr).heading), 0, Math.sin(fr.heading));
         pos.addScaledVector(right, side * half).y += 0.3;
