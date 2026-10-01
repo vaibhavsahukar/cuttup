@@ -18,6 +18,7 @@ interface BikeDesign {
   colors?: { a1?: number; a2?: number }; // accent paints (tags a1 / a2); they default to the body paint
   sigF?: P; // front indicator position
   dims?: [number, number, number]; // length, width, height reported to the game
+  scale?: number; // the whole bike drawn at this scale (wheels stay on the ground)
   noMudguard?: boolean; // the design draws its own front fender
   tubes?: { tag: Tag; a: P; b: P; t: number; x: number; mirror?: boolean }[]; // frame tubes and pipes
   parts: Part[];
@@ -111,7 +112,7 @@ const DESIGNS: Record<string, BikeDesign> = {
   fs450: {
     wheelR: 0.3, rearR: 0.312, front: 0.74, rear: -0.74, frontW: 0.12, rearW: 0.16, spokes: 18, rim: 0x1b1c1f,
     colors: { a1: 0xe4ec1c, a2: 0x1d2d66 },
-    dims: [2.1, 0.7, 1.2], noMudguard: true,
+    scale: 0.9, dims: [1.89, 0.63, 1.08], noMudguard: true,
     parts: [
       // front fender, arched high over the wheel, and the number plate on the fork
       { tag: 'paint', hw: 0.075, pts: [[1.0, 0.57], [0.94, 0.66], [0.83, 0.72], [0.69, 0.74], [0.56, 0.71], [0.5, 0.67], [0.6, 0.65], [0.74, 0.66], [0.88, 0.62]] },
@@ -202,6 +203,7 @@ export function buildBike(id: string, color: number, shadows = true, livery?: 'p
 
   const root = new THREE.Group(), lean = new THREE.Group(), chassis = new THREE.Group();
   root.add(lean); lean.add(chassis);
+  if (d.scale) chassis.scale.setScalar(d.scale);
   const mat = (t: Tag): THREE.Material => t === 'paint' ? paint(color) : t === 'a1' ? paint(d.colors?.a1 ?? color) : t === 'a2' ? paint(d.colors?.a2 ?? color) : t === 'glass' ? MAT.clearGlass : t === 'head' ? MAT.head : t === 'tail' ? MAT.tailOff
     : t === 'chrome' ? MAT.chrome : t === 'metal' ? MAT.engine : t === 'seat' ? MAT.seat : MAT.trim;
   let body: THREE.Mesh | undefined;
