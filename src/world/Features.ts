@@ -16,6 +16,9 @@ export const LOT_LEN = 200;
 const LANE_W = 5.2;
 const OUT = 13; // how far the ramp lane swings out from the shoulder
 
+/** which pump of the four (k = -1.5 .. 1.5, in steps of 1) is the green charger: the first one you meet */
+export const CHARGER_K = -1.5;
+
 export class Features {
   stations: Station[] = [];
   /** city only: where forks leave the highway (every 4 to 5 miles) */
@@ -175,6 +178,12 @@ export class Features {
     const x = s - st.s0;
     if (st.ramp) { const r = this.rampLane(x); return x > 180 && x < 335 && Math.abs(d - r.c) < 3.8; }
     return x > 45 && x < 155 && d > this.edge + 0.5 && d < this.edge + 13.5;
+  }
+  /** the green pump: stopping beside it charges an electric car (see CHARGER_K) */
+  inCharger(s: number, d: number) {
+    const st = this.at(s);
+    if (!st || !this.inRefuel(s, d)) return false;
+    return Math.abs(s - (this.forecourt(st).s + CHARGER_K * 9)) < 7;
   }
   /** where a run that starts at a station puts the car (x into the stretch, d) */
   startPose(st: Station) {

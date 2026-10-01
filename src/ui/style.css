@@ -105,6 +105,8 @@ input[type=range] { width: 260px; accent-color: var(--accent); }
 #hud .fuel .nx { color: #e6e6e6; font-weight: 700; }
 #hud .fuel.low .bar i { background: #ff4a3a; animation: fuelblink 0.6s steps(1) infinite; }
 #hud .fuel.filling .bar i { background: #4dff88; }
+#hud .fuel.ev .bar i { background: #2fd96a; }
+#hud .fuel.ev.low .bar i { background: #ff4a3a; animation: fuelblink 0.6s steps(1) infinite; }
 @keyframes fuelblink { 50% { opacity: 0.3; } }
 #hud .hbind { position: absolute; left: 30px; bottom: 140px; padding: 4px 12px; border-radius: 6px; background: rgba(20,60,160,0.55); border: 1px solid #6ea8ff; color: #bcd8ff; font-size: 13px; font-weight: 800; letter-spacing: 0.2em; }
 #hud .hbind[hidden] { display: none; }

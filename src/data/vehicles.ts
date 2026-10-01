@@ -15,6 +15,8 @@ export interface VehicleSpec {
   color: number;
   /** bike accent paints of the chosen colorway (see colorways.ts) */
   paint?: { a1?: number; a2?: number; rim?: number };
+  /** electric: a battery (about 10 miles) recharged at the green pump of a gas station, instead of a fuel tank */
+  electric?: boolean;
   hp: number;
   massKg: number;
   drive: Drive;
@@ -161,7 +163,7 @@ export const VEHICLES: VehicleSpec[] = [
     cgHeight: 0.52, wheelbase: 2.7, frontWeight: 0.61, track: 1.55, rollFactor: 0.06,
     brakeG: 1.0, downforce: 0.05, steerLock: 0.58, steerSpeed: 3.2, stability: 0.8, yawInertia: 0.85,
     dims: { length: 4.595, width: 1.89, height: 1.44 }, engine: { cylinders: 4, tone: 1.05, roughness: 0.2 } },
-  { ...base, id: 'tesla', name: 'Tesler', kind: 'car', model: 'models', color: 0xb3141c,
+  { ...base, id: 'tesla', name: 'Tesler', kind: 'car', model: 'models', electric: true, color: 0xb3141c,
     hp: 450, massKg: 1847, drive: 'AWD', zeroSixty: 3.2, topSpeedMph: 155, limited: true,
     character: 'Silent instant torque, heavy battery keeps it planted',
     gears: 1, redline: 16000, idleRpm: 0, torquePeak: 0.05, torqueFlat: 0.95,

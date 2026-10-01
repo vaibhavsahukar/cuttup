@@ -31,7 +31,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
-export interface RunResult { prevBest: number; score: number; distance: number; topSpeed: number; nearMisses: number; cutUps: number; time: number; crashKind: CrashKind; message: string; caught: boolean }
+export interface RunResult { prevBest: number; score: number; distance: number; topSpeed: number; nearMisses: number; cutUps: number; time: number; crashKind: CrashKind; message: string; caught: boolean; electric?: boolean }
 
 const fr: Frame = { x: 0, y: 0, z: 0, heading: 0, k: 0, grade: 0 };
 const PHYS_DT = 1 / 240;
@@ -77,6 +77,9 @@ export class Game {
   private fuelBurn = 1;
   /** what the fuel gauge says at a gas station: filling at the pump, or filled (until you have left the pumps) */
   fuelStatus: 'filling' | 'filled' | null = null;
+  /** an electric car: the "fuel" is a battery (10 miles), recharged in 20 seconds stopped beside the green pump */
+  get electric() { return !!this.player.spec.electric; }
+  private evDead = false;
   private pumpAway = 99; // seconds since the car was last in a pump lane
   private tankFullShown = false;
   private lowFuelWarned = false;
@@ -458,6 +461,7 @@ export class Game {
   private fuelStep(dt: number, ds: number) {
     const ph = this.player.phys;
     if (this.state !== 'driving') return;
+    if (this.electric) { this.batteryStep(dt, ds); return; }
     const range = this.player.bike ? 14500 : 15600; // metres on a tank at the base burn rate: about 7 to 8 miles driven hard
     // the pump lane fills the tank quickly at anything under about 50 mph (no need to stop)
     const inLane = this.features.inRefuel(ph.s, ph.d);
@@ -485,6 +489,36 @@ export class Game {
       else { this.stallT += dt; if (this.police.nearest(ph.s) < 14 || this.stallT > 25) this.stall(true); }
     }
   }
+  /** the battery: about 10 miles of driving, drained like the tank; stopped beside the green pump it recharges in 20 seconds */
+  private batteryStep(dt: number, ds: number) {
+    const ph = this.player.phys;
+    const range = 17200; // metres at the base drain rate: about 10 miles
+    const stopped = Math.abs(ph.v) < 0.8 && ph.burnout < 0.1;
+    const atCharger = stopped && !this.evDead && this.features.inCharger(ph.s, ph.d);
+    if (atCharger) {
+      if (this.fuel < 1) this.fuel = Math.min(1, this.fuel + dt / 20);
+      if (this.fuel >= 1 && !this.tankFullShown) { this.tankFullShown = true; this.onPopup?.({ text: 'FULLY CHARGED', color: '#4dff88' }); }
+    } else {
+      if (ph.burnout > 0.3) this.fuel = Math.max(0, this.fuel - dt * 0.008 * this.fuelBurn);
+      this.fuel = Math.max(0, this.fuel - (Math.max(0, ds) / range) * (0.5 + 0.8 * ph.throttle) * this.fuelBurn - dt * 0.0003);
+    }
+    if (this.fuel <= 0) this.evDead = true;
+    const inLane = this.features.inRefuel(ph.s, ph.d);
+    this.pumpAway = inLane ? 0 : this.pumpAway + dt;
+    if (this.pumpAway > 3 || this.fuel < 0.98) this.tankFullShown = false;
+    this.fuelStatus = atCharger ? (this.fuel < 0.999 ? 'filling' : 'filled') : this.fuel >= 0.995 && this.pumpAway < 3 ? 'filled' : null;
+    if (this.fuel > 0.4) this.lowFuelWarned = false;
+    if (!this.lowFuelWarned && this.fuel < 0.25) {
+      this.lowFuelWarned = true;
+      this.onPopup?.({ text: 'LOW BATTERY', sub: 'find the green pump at the next station', color: '#ffb020', big: true });
+    }
+    // flat: the motor cuts and the car coasts to a stop, which ends the run (no recharging once it is dead)
+    if (this.fuel <= 0) ph.v = Math.sign(ph.v) * Math.max(0, Math.abs(ph.v) - 1.1 * dt);
+    if (this.fuel <= 0 && Math.abs(ph.v) < 0.8) {
+      if (this.police.wanted <= 0) this.stall(false);
+      else { this.stallT += dt; if (this.police.nearest(ph.s) < 14 || this.stallT > 25) this.stall(true); }
+    }
+  }
   /** while stalled with a wanted level the run waits for a cop to roll up (handled in stall itself) */
   private stallWait(dt: number) { void dt; }
   private stall(caught: boolean) {
@@ -493,11 +527,11 @@ export class Game {
     this.stalled = true;
     this.crashTimer = 0;
     this.audio.stopEngine();
-    const message = randomCrashMessage({ map: this.map.id, kind: 'fuel', cop: caught, bike: this.player.bike, wanted: caught });
-    this.onCrash?.(message, caught, caught ? 'CAUGHT' : 'OUT OF GAS');
+    const message = randomCrashMessage({ map: this.map.id, kind: 'fuel', cop: caught, bike: this.player.bike, wanted: caught, ev: this.electric });
+    this.onCrash?.(message, caught, caught ? 'CAUGHT' : this.electric ? 'OUT OF CHARGE' : 'OUT OF GAS');
     this.result = {
       score: Math.round(this.scoring.score), distance: this.scoring.distance, topSpeed: this.player.topSpeed,
-      nearMisses: this.scoring.nearMisses, cutUps: this.scoring.cutUps, time: this.scoring.time, crashKind: 'fuel', message, caught, prevBest: this.prevBest,
+      nearMisses: this.scoring.nearMisses, cutUps: this.scoring.cutUps, time: this.scoring.time, crashKind: 'fuel', message, caught, prevBest: this.prevBest, electric: this.electric,
     };
   }
 

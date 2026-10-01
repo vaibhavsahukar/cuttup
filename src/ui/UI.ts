@@ -413,9 +413,9 @@ export class UI {
   }
   private lastFuel = '';
   /** fuel gauge (bottom left) with the distance to the next gas station */
-  fuel(level: number, toNext: number, units: 'mph' | 'kph', status: 'filling' | 'filled' | null) {
+  fuel(level: number, toNext: number, units: 'mph' | 'kph', status: 'filling' | 'filled' | null, ev = false) {
     const dist = units === 'mph' ? `${(Math.max(0, toNext) / 1609.34).toFixed(1)} mi` : `${(Math.max(0, toNext) / 1000).toFixed(1)} km`;
-    const key = `${Math.round(level * 200)}|${dist}|${status}`;
+    const key = `${Math.round(level * 200)}|${dist}|${status}|${ev}`;
     if (key === this.lastFuel) return;
     this.lastFuel = key;
     const el = $('#hud .fuel');
@@ -423,7 +423,11 @@ export class UI {
     i.style.width = `${Math.round(level * 100)}%`;
     el.classList.toggle('low', level < 0.2);
     el.classList.toggle('filling', status !== null);
-    (el.querySelector('.nx') as HTMLElement).textContent = status === 'filling' ? 'FILLING' : status === 'filled' ? 'FILLED' : level <= 0 ? 'EMPTY' : `GAS ${dist}`;
+    el.classList.toggle('ev', ev);
+    (el.querySelector('label') as HTMLElement).textContent = ev ? 'BATTERY' : 'FUEL';
+    (el.querySelector('.nx') as HTMLElement).textContent = ev
+      ? (status === 'filling' ? `CHARGING ${Math.max(1, Math.ceil((1 - level) * 20))}s` : status === 'filled' ? 'CHARGED' : level <= 0 ? 'EMPTY' : `CHARGER ${dist}`)
+      : (status === 'filling' ? 'FILLING' : status === 'filled' ? 'FILLED' : level <= 0 ? 'EMPTY' : `GAS ${dist}`);
   }
   /** dev mode: hide the game HUD and show the controls hint */
   devMode(on: boolean) { $('#hud').classList.toggle('dev', on); /* the on screen key list is gone: the hint stays hidden */ }
@@ -482,9 +486,9 @@ export class UI {
     void mapId; void rank;
     const k = units === 'mph' ? MPH : KPH;
     const dist = units === 'mph' ? `${(r.distance / 1609.34).toFixed(2)} mi` : `${(r.distance / 1000).toFixed(2)} km`;
-    const how = r.crashKind === 'fuel' ? (r.caught ? 'Ran out of gas and got caught' : 'Ran out of gas') : r.caught ? 'Caught by the police' : { car: 'Rear-ended / side-swiped traffic', headon: 'Head-on collision', barrier: 'Hit the barrier', tree: 'Left the road', rock: 'Hit a rock', lowside: 'Lowside: the bike slid out from under you', highside: 'Highside: the rear grabbed and threw you', looped: 'Looped it: flipped over backwards', endo: 'Went over the bars', tipover: 'Fell over', fuel: 'Ran out of gas' }[r.crashKind];
+    const how = r.crashKind === 'fuel' ? (r.caught ? `Ran out of ${r.electric ? 'battery' : 'gas'} and got caught` : `Ran out of ${r.electric ? 'battery' : 'gas'}`) : r.caught ? 'Caught by the police' : { car: 'Rear-ended / side-swiped traffic', headon: 'Head-on collision', barrier: 'Hit the barrier', tree: 'Left the road', rock: 'Hit a rock', lowside: 'Lowside: the bike slid out from under you', highside: 'Highside: the rear grabbed and threw you', looped: 'Looped it: flipped over backwards', endo: 'Went over the bars', tipover: 'Fell over', fuel: 'Ran out of gas' }[r.crashKind];
     // the crash's phrase up top, the run's numbers bottom left, what next bottom right: nothing else
-    const phrase = r.message || (r.crashKind === 'fuel' ? 'Out of gas' : r.caught ? 'Caught' : 'Wrecked');
+    const phrase = r.message || (r.crashKind === 'fuel' ? (r.electric ? 'Out of battery' : 'Out of gas') : r.caught ? 'Caught' : 'Wrecked');
     $('#results .over').innerHTML = `
       <div class="top">
         <div class="phrase">${esc(phrase)}</div>

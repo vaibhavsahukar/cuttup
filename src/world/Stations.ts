@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { RoadPath, Frame } from './RoadPath';
 import { Ribbon, outline } from './Ribbon';
-import { Features, RAMP_LEN, LOT_LEN, type Station } from './Features';
+import { Features, RAMP_LEN, LOT_LEN, CHARGER_K, type Station } from './Features';
 
 const fr: Frame = { x: 0, y: 0, z: 0, heading: 0, k: 0, grade: 0 };
 const v3 = new THREE.Vector3();
@@ -29,6 +29,8 @@ export class StationRenderer {
   private metal = new THREE.MeshStandardMaterial({ color: 0xb9bec2, metalness: 0.7, roughness: 0.35, side: THREE.DoubleSide });
   private white = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.6 });
   private red = new THREE.MeshStandardMaterial({ color: 0xd8262b, roughness: 0.5 });
+  /** the electric charger: one pump of every station is green */
+  private green = new THREE.MeshStandardMaterial({ color: 0x1fc45a, roughness: 0.5, emissive: 0x0b7a30, emissiveIntensity: 0.5 });
   private dark = new THREE.MeshStandardMaterial({ color: 0x2b2d31, roughness: 0.7 });
   private glow = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2d8, emissiveIntensity: 1.6 });
   private gasTex = label('GAS', '#d8262b', '#ffffff');
@@ -105,7 +107,7 @@ export class StationRenderer {
     // pump island and pumps
     this.box(g, this.white, s, c + side * 4.3, 1.6, 0.25, L - 8);
     for (let k = -1.5; k <= 1.5; k++) {
-      this.box(g, this.red, s + k * 9, c + side * 4.3, 0.8, 1.7, 1.1, 0.25);
+      this.box(g, k === CHARGER_K ? this.green : this.red, s + k * 9, c + side * 4.3, 0.8, 1.7, 1.1, 0.25);
       this.box(g, this.glow, s + k * 9, c + side * 4.3, 0.82, 0.35, 0.6, 1.35);
     }
     // shop with a lit window and the brand on the roof edge
