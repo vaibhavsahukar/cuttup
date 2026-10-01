@@ -492,6 +492,13 @@ export class UI {
   }
   activate() {
     const bs = this.buttons();
-    bs[this.focusIdx]?.click();
+    const el = bs[this.focusIdx];
+    // garage: A on a vehicle previews it and selects it straight away
+    if (this.current === 'garage' && el?.closest('.list')) {
+      el.click();
+      (document.querySelector('#garage [data-a="choose"]') as HTMLElement | null)?.click();
+      return;
+    }
+    el?.click();
   }
 }
