@@ -338,6 +338,18 @@ export class Police {
         if (o === c || !o.alive || o.wrecked) continue;
         if (Math.abs(o.s - c.s) > (o.L + c.L) / 2 - 0.1 || Math.abs(o.d - c.d) > (o.W + c.W) / 2 - 0.05) continue;
         const rv = Math.abs(c.v - o.v * o.dir);
+        // a van, box truck or school bus is too big to plough through: the pursuit car is the one that gets wrecked
+        if (rv > 10 && (o.type === 'van' || o.type === 'boxtruck' || o.type === 'schoolbus')) {
+          const pc = new THREE.Vector3();
+          this.path.toWorld((c.s + o.s) / 2, (c.d + o.d) / 2, 0.6, pc);
+          this.wreck(c, 1, o, pc); this.respawnT = Math.max(this.respawnT, 2.5);
+          o.v = Math.max(0, o.v - 3); // the big vehicle barely notices
+          this.particles.spark(pc, new THREE.Vector3(), 50, 7);
+          this.particles.debris(pc, new THREE.Vector3(), 25, 0x111111, false, 0.16);
+          this.particles.debris(pc, new THREE.Vector3(), 25, 0xffffff, true, 0.1);
+          this.onWreck?.(clamp(rv / 40, 0.2, 0.8), !c.rage);
+          break;
+        }
         if (rv > 10) {
           // pursuit cars are built to plough through: the traffic car is thrown aside and the cop only loses some speed
           // (a head-on at closing speeds no car survives still wrecks both)
