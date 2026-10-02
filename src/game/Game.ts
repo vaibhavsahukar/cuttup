@@ -723,6 +723,16 @@ export class Game {
     const half = this.player.collW / 2;
     // a gas station is solid: any contact with its posts, pumps or shop wrecks the car in a fireball
     if (this.state === 'driving' && this.features.hitStation(ph.s, ph.d, half, this.player.collL / 2)) { this.startCrash('barrier', 70, null); return; }
+    // the grass wedge between the highway's wall and the ramp's wall (where they split) is a corner: running into it wrecks you
+    const fk = this.fork;
+    if (fk && fk.state === 'open' && this.state === 'driving') {
+      const x = ph.s - fk.sF;
+      if (x > 0 && x < FORK_SPAN) {
+        const wedgeHi = fk.rampIn(ph.s);
+        const overlap = Math.min(ph.d + half, wedgeHi) - Math.max(ph.d - half, L.playerMax);
+        if (wedgeHi > L.playerMax + 0.05 && overlap > 0.15 && Math.abs(ph.v) > 5) { this.startCrash('barrier', Math.max(14, Math.abs(ph.v) * 0.6), null); return; }
+      }
+    }
     ph.onGrass = (ph.d < L.softMin || ph.d > L.softMax) && !this.features.paved(ph.s, ph.d);
     const { lo: rlo, hi: rhi } = this.driveRange(ph.s, ph.d, L.playerMin, L.playerMax);
     const lo = rlo + half, hi = rhi - half;
@@ -748,8 +758,11 @@ export class Game {
         if (ph.lean * -side > 0) ph.lean *= 0.3;
         if (ph.r * -side > 0) ph.r = 0;
         if (ph.psi * -side > 0) ph.psi = 0;
+        // and the rider rolls a touch away from the wall, so a bike held against it peels off instead of riding it
+        if (ph.lean * side < 0.08) ph.lean += side * 0.0015;
       }
-      ph.v *= 1 - clamp(into * 0.012, 0.002, 0.2);
+      // a bike grazing along a wall barely loses speed (it used to bleed to a crawl, as if stuck to it)
+      ph.v *= 1 - clamp(into * 0.012, ph.bike ? 0.0004 : 0.002, 0.2);
       this.scrape = speed > 3 ? Math.min(1, 0.4 + into * 0.1) : 0; // resting against a wall is silent
       if (into > 1.5 && this.bumpCd <= 0) { this.thud(clamp(into / 8, 0.2, 1)); this.rig.addShake(0.3); this.scoring.bump(); this.bumpCd = 0.5; }
       if (speed > 4 && Math.random() < 0.5) { // sparks only while actually scraping
