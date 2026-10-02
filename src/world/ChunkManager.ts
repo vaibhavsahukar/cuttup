@@ -299,6 +299,13 @@ export class ChunkManager {
   private place(pool: PropPool | undefined, s: number, d: number, yaw: number, sx: number, sy: number, sz: number, c?: THREE.Color, yOff = 0) {
     if (!pool) return;
     if (s < this.minS || this.features?.noProps(s, d) || this.mods.noProps?.(s, d)) return;
+    // a building is big: no part of its footprint (sx across the road, sz along it) may sit on a ramp, station or fork
+    if (pool === this.pools.building) {
+      for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) {
+        const ps = s + (a / 2) * (sz / 2) + (a === 0 ? 0 : Math.sign(a) * 2), pd = d + (b / 2) * (sx / 2) + (b === 0 ? 0 : Math.sign(b) * 2);
+        if (ps < this.minS || this.features?.noProps(ps, pd) || this.mods.noProps?.(ps, pd)) return;
+      }
+    }
     if (this.mods.lateral) d = this.mods.lateral(s, d, false);
     this.path.frame(s, fr);
     this.path.toWorld(s, d, this.terrainH(s, d) + yOff, v3, fr);
