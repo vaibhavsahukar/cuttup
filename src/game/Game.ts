@@ -603,10 +603,16 @@ export class Game {
     if (fk.state === 'open') {
       for (const c of this.traffic.cars) {
         if (c.dir < 0 || c.cop || c.rage || c.exitFork !== undefined) continue;
-        if (c.s > fk.sF - 260 && c.s < fk.sF - 120 && c.lane === 4) c.exitFork = Math.random() < 0.35;
+        if (c.s > fk.sF - 260 && c.s < fk.sF - 120 && c.lane === 4 && c.lcT >= 1 && c.pendingLane < 0) c.exitFork = Math.random() < 0.35;
       }
     }
-    if (fk.state !== 'branch') this.traffic.forkTarget = (c) => (c.s > fk.sF - 40 && c.s < fk.sF + fk.releaseX ? fk.rampIn(c.s) + this.layout.laneWidth / 2 + 0.3 : null);
+    // exiting cars hold their lane until the ramp starts, then drift over onto it as it widens (no snapping across early)
+    if (fk.state !== 'branch') this.traffic.forkTarget = (c) => {
+      const cx = c.s - fk.sF;
+      if (cx < 0) return null; // (past releaseX they keep following the ramp until the loop below drops them: no hop back onto the highway)
+      const lane4 = this.layout.laneCenter(4);
+      return lane4 + (fk.rampIn(c.s) + this.layout.laneWidth / 2 + 0.3 - lane4) * smoothstep(0, 130, cx);
+    };
     if (fk.state !== 'branch') for (const c of this.traffic.cars) if (c.exitFork && c.s > fk.sF + fk.releaseX) this.traffic.release(c);
     if (fk.state === 'open' && (this.state === 'driving' || view)) {
       if (!view && x > COMMIT_X && pd > this.layout.playerMax + 0.5) this.takeFork(fk);
