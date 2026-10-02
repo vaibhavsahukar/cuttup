@@ -59,6 +59,21 @@ export function buildMercado(color: number, shadows = true): VehicleModel {
     push(tag, tri);
   };
 
+  /** a lamp on the nose front: an (x, y) outline in front view, laid on the nose surface (flat across the face, following the corner round) */
+  const faceLamp = (tag: Tag, sx: number, outline: [number, number][], lift = 0.012) => {
+    const zAt = (x: number) => { if (x <= lerpK(HW, F)) return F - 0.01; for (let z = F; z > 1.8; z -= 0.004) if (lerpK(HW, z) >= x) return z; return 1.8; };
+    const ptsB: [number, number][] = [];
+    for (let i = 0; i < outline.length; i++) { const a = outline[i], b = outline[(i + 1) % outline.length]; for (let k = 0; k < 8; k++) ptsB.push([a[0] + (b[0] - a[0]) * k / 8, a[1] + (b[1] - a[1]) * k / 8]); }
+    let cx = 0, cy = 0; for (const o of outline) { cx += o[0]; cy += o[1]; } cx /= outline.length; cy /= outline.length;
+    const pt = (x: number, y: number): [number, number, number] => [sx * (x + 0.004), y, zAt(x) + lift];
+    const ring = (f: number) => ptsB.map(([x, y]) => pt(cx + (x - cx) * f, cy + (y - cy) * f));
+    const rs = [ring(1), ring(0.66), ring(0.33)], c = pt(cx, cy), tri: number[] = [];
+    const n = ptsB.length;
+    for (let r = 0; r < 2; r++) for (let i = 0; i < n; i++) { const a = rs[r][i], b = rs[r][(i + 1) % n], d = rs[r + 1][i], e = rs[r + 1][(i + 1) % n]; tri.push(...a, ...d, ...b, ...b, ...d, ...e, ...a, ...b, ...d, ...b, ...e, ...d); }
+    for (let i = 0; i < n; i++) { const a = rs[2][i], b = rs[2][(i + 1) % n]; tri.push(...c, ...a, ...b, ...c, ...b, ...a); }
+    push(tag, tri);
+  };
+
   // ---- lower body: sections nose to tail, with real wheel arches ----
   const N = 110, secs: Sec[] = [];
   for (let q = 0; q < N; q++) {
@@ -99,8 +114,8 @@ export function buildMercado(color: number, shadows = true): VehicleModel {
   box('dark', 0, 0.28, F - 0.006, 0.6, 0.09, 0.03); // low centre intake
   box('chrome', 0, 0.345, F + 0.002, 0.6, 0.02, 0.024); // bar over it
   for (const sx of [1, -1]) {
-    // wide angular headlamp lying on the fender top at the nose corner
-    lampShape('head', sx, [[0.46, F - 0.12], [0.62, F - 0.1], [0.8, F - 0.17], [0.9, F - 0.28], [0.86, F - 0.42], [0.7, F - 0.36], [0.52, F - 0.27], [0.44, F - 0.18]]);
+    // wide headlamp on the nose front beside the grille: thick at the grille, rising and thinning to a rounded outer end (from the mockup)
+    faceLamp('head', sx, [[0.43, 0.5], [0.44, 0.58], [0.48, 0.65], [0.56, 0.685], [0.68, 0.685], [0.76, 0.67], [0.795, 0.635], [0.79, 0.595], [0.74, 0.565], [0.64, 0.535], [0.52, 0.51]]);
     box('dark', sx * 0.56, 0.36, F - 0.006, 0.3, 0.18, 0.03); // big corner intake
     for (const dy of [-0.05, 0.0, 0.05]) box('carbon', sx * 0.56, 0.36 + dy, F + 0.002, 0.26, 0.012, 0.02); // its horizontal slats
     box('dark', sx * (lerpK(HW, 1.1) + 0.006), 0.62, 1.1, 0.012, 0.1, 0.34); // fender vent behind the front wheel
@@ -142,7 +157,7 @@ export function buildMercado(color: number, shadows = true): VehicleModel {
   const sg = new THREE.BoxGeometry(0.08, 0.035, 0.03);
   for (const sx of [1, -1]) for (const sz of [1, -1]) {
     const s = new THREE.Mesh(sg, MAT.sigOff);
-    s.position.set(sx * (sz > 0 ? 0.6 : 0.66), sz > 0 ? 0.56 : 0.7, sz * (F - 0.004));
+    s.position.set(sx * (sz > 0 ? 0.6 : 0.66), sz > 0 ? 0.478 : 0.7, sz * (F - 0.004));
     chassis.add(s);
     (sx > 0 ? sigL : sigR).push(s);
   }
