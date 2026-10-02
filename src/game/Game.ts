@@ -138,8 +138,8 @@ export class Game {
     this.scene.add(this.weather.lines);
     const night = this.env.night;
     this.scene.environment = pmrem;
-    // where the run starts: on the city shoulder, at a gas station on the countryside highway, in a roadside lot on the backroad
-    const startAtStation = this.map.id !== 'city';
+    // where the run starts: at a gas station on the city and countryside highways, in a roadside lot on the backroad
+    const startAtStation = true;
     this.features = new Features(this.map, this.layout, null);
     const startPose = startAtStation ? this.features.startPose({ s0: 0, ramp: this.map.road === 'highway' }) : null;
     if (startPose) this.features = new Features(this.map, this.layout, -startPose.x);
