@@ -5,7 +5,7 @@ import { MAT, paint } from './Materials';
 import { loft, ring, lerpK, type Tag, type Sec } from './Z350Builder';
 
 /**
- * Honda Civic Type R (FL5), modelled for likeness. The side profile is traced from the side photo (116 px per metre):
+ * Honder Civiz, modelled for likeness. The side profile is traced from the side photo (116 px per metre):
  * long low nose, steep raked screen, roof peak just behind the door line, a fastback hatch falling to a high tail with a
  * big wing; slim LED headlamps, honeycomb upper grille, wide hex lower intake and air curtains, C shaped tail lamps,
  * centre triple exhaust. 4.595 m long, 1.89 m wide, 1.44 m tall, wheelbase 2.74 m.

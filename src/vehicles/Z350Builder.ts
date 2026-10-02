@@ -4,7 +4,7 @@ import { makeWheel, type VehicleModel } from './ModelKit';
 import { MAT, paint } from './Materials';
 
 /**
- * Nissan 350Z, modelled for likeness rather than the game's flat panel style: smooth lofted body sections with real
+ * Nissi 350z, modelled for likeness rather than the game's flat panel style: smooth lofted body sections with real
  * arches and tumblehome, a separate glass greenhouse, teardrop headlamps and wrap tail lamps cut from plan shapes.
  * Measurements follow the reference photos (length 4.31 m, width 1.82 m, height 1.32 m, wheelbase 2.65 m).
  */

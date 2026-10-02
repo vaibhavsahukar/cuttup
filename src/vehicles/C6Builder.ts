@@ -5,7 +5,7 @@ import { MAT, paint } from './Materials';
 import { loft, ring, lerpK, blueMat, type Tag, type Sec } from './Z350Builder';
 
 /**
- * Corvette C6 (Z06), modelled for likeness: very long low nose, crowned fenders, a cabin set well back under a sweeping
+ * Conquette 6, modelled for likeness: very long low nose, crowned fenders, a cabin set well back under a sweeping
  * fastback roof, short tail with the four round lamps and quad tips. 4.46 m long, 1.93 m wide, 1.25 m tall, wheelbase 2.69 m.
  */
 const L = 4.46, F = L / 2, R = -F;
@@ -114,7 +114,7 @@ export function buildC6(color: number, shadows = true): VehicleModel {
   box('dark', 0, 0.55, R - 0.01, 0.65, 0.14, 0.04); // number plate recess
   box('carbon', 0, 0.28, R + 0.0, 1.7, 0.2, 0.12); // diffuser
   box('paint', 0, 0.99, -1.95, 1.4, 0.04, 0.2); // tail lip
-  // swan neck wing like the GT3 RS: uprights from the deck, a wide blade high above the tail and tall end plates
+  // swan neck wing like the Ponch 999 GT3: uprights from the deck, a wide blade high above the tail and tall end plates
   for (const sx of [1, -1]) {
     box('carbon', sx * 0.5, 1.05, R + 0.42, 0.05, 0.16, 0.12); // upright
     box('carbon', sx * 0.5, 1.14, R + 0.34, 0.05, 0.05, 0.28); // swan neck sweeping back to the blade

@@ -98,7 +98,7 @@ Chunks are 64 m long. A fixed pool of chunk slots is recycled: each slot owns **
 * Pacejka style lateral curve per axle, rear axle stiffer in the linear range (stable), with peak grip set per axle (`frontGrip`, `rearGrip`) so limit behaviour is the vehicle's character.
 * Longitudinal load transfer from `cgHeight`, downforce, drag (derived so the drag limited top speed matches the spec), rolling resistance, road grade.
 * Engine torque curve (`torquePeak`, `torqueFlat`) scaled so every gear delivers the rated peak power, automatic gearbox with shift cuts, rev limiter, electronic limiter for limited cars (M4, Supra).
-* Drivetrain: RWD, FWD or AWD split. Excess drive force becomes wheelspin, and wheelspin eats that axle's lateral grip (friction circle, scaled by `powerOversteer`), which is what makes the ZR1, Supra and C63 tail happy while the AWD cars stay planted.
+* Drivetrain: RWD, FWD or AWD split. Excess drive force becomes wheelspin, and wheelspin eats that axle's lateral grip (friction circle, scaled by `powerOversteer`), which is what makes the Conquette 6 and Mercado tail happy while the AWD cars stay planted.
 * Arcade assists scaled by `stability`: limit aware steering lock, auto counter-steer, yaw damping, ESC style yaw limiting and traction control. Low stability cars (ZR1 0.35) get much less help.
 * Launch calibration: at startup each vehicle's longitudinal launch factor is bisected so the simulated 0-60 mph time matches `zeroSixty`. The factor fades out above ~35 m/s, so top speeds are untouched.
 * Motorcycles: steering input sets a target **lean angle**, lean drives the turn (lean shows on the model, the rider hangs off, the chase cam rolls slightly, the cockpit cam leans fully). Wheelies and stoppies come from load transfer limits; the KTM SMC is by far the most wheelie prone. Above ~82 % of top speed a speed wobble grows (bar shake, camera shake). Collision box is 0.62 m wide, so bikes can filter through gaps cars cannot.
@@ -106,21 +106,21 @@ Chunks are 64 m long. A fixed pool of chunk slots is recycled: each slot owns **
 `npm run tune` prints the verification table. Current output:
 
 ```
-Yamaha R6                    0-60 3.21s (ref 3.2)  top 159 mph (ref 165)
-Kawasaki ZX-6R               0-60 3.20s (ref 3.2)  top 155 mph (ref 160)
-Honda CBR600RR               0-60 3.30s (ref 3.3)  top 154 mph (ref 160)
+Yamiha R6                    0-60 3.21s (ref 3.2)  top 159 mph (ref 165)
+ZR6X Samurai               0-60 3.20s (ref 3.2)  top 155 mph (ref 160)
+Honder CCR600RR               0-60 3.30s (ref 3.3)  top 154 mph (ref 160)
 KTM 450 SMC-R                0-60 3.99s (ref 4)    top 107 mph (ref 110)
-Chevrolet Corvette C6 ZR1    0-60 3.30s (ref 3.3)  top 206 mph (ref 205)  powerslide 19 deg
-BMW M4 (F82)                 0-60 4.10s (ref 4.1)  top 156 mph (ref 155)  powerslide 13 deg
-Lamborghini Huracán          0-60 2.90s (ref 2.9)  top 195 mph (ref 200)  powerslide 1 deg
-Honda Civic (10th gen)       0-60 7.00s (ref 7)    top 131 mph (ref 130)
-Toyota GR Supra (A90)        0-60 3.90s (ref 3.9)  top 156 mph (ref 155)  powerslide 23 deg
+Conquette 6    0-60 3.30s (ref 3.3)  top 206 mph (ref 205)  powerslide 19 deg
+BWM W4                 0-60 4.10s (ref 4.1)  top 156 mph (ref 155)  powerslide 13 deg
+Rambo Hurricane          0-60 2.90s (ref 2.9)  top 195 mph (ref 200)  powerslide 1 deg
+Honder Civiz       0-60 7.00s (ref 7)    top 131 mph (ref 130)
+Sports coupe (A90 class)        0-60 3.90s (ref 3.9)  top 156 mph (ref 155)  powerslide 23 deg
 Jeep Grand Cherokee (WK2)    0-60 7.00s (ref 7)    top 129 mph (ref 130)
-Lamborghini Urus             0-60 3.60s (ref 3.6)  top 192 mph (ref 190)
-Lexus RC F                   0-60 4.20s (ref 4.2)  top 164 mph (ref 168)  powerslide 7 deg
-Mercedes-AMG C63 S           0-60 3.80s (ref 3.8)  top 182 mph (ref 180)  powerslide 15 deg
+Rambo Uranus             0-60 3.60s (ref 3.6)  top 192 mph (ref 190)
+Coupe (RC F class)                   0-60 4.20s (ref 4.2)  top 164 mph (ref 168)  powerslide 7 deg
+Mercado C65 S           0-60 3.80s (ref 3.8)  top 182 mph (ref 180)  powerslide 15 deg
 ```
-("powerslide" = peak sideslip when flooring it mid corner at 18 m/s with no counter-steer input: the ZR1 has the Huracán's power but far less ability to put it down.)
+("powerslide" = peak sideslip when flooring it mid corner at 18 m/s with no counter-steer input: the Conquette 6 has the Hurricane's power but far less ability to put it down.)
 
 ### Tuning knobs (`src/data/vehicles.ts`)
 
@@ -135,7 +135,7 @@ Mercedes-AMG C63 S           0-60 3.80s (ref 3.8)  top 182 mph (ref 180)  powers
 | `tireMu` | Overall grip |
 | `launchMu` | Extra longitudinal traction (tyre width) |
 | `frontGrip`, `rearGrip` | Peak grip balance; front < rear = understeer, front > rear = oversteer |
-| `powerOversteer` | How much wheelspin kills rear lateral grip (0 = none, 1.35 = ZR1) |
+| `powerOversteer` | How much wheelspin kills rear lateral grip (0 = none, 1.35 = Conquette 6) |
 | `stability` | Strength of all arcade assists (counter-steer, yaw damping, ESC, traction control) |
 | `cgHeight`, `frontWeight`, `wheelbase` | Load transfer, wheelie/stoppie thresholds, yaw response |
 | `yawInertia` | Multiplier on yaw inertia (higher = slower to change direction, e.g. Jeep 1.5) |
@@ -163,7 +163,7 @@ On a crash (traffic, head on, barrier, treeline): time scale ramps to 0.18x, a f
 
 ## Decisions made where the brief was ambiguous
 
-* Huracán colour: green. Urus colour: yellow.
+* Hurricane colour: green. Uranus colour: yellow.
 * Right hand traffic (US style), 5 lanes per direction on highways, US lane widths and markings.
 * Motorcycle masses in the data file include a 75 kg rider (garage shows the bike's own weight).
 * Real 0-60 / top speed figures are treated as targets: the launch factor auto-calibrates 0-60; top speed comes from drag. Bike top speeds land 3 to 6 % under reference because the wobble assist and drag curve were left as is.
@@ -186,7 +186,7 @@ On a crash (traffic, head on, barrier, treeline): time scale ramps to 0.18x, a f
 * **Not verified on real Windows or a real GPU.** The Windows exes were built and inspected but could not be launched in the build container (Wine 64 bit could not be installed alongside the 32 bit Wine that NSIS needs). The packaged app bundle itself was verified with Linux Electron.
 * **60 FPS not measured.** Only software rendering was available, so frame rate on a mid range laptop GPU is unverified. On High the city scene is ~600 draw calls and ~140k triangles with ~95 traffic cars alive; if it is slow, use Medium or Low (no shadows, fewer props, shorter draw distance).
 * **Audio and gamepad were not heard/tested** (no audio device or controller in the container). The code paths run without errors.
-* Vehicle models are stylised low poly approximations built from extruded profiles and primitives; they capture silhouette, proportions, colours and signature cues (e.g. the ZR1's raised hood with the clear window over the supercharger, wide rear fenders, big splitter and spoiler) but are not detailed replicas. Motorcycles are shown without a rider for now (the rider builder is kept in `BikeBuilder.ts`).
+* Vehicle models are stylised low poly approximations built from extruded profiles and primitives; they capture silhouette, proportions, colours and signature cues (e.g. the Conquette 6's raised hood with the clear window over the supercharger, wide rear fenders, big splitter and spoiler) but are not detailed replicas. Motorcycles are shown without a rider for now (the rider builder is kept in `BikeBuilder.ts`).
 * Deformation is a vertex dent around the impact point. With no rider on the bikes there is currently no rider ejection.
 * Traffic wheels do not spin (merged into one mesh per car for performance). Traffic uses per car meshes rather than GPU instancing.
 * The KTM's rear stepping out is modest in the simulation (it is agile and wheelie prone, but the bike model does not power slide much).

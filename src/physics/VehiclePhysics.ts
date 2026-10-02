@@ -237,7 +237,7 @@ export class VehiclePhysics {
     // electric motor: flat maximum force up to base speed, then constant power
     if (sp.gears === 1) Fdrive = c.throttle * Math.min(this.m * G * 1.25, this.P / Math.max(1, Math.abs(v)));
     if (rN >= 1.0) Fdrive = 0; // rev limiter
-    // traction control, strength by stability (ZR1 ~ nearly off, Huracan strong)
+    // traction control, strength by stability (Conquette 6 ~ nearly off, Hurricane strong)
     if (!bk) Fdrive *= 1 - clamp(this.wheelspin * sp.stability * sp.stability * 1.5, 0, 0.6);
     if (v > this.vLimit && sp.limited) Fdrive *= clamp(1 - (v - this.vLimit) * 0.5, 0, 1); // governor
     if (reverse) Fdrive = -this.m * 3;

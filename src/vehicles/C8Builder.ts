@@ -5,7 +5,7 @@ import { MAT, paint } from './Materials';
 import { loft, ring, lerpK, type Tag, type Sec } from './Z350Builder';
 
 /**
- * Corvette C8 (Z06), modelled for likeness from the front and rear photos: a low pointed beak, long slim blade
+ * Conquette 8, modelled for likeness from the front and rear photos: a low pointed beak, long slim blade
  * headlamps lying along the fenders, an angular lower mouth with corner intakes, a cab forward cabin with a black roof
  * centre, big angular scoops behind the doors, wide hips with mesh vents, boomerang tail lamps, a quad centre exhaust
  * and a raised wing. 4.63 m long, 2.1 m wide, 1.23 m tall, wheelbase 2.72 m.

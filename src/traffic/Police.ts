@@ -64,7 +64,7 @@ export class Police {
     return this.cops.length;
   }
 
-  /** Dodge Charger pursuit units only join at higher heat, and are faster and sharper */
+  /** Conquette pursuit units only join at higher heat, and are faster and sharper */
   static CHARGER_FROM = 50000;
   static MOTO_FROM = 10000;
   /** at most this many police units are on the road at once */

@@ -5,7 +5,7 @@ import { MAT, paint } from './Materials';
 import { loft, ring, lerpK, type Tag, type Sec } from './Z350Builder';
 
 /**
- * BMW M4 (G82) coupe, modelled for likeness. The side profile is traced from the side photo (127.7 px per metre):
+ * BWM W4 coupe, modelled for likeness. The side profile is traced from the side photo (127.7 px per metre):
  * a long bonnet rising to a cowl, a raked screen, a carbon roof peaking over the doors and falling in a fastback to a
  * short boot with a small lip; big double kidney grilles, slim hockey stick headlamps, power bulge stripes on the bonnet,
  * slim wide tail lamps and the quad exhaust. 4.79 m long, 1.89 m wide, 1.39 m tall, wheelbase 2.88 m.

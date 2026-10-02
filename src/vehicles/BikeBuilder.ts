@@ -32,7 +32,7 @@ interface BikeDesign {
 }
 
 const DESIGNS: Record<string, BikeDesign> = {
-  // Honda CBR650R (traced from the red side photo, 331 px per metre): half fairing with a pointed nose and tall screen,
+  // Honder CCR650R (traced from the red side photo, 331 px per metre): half fairing with a pointed nose and tall screen,
   // white and black swoosh down the cowl, big tank, exposed bronze engine, silver silencer under the belly, stubby tail.
   cbr650: {
     wheelR: 0.29, rearR: 0.31, front: 0.725, rear: -0.725, frontW: 0.12, rearW: 0.17, spokes: 10, rim: 0x1b1c1f,
@@ -59,7 +59,7 @@ const DESIGNS: Record<string, BikeDesign> = {
     tailLamp: [-0.86, 0.9],
     mirrors: [0.62, 1.1],
   },
-  // Yamaha R6 (from the blue and black photos): sharp pointed nose with slit lamps, tall screen, white side stripes
+  // Yamiha R6 (from the blue and black photos): sharp pointed nose with slit lamps, tall screen, white side stripes
   // and a white belly pan, gold fork, knife tail, silver can slung low on the right, blue wheels on the blue bike.
   r6: {
     wheelR: 0.29, rearR: 0.3, front: 0.69, rear: -0.685, frontW: 0.12, rearW: 0.18, spokes: 10, rim: 0x1f3aa8,
@@ -102,7 +102,7 @@ const DESIGNS: Record<string, BikeDesign> = {
     tailLamp: [-0.88, 0.98],
     mirrors: [0.62, 1.03],
   },
-  // Kawasaki ZX-6R (traced from the side photo, 710 px per metre): sharp full fairing with a tall screen, high
+  // ZR6X Samurai (traced from the side photo, 710 px per metre): sharp full fairing with a tall screen, high
   // tank, stepped seat and an upswept tail, big black muffler on the right, belly pan under the engine.
   zx6r: {
     wheelR: 0.3, rearR: 0.312, front: 0.72, rear: -0.68, frontW: 0.12, rearW: 0.18, spokes: 7, rim: 0x25272a,
@@ -136,7 +136,7 @@ const DESIGNS: Record<string, BikeDesign> = {
     tailLamp: [-0.82, 0.97],
     mirrors: [0.7, 0.97],
   },
-  // Husqvarna FS 450 supermoto: tall and narrow, long-travel fork, high number plate and fender, flat seat running
+  // Husky SF450 supermoto: tall and narrow, long-travel fork, high number plate and fender, flat seat running
   // into an upswept tail, white shrouds with navy frame and yellow accents, bare engine, silver silencer on the left.
   fs450: {
     wheelR: 0.3, rearR: 0.312, front: 0.74, rear: -0.74, frontW: 0.12, rearW: 0.16, spokes: 18, rim: 0x1b1c1f,
@@ -177,7 +177,7 @@ const DESIGNS: Record<string, BikeDesign> = {
     sigF: [0.56, 1.06],
     tailLamp: [-1.0, 0.96],
   },
-  // Honda CBR1000RR Fireblade (traced from the side photo, 627 px per metre): sharp HRC tricolour fairing with a
+  // Honder CCR1000RR (traced from the side photo, 627 px per metre): sharp tricolour fairing with a
   // twin-LED nose, tall screen, gold fork, stepped tail with a plate hanger and a big angled titanium silencer.
   fireblade: {
     wheelR: 0.29, rearR: 0.31, front: 0.72, rear: -0.69, frontW: 0.12, rearW: 0.19, spokes: 10, rim: 0x18191b,

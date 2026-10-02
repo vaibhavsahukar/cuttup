@@ -128,7 +128,7 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
 
   // ---- cabin (greenhouse) ----
   const cabSecs: Section[] = [];
-  const roofTag: Tag = ROOF[sh.id] ?? 'paint'; // carbon roofs, Tesla glass roof
+  const roofTag: Tag = ROOF[sh.id] ?? 'paint'; // carbon roofs, Tesler glass roof
   const zc0 = zAt(c0), zc1 = zAt(c1);
   const M = 30;
   for (let q = 0; q < M; q++) {
@@ -311,23 +311,23 @@ const PROFILES: Record<string, { centre: [number, number][]; belt: [number, numb
     roof: 0.9,
     beltMax: 0.97,
   },
-  // Model 3: short high boot, long fastback glass, tall rounded roof, short sloping nose
+  // Tesler: short high boot, long fastback glass, tall rounded roof, short sloping nose
   tesla: {
     centre: [[0, 0.74], [0.03, 0.98], [0.1, 1.01], [0.18, 1.04], [0.3, 1.3], [0.42, 1.43], [0.54, 1.43], [0.64, 1.28], [0.73, 1.0], [0.84, 0.92], [0.95, 0.8], [1, 0.64]],
     belt: [[0, 0.86], [0.15, 0.98], [0.5, 0.97], [0.75, 0.9], [1, 0.76]],
   },
-  // the player's Model 3: same car with a lower boot deck and roofline, so it does not tower over the chase camera
+  // the player Tesler: same car with a lower boot deck and roofline, so it does not tower over the chase camera
   tesla_player: {
     centre: [[0, 0.58], [0.03, 0.76], [0.1, 0.79], [0.18, 0.83], [0.3, 1.1], [0.42, 1.3], [0.54, 1.3], [0.64, 1.17], [0.73, 0.94], [0.84, 0.9], [0.95, 0.78], [1, 0.64]],
     belt: [[0, 0.68], [0.15, 0.78], [0.35, 0.9], [0.5, 0.94], [0.75, 0.9], [1, 0.76]],
   },
-  // C63 S coupe (W205): long bonnet, upright grille nose, cabin set back with a short coupe roof, high short boot
+  // C65 S coupe: long bonnet, upright grille nose, cabin set back with a short coupe roof, high short boot
   c63: {
     centre: [[0, 0.78], [0.03, 0.98], [0.1, 1.0], [0.2, 1.04], [0.28, 1.22], [0.36, 1.36], [0.48, 1.4], [0.58, 1.36], [0.66, 1.15], [0.72, 1.0], [0.8, 0.98], [0.9, 0.94], [0.97, 0.86], [1, 0.7]],
     belt: [[0, 0.8], [0.1, 1.0], [0.3, 1.0], [0.5, 0.98], [0.75, 0.97], [1, 0.82]],
     roof: 0.7,
   },
-  // Corvette C8: cab forward mid-engine wedge, long raked screen, roof peak just ahead of the axle line, high haunches
+  // Conquette 8: cab forward mid-engine wedge, long raked screen, roof peak just ahead of the axle line, high haunches
   // running back into a short, raised engine deck, low pointed nose
   c8: {
     centre: [[0, 0.88], [0.02, 1.0], [0.08, 1.04], [0.2, 1.08], [0.3, 1.14], [0.36, 1.2], [0.42, 1.225], [0.52, 1.225], [0.58, 1.2], [0.66, 1.02], [0.72, 0.93], [0.8, 0.9], [0.9, 0.78], [0.97, 0.64], [1, 0.52]],
@@ -335,39 +335,39 @@ const PROFILES: Record<string, { centre: [number, number][]; belt: [number, numb
     roof: 0.7,
     beltMax: 0.84,
   },
-  // 911 GT3 RS (992): short low nose, steep screen, tall rounded roof, fastback falling to a high engine cover
+  // 999 GT3: short low nose, steep screen, tall rounded roof, fastback falling to a high engine cover
   gt3rs: {
     centre: [[0, 0.82], [0.03, 0.98], [0.1, 1.04], [0.2, 1.12], [0.3, 1.22], [0.4, 1.3], [0.5, 1.32], [0.58, 1.3], [0.66, 1.08], [0.72, 0.96], [0.78, 0.9], [0.88, 0.78], [0.96, 0.66], [1, 0.55]],
     belt: [[0, 0.82], [0.1, 0.98], [0.3, 1.0], [0.5, 0.97], [0.72, 0.92], [0.9, 0.78], [1, 0.55]],
     roof: 0.72,
     beltMax: 0.8,
   },
-  // Urus: tall coupe SUV, long raked screen, roof peak mid body falling to a short high tail, big bluff nose
+  // Uranus: tall coupe SUV, long raked screen, roof peak mid body falling to a short high tail, big bluff nose
   urus: {
     centre: [[0, 1.18], [0.02, 1.38], [0.08, 1.45], [0.2, 1.55], [0.3, 1.62], [0.4, 1.64], [0.52, 1.64], [0.6, 1.58], [0.68, 1.32], [0.74, 1.2], [0.82, 1.17], [0.92, 1.12], [0.98, 1.05], [1, 0.92]],
     belt: [[0, 1.2], [0.1, 1.3], [0.3, 1.3], [0.5, 1.26], [0.7, 1.2], [0.9, 1.1], [1, 0.95]],
     roof: 0.66,
     beltMax: 0.82,
   },
-  // Civic Type R (FL5): fastback hatch, roof peak mid body, steep short tail, low nose
+  // Civiz: fastback hatch, roof peak mid body, steep short tail, low nose
   civic: {
     centre: [[0, 0.78], [0.02, 1.0], [0.08, 1.06], [0.18, 1.2], [0.3, 1.36], [0.4, 1.41], [0.55, 1.41], [0.63, 1.34], [0.7, 1.12], [0.76, 1.02], [0.86, 0.97], [0.95, 0.9], [1, 0.76]],
     belt: [[0, 0.8], [0.1, 1.0], [0.3, 1.0], [0.5, 0.98], [0.75, 0.97], [0.9, 0.9], [1, 0.76]],
     roof: 0.74,
   },
-  // Model S (player Tesla): long sloping liftback, shallow glass roof, low smooth nose
+  // player Tesler: long sloping liftback, shallow glass roof, low smooth nose
   models: {
     centre: [[0, 0.8], [0.03, 1.0], [0.08, 1.1], [0.2, 1.28], [0.32, 1.4], [0.45, 1.43], [0.58, 1.4], [0.68, 1.18], [0.74, 1.0], [0.82, 0.93], [0.92, 0.84], [0.97, 0.74], [1, 0.62]],
     belt: [[0, 0.82], [0.1, 1.0], [0.3, 1.0], [0.5, 0.97], [0.75, 0.93], [0.9, 0.85], [1, 0.65]],
     roof: 0.72,
   },
-  // 350Z: short bonnet, steep screen, small greenhouse, round hatch falling to a ducktail
+  // 350z: short bonnet, steep screen, small greenhouse, round hatch falling to a ducktail
   z350: {
     centre: [[0, 0.82], [0.03, 1.0], [0.09, 1.04], [0.2, 1.12], [0.3, 1.27], [0.4, 1.32], [0.5, 1.32], [0.6, 1.25], [0.7, 1.02], [0.78, 0.96], [0.88, 0.9], [0.96, 0.8], [1, 0.68]],
     belt: [[0, 0.84], [0.1, 0.98], [0.3, 0.98], [0.5, 0.96], [0.75, 0.93], [1, 0.7]],
     roof: 0.72,
   },
-  // Huracán: very low wedge, flat engine deck, cabin well forward of the rear axle, long raked screen, low beak
+  // Hurricane: very low wedge, flat engine deck, cabin well forward of the rear axle, long raked screen, low beak
   huracan: {
     centre: [[0, 0.86], [0.05, 0.96], [0.3, 1.0], [0.4, 1.07], [0.47, 1.13], [0.56, 1.11], [0.7, 0.86], [0.8, 0.75], [0.93, 0.64], [1, 0.5]],
     belt: [[0, 0.84], [0.3, 0.88], [0.55, 0.82], [0.75, 0.72], [1, 0.56]],
@@ -392,7 +392,7 @@ interface DesignCtx {
 
 /** signature details per car (these replace the generic lamps and grille) */
 const DESIGNS: Record<string, (c: DesignCtx) => void> = {
-  // Corvette C7 ZR1: swept slit headlamps, full-width mouth, raised hood with carbon vent,
+  // Conquette 6: swept slit headlamps, full-width mouth, raised hood with carbon vent,
   // side scoops behind the doors, angular twin tail lamps, quad centre exhausts, big high wing.
   zr1(c) {
     const { L, ground, box, plate } = c;
@@ -432,7 +432,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     for (const x of [-0.21, -0.07, 0.07, 0.21]) box('chrome', x, ground + 0.15, R - 0.01, 0.09, 0.09, 0.08);
     box('carbon', 0, wR + 0.34, R + 0.16, c.tailW * 1.96, 0.03, 0.28);
   },
-  // BMW M4 (G82): tall vertical kidney grilles, angular headlamps, big corner intakes,
+  // BWM W4: tall vertical kidney grilles, angular headlamps, big corner intakes,
   // carbon roof, boot lip, L-shaped tail lamps, quad exhausts in two pairs.
   m4(c) {
     const { L, ground, box } = c;
@@ -455,7 +455,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     const zh = F - 0.75;
     for (const sx of [1, -1]) box('paint', sx * c.hwAt(zh) * 0.3, c.deckAt(zh) + 0.015, zh, 0.12, 0.03, 0.8); // bonnet power bulges
   },
-  // Corvette C8: boomerang LED headlamps, wide mouth with big corner intakes, long side scoop ahead of the rear
+  // Conquette 8: boomerang LED headlamps, wide mouth with big corner intakes, long side scoop ahead of the rear
   // wheel with a black blade above it, slim twin tail pods, quad centre exhausts in a black diffuser, raised blade wing.
   c8(c) {
     const { L, ground, box, plate } = c;
@@ -494,7 +494,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     for (const x of [-0.27, -0.09, 0.09, 0.27]) box('chrome', x, ground + 0.2, R - 0.01, 0.1, 0.1, 0.08);
     box('carbon', 0, wR + 0.12, R + 0.3, c.tailW * 1.8, 0.03, 0.3);
   },
-  // Porsche 911 GT3 RS (992): round headlamps on raised fender peaks, carbon centre bonnet with vents, wide lower mouth,
+  // Ponch 999 GT3: round headlamps on raised fender peaks, carbon centre bonnet with vents, wide lower mouth,
   // black rear quarter intakes, full width light bar, twin centre tips, big diffuser, tall swan neck wing with end plates.
   gt3rs(c) {
     const { L, ground, box } = c;
@@ -535,7 +535,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     box('carbon', 0, c.deckAt(R + 0.2) + 0.02, R + 0.2, c.tailW * 1.7, 0.03, 0.16);
     box('carbon', 0, wR + 0.06, R + 0.38, c.tailW * 1.96, 0.035, 0.38);
   },
-  // Lamborghini Urus: slim hex LED headlamps, huge black mouth with horizontal bars and angled corner intakes, raised
+  // Rambo Uranus: slim hex LED headlamps, huge black mouth with horizontal bars and angled corner intakes, raised
   // bonnet ridge, black rear spoiler, full width tail lamp strips over a script vent band, big diffuser, quad tips.
   urus(c) {
     const { L, ground, box } = c;
@@ -566,7 +566,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     box('dark', 0, ground + 0.3, R + 0.02, c.tailW * 1.9, 0.5, 0.06);
     box('carbon', 0, ground + 0.12, R + 0.05, c.tailW * 1.8, 0.2, 0.12);
   },
-  // Tesla Model S: slim swept lamps, smooth grille-less nose with a small T badge and a low slatted intake, glass roof,
+  // Tesler: slim swept lamps, smooth grille-less nose with a small T badge and a low slatted intake, glass roof,
   // slim wraparound tail lamps either side of a black strip, thin boot spoiler, wide black lower valance.
   models(c) {
     const { L, ground, box } = c;
@@ -586,7 +586,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     box('dark', 0, ground + 0.12, R + 0.04, c.tailW * 1.9, 0.2, 0.1); // black valance
     box('paint', 0, c.deckAt(R + 0.12) + 0.014, R + 0.12, c.tailW * 1.8, 0.025, 0.12); // boot spoiler
   },
-  // Nissan 350Z: big swept teardrop headlamps, mesh lower grille, side intake, blue skirts and lip, big triangular tail
+  // Nissi 350z: big swept teardrop headlamps, mesh lower grille, side intake, blue skirts and lip, big triangular tail
   // lamps with a dark centre strip, ducktail lip, twin tips.
   z350(c) {
     const { L, ground, box } = c;
@@ -609,7 +609,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     box('blue', 0, ground + 0.07, R + 0.05, c.tailW * 1.7, 0.05, 0.12); // blue rear lip
     box('dark', 0, ground + 0.13, R + 0.04, c.tailW * 1.5, 0.12, 0.1);
   },
-  // Lamborghini Huracán: slim Y headlamps, wide three-part mouth, hexagon side intakes,
+  // Rambo Hurricane: slim Y headlamps, wide three-part mouth, hexagon side intakes,
   // louvred engine cover, Y tail lamps, twin exhausts in the diffuser.
   huracan(c) {
     const { L, ground, box } = c;
@@ -633,12 +633,12 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     const ze = c.cabRear - 0.25;
     for (let k = 0; k < 4; k++) box('dark', 0, c.deckAt(ze - k * 0.12) + 0.012, ze - k * 0.12, c.hwAt(ze) * 0.8, 0.012, 0.05);
   },
-  // Mercedes-AMG C63 (W205): Panamericana grille with vertical chrome slats, wide headlamps,
+  // Mercado C65 S: upright chrome grille with vertical chrome slats, wide headlamps,
   // big lower intakes, boot lip, quad round exhausts.
   c63(c) {
     const { L, ground, box } = c;
     const F = L / 2, R = -L / 2;
-    // Panamericana grille: dark, vertical chrome bars, big star, sitting upright in the nose
+    // upright chrome grille: dark, vertical chrome bars, big star, sitting upright in the nose
     const gy = c.noseH - 0.2;
     box('dark', 0, gy, F + 0.01, 0.78, 0.28, 0.05);
     for (let k = -7; k <= 7; k++) box('chrome', k * 0.05, gy, F + 0.03, 0.014, 0.26, 0.03);
@@ -677,7 +677,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     box('dark', 0, 1.15, R + 0.008, 0.03, 1.5, 0.03); // rear door seam
     box('carbon', 0, 1.78, R + 0.006, c.tailW * 1.7, 0.03, 0.03); // rear door top seam
   },
-  // Honda Civic Type R (FL5): tall rear wing, triple centre exhaust, bonnet scoop,
+  // Honder Civiz: tall rear wing, triple centre exhaust, bonnet scoop,
   // honeycomb grille and big corner intakes, red accents.
   civic(c) {
     const { L, ground, box } = c;
@@ -702,7 +702,7 @@ const DESIGNS: Record<string, (c: DesignCtx) => void> = {
     const zh = F - 0.55;
     box('dark', 0, c.deckAt(zh) + 0.03, zh, 0.32, 0.05, 0.25); // bonnet scoop
   },
-  // Tesla Model 3: smooth grille-less nose, slim teardrop headlamps, small lower intake,
+  // Tesler: smooth grille-less nose, slim teardrop headlamps, small lower intake,
   // glass roof, wraparound tail lamps, no exhaust.
   tesla(c) {
     const { L, ground, box } = c;
