@@ -90,7 +90,7 @@ export function buildTesler(color: number, shadows = true): VehicleModel {
   for (const sx of [1, -1]) {
     // dark housing a hair under the lamp, then the lamp: a thin crescent swept back along the fender
     // round headlamp lying on the fender top at the nose corner
-    lampShape('head', sx, [[0.88, F - 0.19], [0.868, F - 0.144], [0.835, F - 0.108], [0.787, F - 0.088], [0.733, F - 0.088], [0.685, F - 0.108], [0.652, F - 0.144], [0.64, F - 0.19], [0.652, F - 0.236], [0.685, F - 0.272], [0.733, F - 0.292], [0.787, F - 0.292], [0.835, F - 0.272], [0.868, F - 0.236]]);
+    lampShape('head', sx, [[0.87, F - 0.2], [0.855, F - 0.144], [0.814, F - 0.098], [0.753, F - 0.073], [0.687, F - 0.073], [0.626, F - 0.098], [0.585, F - 0.144], [0.57, F - 0.2], [0.585, F - 0.256], [0.626, F - 0.302], [0.687, F - 0.327], [0.753, F - 0.327], [0.814, F - 0.302], [0.855, F - 0.256]]);
     box('dark', sx * 0.64, 0.45, F - 0.006, 0.2, 0.03, 0.03); // thin corner slit
     box('dark', sx * (lerpK(HW, 0.1) + 0.012), 0.72, 0.1, 0.008, 0.014, 1.5); // door shut line
     box('dark', sx * (lerpK(HW, 0.3) + 0.011), 0.86, 0.3, 0.012, 0.03, 0.2); // flush handle
