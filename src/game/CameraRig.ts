@@ -47,8 +47,9 @@ export class CameraRig {
 
     let desiredPos: THREE.Vector3, desiredLook: THREE.Vector3;
     if (lookback) {
-      desiredPos = root.position.clone().addScaledVector(fwd, p.spec.dims.length * 0.5 + 0.5).addScaledVector(up, h + 0.6);
-      desiredLook = root.position.clone().addScaledVector(fwd, -30).addScaledVector(up, 1);
+      // out ahead of the nose and above it, looking back: the front of your car / bike fills the bottom of the view and the road behind it is beyond
+      desiredPos = root.position.clone().addScaledVector(fwd, p.spec.dims.length * 0.5 + (bike ? 3.4 : 4.2)).addScaledVector(up, h + 1.1);
+      desiredLook = root.position.clone().addScaledVector(fwd, -10).addScaledVector(up, 0.6);
       this.pos.copy(desiredPos); this.look.copy(desiredLook);
     } else if (this.mode === 'hood') {
       const off = bike ? new THREE.Vector3(0, 1.42, 0.45) : new THREE.Vector3(0, h * 0.82, p.spec.dims.length * 0.12);
