@@ -75,8 +75,10 @@ export function buildTesler(color: number, shadows = true): VehicleModel {
   // ---- front: slim swept headlamps, low black intake, corner slits, badge ----
   for (const sx of [1, -1]) {
     // dark housing a hair under the lamp, then the lamp: a thin crescent swept back along the fender
-    lampOn('dark', sx, 2.47, 2.08, (z) => lerpK([[2.47, 0.63], [2.28, 0.61], [2.08, 0.7]], z), (z) => lerpK([[2.47, 0.89], [2.3, 0.91], [2.08, 0.85]], z), 0.012);
-    lampOn('head', sx, 2.45, 2.11, (z) => lerpK([[2.45, 0.66], [2.28, 0.64], [2.11, 0.73]], z), (z) => lerpK([[2.45, 0.86], [2.3, 0.88], [2.11, 0.82]], z), 0.02);
+    // round headlamp: a dark bezel dome with a smaller lens dome in it, sunk into the fender top
+    { const hz = 2.34, hx = 0.76, hy = lerpK(DECK, hz) - 0.035;
+      ball('dark', sx * hx, hy, hz, 0.125, 0.07, 0.115);
+      ball('head', sx * hx, hy + 0.03, hz + 0.03, 0.1, 0.06, 0.095); }
     box('dark', sx * 0.64, 0.45, F - 0.006, 0.2, 0.03, 0.03); // thin corner slit
     box('dark', sx * (lerpK(HW, 0.1) + 0.012), 0.72, 0.1, 0.008, 0.014, 1.5); // door shut line
     box('dark', sx * (lerpK(HW, 0.3) + 0.011), 0.86, 0.3, 0.012, 0.03, 0.2); // flush handle
