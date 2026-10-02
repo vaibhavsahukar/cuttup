@@ -64,7 +64,7 @@ export class Police {
     return this.cops.length;
   }
 
-  /** Conquette pursuit units only join at higher heat, and are faster and sharper */
+  /** The Conquette interceptor joins a highway chase from 50,000 points (five stars alone brings patrol cars), and is faster and sharper */
   static CHARGER_FROM = 50000;
   static MOTO_FROM = 10000;
   /** at most this many police units are on the road at once */
@@ -87,7 +87,7 @@ export class Police {
     const s = score / this.diff.copTier;
     const has = (k: UnitKind) => this.cops.some((c) => c.kind === k && c.retiring <= 0);
     if (this.map.road === 'backroad') return BACKROAD_TIERS[Math.max(0, Math.min(3, this.wanted - 1))];
-    if (this.wanted >= 5 && !has('interceptor')) return 'interceptor';
+    if (this.wanted >= 5 && s >= Police.CHARGER_FROM && !has('interceptor')) return 'interceptor';
     if (this.playerIsBike && s >= 20000 && !has('samurai')) return 'samurai';
     if (this.playerIsBike && s >= Police.MOTO_FROM && !has('moto')) return 'moto';
     return 'patrol';
