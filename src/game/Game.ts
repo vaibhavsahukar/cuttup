@@ -362,6 +362,8 @@ export class Game {
 
   /** DEV MODE: a free flying camera over a frozen world (the map still builds around the camera) */
   dev = false;
+  /** dev: the player passes through other cars (traffic, cops, wrecks) to test features */
+  ghost = false;
   private fly = new FlyCam();
   setDev(on: boolean) {
     if (on === this.dev) return;
@@ -810,6 +812,7 @@ export class Game {
 
   /** player vs traffic, SAT on oriented boxes in road coordinates */
   private collide() {
+    if (this.ghost) return;
     const ph = this.player.phys;
     const pL = this.player.collL / 2, pW = this.player.collW / 2;
     const pa = [Math.cos(ph.psi), -Math.sin(ph.psi)]; // (s,d) forward axis

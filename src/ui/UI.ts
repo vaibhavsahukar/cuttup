@@ -22,7 +22,7 @@ export interface UIHandlers {
   play(): void; garage(): void; models(): void; previewModel(key: string): void; maps(): void; settings(): void; quit(): void;
   selectVehicle(id: string): void; previewVehicle(id: string): void;
   selectMap(id: string): void; startMap(id: string): void;
-  back(): void; dev(): void; resume(): void; restart(): void; toMenu(): void;
+  back(): void; dev(): void; ghost(): void; resume(): void; restart(): void; toMenu(): void;
   settingsChanged(): void; click(): void;
 }
 
@@ -90,7 +90,7 @@ export class UI {
       <div id="pause" class="screen"><div class="panel center">
         <h2>Paused</h2>
         <button data-a="resume" class="primary">Resume</button><button data-a="restart">Restart</button>
-        <button data-a="settings">Settings</button>${RELEASE ? '' : '<button data-a="dev">Dev mode: fly camera</button>'}<button data-a="menu">Quit to menu</button></div></div>
+        <button data-a="settings">Settings</button>${RELEASE ? '' : '<button data-a="dev">Dev mode: fly camera</button><button data-a="ghost" id="ghostBtn">Dev mode: ghost traffic OFF</button>'}<button data-a="menu">Quit to menu</button></div></div>
       <div id="results" class="screen"><div class="over"></div></div>
       <div id="flash"></div>`);
 
@@ -143,7 +143,7 @@ export class UI {
       const a = (e.target as HTMLElement).dataset.a;
       if (!a) return;
       this.h.click();
-      if (a === 'resume') this.h.resume(); else if (a === 'restart') this.h.restart(); else if (a === 'menu') this.h.toMenu(); else if (a === 'dev') this.h.dev();
+      if (a === 'resume') this.h.resume(); else if (a === 'restart') this.h.restart(); else if (a === 'menu') this.h.toMenu(); else if (a === 'dev') this.h.dev(); else if (a === 'ghost') this.h.ghost();
       else if (a === 'settings') { this.settingsReturn = 'pause'; this.h.settings(); }
     });
     const hint = $('#menuHint');
@@ -441,6 +441,8 @@ export class UI {
       : (status === 'filling' ? 'FILLING' : status === 'filled' ? 'FILLED' : level <= 0 ? 'EMPTY' : `GAS ${dist}`);
   }
   /** dev mode: hide the game HUD and show the controls hint */
+  /** pause menu toggle: drive through other cars (testing) */
+  ghostMode(on: boolean) { const b = document.getElementById('ghostBtn'); if (b) b.textContent = `Dev mode: ghost traffic ${on ? 'ON' : 'OFF'}`; }
   devMode(on: boolean) { $('#hud').classList.toggle('dev', on); /* the on screen key list is gone: the hint stays hidden */ }
   highBeam(on: boolean) { const e = $('#hud .hbind'); if (e.hidden === on) e.hidden = !on; }
   private lastVig = -1;

@@ -69,7 +69,7 @@ async function boot() {
   addEventListener('resize', resize);
 
   const startGame = (mapId: string, vehicleId: string) => {
-    game?.setDev(false); ui.devMode(false);
+    game?.setDev(false); ui.devMode(false); ui.ghostMode(false);
     game?.dispose();
     renderScale = 1; renderer.setPixelRatio(basePR());
     lastRun = { map: mapId, vehicle: vehicleId };
@@ -113,6 +113,7 @@ async function boot() {
       ui.show('menu');
     },
     resume: () => { mode = 'game'; ui.show('hud'); input.clearPressed(); },
+    ghost: () => { if (!game) return; game.ghost = !game.ghost; ui.ghostMode(game.ghost); },
     dev: () => { if (!game) return; game.setDev(!game.dev); ui.devMode(game.dev); mode = 'game'; ui.show('hud'); input.clearPressed(); },
     restart: () => startGame(lastRun.map, lastRun.vehicle),
     toMenu: () => { toMenuScene(); preview.show(st.vehicle); ui.show('menu'); },
