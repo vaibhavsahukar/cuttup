@@ -45,6 +45,20 @@ export function buildMercado(color: number, shadows = true): VehicleModel {
     push(tag, tri);
   };
 
+  /** a lamp lying flat on the body: an outline given as (x, z) points, laid on the surface so it follows the curve and does not stick out */
+  const lampShape = (tag: Tag, sx: number, outline: [number, number][], lift = 0.03) => {
+    const surf = (x: number, z: number) => { const hw = lerpK(HW, z), t = Math.min(1, Math.max(0, (x / hw - 0.6) / 0.355)); return lerpK(DECK, z) - 0.008 - 0.042 * t * t + lift; };
+    const ptsB: [number, number][] = [];
+    for (let i = 0; i < outline.length; i++) { const a = outline[i], b = outline[(i + 1) % outline.length]; for (let k = 0; k < 8; k++) ptsB.push([a[0] + (b[0] - a[0]) * k / 8, a[1] + (b[1] - a[1]) * k / 8]); }
+    let cx = 0, cz = 0; for (const o of outline) { cx += o[0]; cz += o[1]; } cx /= outline.length; cz /= outline.length;
+    const ring = (f: number) => ptsB.map(([x, z]) => { const px = cx + (x - cx) * f, pz = cz + (z - cz) * f; return [sx * px, surf(px, pz), pz] as [number, number, number]; });
+    const rs = [ring(1), ring(0.66), ring(0.33)], c: [number, number, number] = [sx * cx, surf(cx, cz), cz], tri: number[] = [];
+    const n = ptsB.length;
+    for (let r = 0; r < 2; r++) for (let i = 0; i < n; i++) { const a = rs[r][i], b = rs[r][(i + 1) % n], d = rs[r + 1][i], e = rs[r + 1][(i + 1) % n]; tri.push(...a, ...d, ...b, ...b, ...d, ...e, ...a, ...b, ...d, ...b, ...e, ...d); }
+    for (let i = 0; i < n; i++) { const a = rs[2][i], b = rs[2][(i + 1) % n]; tri.push(...c, ...a, ...b, ...c, ...b, ...a); }
+    push(tag, tri);
+  };
+
   // ---- lower body: sections nose to tail, with real wheel arches ----
   const N = 110, secs: Sec[] = [];
   for (let q = 0; q < N; q++) {
@@ -85,9 +99,8 @@ export function buildMercado(color: number, shadows = true): VehicleModel {
   box('dark', 0, 0.28, F - 0.006, 0.6, 0.09, 0.03); // low centre intake
   box('chrome', 0, 0.345, F + 0.002, 0.6, 0.02, 0.024); // bar over it
   for (const sx of [1, -1]) {
-    // dark housing a hair under the lamp, then the lamp: wide, angular, swept back to the fender
-    lampOn('dark', sx, 2.37, 1.98, (z) => lerpK([[2.37, 0.4], [2.2, 0.43], [1.98, 0.6]], z), (z) => lerpK([[2.37, 0.9], [2.2, 0.93], [1.98, 0.86]], z), 0.012);
-    lampOn('head', sx, 2.35, 2.0, (z) => lerpK([[2.35, 0.44], [2.2, 0.47], [2.0, 0.63]], z), (z) => lerpK([[2.35, 0.87], [2.2, 0.9], [2.0, 0.83]], z), 0.02);
+    // wide angular headlamp lying on the fender top at the nose corner
+    lampShape('head', sx, [[0.46, F - 0.12], [0.62, F - 0.1], [0.8, F - 0.17], [0.9, F - 0.28], [0.86, F - 0.42], [0.7, F - 0.36], [0.52, F - 0.27], [0.44, F - 0.18]]);
     box('dark', sx * 0.56, 0.36, F - 0.006, 0.3, 0.18, 0.03); // big corner intake
     for (const dy of [-0.05, 0.0, 0.05]) box('carbon', sx * 0.56, 0.36 + dy, F + 0.002, 0.26, 0.012, 0.02); // its horizontal slats
     box('dark', sx * (lerpK(HW, 1.1) + 0.006), 0.62, 1.1, 0.012, 0.1, 0.34); // fender vent behind the front wheel
@@ -129,7 +142,7 @@ export function buildMercado(color: number, shadows = true): VehicleModel {
   const sg = new THREE.BoxGeometry(0.08, 0.035, 0.03);
   for (const sx of [1, -1]) for (const sz of [1, -1]) {
     const s = new THREE.Mesh(sg, MAT.sigOff);
-    s.position.set(sx * (sz > 0 ? 0.88 : 0.88), sz > 0 ? 0.5 : 0.72, sz * (F - 0.004));
+    s.position.set(sx * (sz > 0 ? 0.6 : 0.66), sz > 0 ? 0.56 : 0.7, sz * (F - 0.004));
     chassis.add(s);
     (sx > 0 ? sigL : sigR).push(s);
   }

@@ -42,6 +42,20 @@ export function buildTesler(color: number, shadows = true): VehicleModel {
     push(tag, tri);
   };
 
+  /** a lamp lying flat on the body: an outline given as (x, z) points, laid on the surface so it follows the curve and does not stick out */
+  const lampShape = (tag: Tag, sx: number, outline: [number, number][], lift = 0.03) => {
+    const surf = (x: number, z: number) => { const hw = lerpK(HW, z), t = Math.min(1, Math.max(0, (x / hw - 0.6) / 0.355)); return lerpK(DECK, z) - 0.008 - 0.042 * t * t + lift; };
+    const ptsB: [number, number][] = [];
+    for (let i = 0; i < outline.length; i++) { const a = outline[i], b = outline[(i + 1) % outline.length]; for (let k = 0; k < 8; k++) ptsB.push([a[0] + (b[0] - a[0]) * k / 8, a[1] + (b[1] - a[1]) * k / 8]); }
+    let cx = 0, cz = 0; for (const o of outline) { cx += o[0]; cz += o[1]; } cx /= outline.length; cz /= outline.length;
+    const ring = (f: number) => ptsB.map(([x, z]) => { const px = cx + (x - cx) * f, pz = cz + (z - cz) * f; return [sx * px, surf(px, pz), pz] as [number, number, number]; });
+    const rs = [ring(1), ring(0.66), ring(0.33)], c: [number, number, number] = [sx * cx, surf(cx, cz), cz], tri: number[] = [];
+    const n = ptsB.length;
+    for (let r = 0; r < 2; r++) for (let i = 0; i < n; i++) { const a = rs[r][i], b = rs[r][(i + 1) % n], d = rs[r + 1][i], e = rs[r + 1][(i + 1) % n]; tri.push(...a, ...d, ...b, ...b, ...d, ...e, ...a, ...b, ...d, ...b, ...e, ...d); }
+    for (let i = 0; i < n; i++) { const a = rs[2][i], b = rs[2][(i + 1) % n]; tri.push(...c, ...a, ...b, ...c, ...b, ...a); }
+    push(tag, tri);
+  };
+
   // ---- lower body: sections nose to tail, with real wheel arches ----
   const N = 110, secs: Sec[] = [];
   for (let q = 0; q < N; q++) {
@@ -75,10 +89,8 @@ export function buildTesler(color: number, shadows = true): VehicleModel {
   // ---- front: slim swept headlamps, low black intake, corner slits, badge ----
   for (const sx of [1, -1]) {
     // dark housing a hair under the lamp, then the lamp: a thin crescent swept back along the fender
-    // round headlamp: a dark bezel dome with a smaller lens dome in it, sunk into the fender top
-    { const hz = 2.34, hx = 0.76, hy = lerpK(DECK, hz) - 0.035;
-      ball('dark', sx * hx, hy, hz, 0.125, 0.07, 0.115);
-      ball('head', sx * hx, hy + 0.03, hz + 0.03, 0.1, 0.06, 0.095); }
+    // round headlamp lying on the fender top at the nose corner
+    lampShape('head', sx, [[0.88, F - 0.19], [0.868, F - 0.144], [0.835, F - 0.108], [0.787, F - 0.088], [0.733, F - 0.088], [0.685, F - 0.108], [0.652, F - 0.144], [0.64, F - 0.19], [0.652, F - 0.236], [0.685, F - 0.272], [0.733, F - 0.292], [0.787, F - 0.292], [0.835, F - 0.272], [0.868, F - 0.236]]);
     box('dark', sx * 0.64, 0.45, F - 0.006, 0.2, 0.03, 0.03); // thin corner slit
     box('dark', sx * (lerpK(HW, 0.1) + 0.012), 0.72, 0.1, 0.008, 0.014, 1.5); // door shut line
     box('dark', sx * (lerpK(HW, 0.3) + 0.011), 0.86, 0.3, 0.012, 0.03, 0.2); // flush handle
