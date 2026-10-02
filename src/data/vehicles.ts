@@ -101,7 +101,7 @@ export const VEHICLES: VehicleSpec[] = [
     dims: { length: 1.89, width: 0.63, height: 1.08 }, engine: { cylinders: 1, tone: 1.0, roughness: 0.5 } },
   { ...base, id: 'cbr1000rr', name: 'Honder CCR1000RR', kind: 'bike', model: 'fireblade', color: 0xd3101c, electronics: { abs: 2, tc: 3, aw: 3 },
     hp: 189, massKg: 196 + 75, drive: 'RWD', zeroSixty: 2.9, topSpeedMph: 185,
-    character: 'Fireblade: 189 hp superbike, brutal top end yet planted and precise, cornering ABS and full electronics',
+    character: '189 hp superbike, brutal top end yet planted and precise, cornering ABS and full electronics',
     gears: 6, redline: 13500, idleRpm: 1300, torquePeak: 0.81, torqueFlat: 0.4,
     tireMu: 1.22, frontGrip: 1.04, powerOversteer: 0.25, cgHeight: 0.74, wheelbase: 1.404, frontWeight: 0.5, track: 0.2,
     rollFactor: 0, pitchFactor: 0.045, brakeG: 1.2, downforce: 0.03, steerLock: 0.5, steerSpeed: 3.8, highSpeedSteer: 0.2,
