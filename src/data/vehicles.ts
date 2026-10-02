@@ -123,7 +123,7 @@ export const VEHICLES: VehicleSpec[] = [
     cgHeight: 0.46, wheelbase: 2.722, frontWeight: 0.4, track: 1.8, rollFactor: 0.025, pitchFactor: 0.015,
     brakeG: 1.3, downforce: 1.0, steerLock: 0.52, steerSpeed: 3.1, highSpeedSteer: 0.17, stability: 0.5, yawInertia: 0.8,
     dims: { length: 4.45, width: 2.1, height: 1.22 }, engine: { cylinders: 8, tone: 0.95, roughness: 0.3 } },
-  { ...base, id: 'gt3rs', name: 'Porshe 911 GT3 RS', kind: 'car', model: 'gt3rs', color: 0x1b49b0,
+  { ...base, id: 'gt3rs', name: 'Ponch 999 GT3', kind: 'car', model: 'gt3rs', color: 0x1b49b0,
     hp: 518, massKg: 1450, drive: 'RWD', zeroSixty: 3.0, topSpeedMph: 184,
     character: 'Rear engine flat six: huge traction, razor precise and planted at speed, the tail swings if you lift mid corner',
     gears: 7, redline: 9000, idleRpm: 900, torquePeak: 0.7, torqueFlat: 0.5, shiftTime: 0.05,
