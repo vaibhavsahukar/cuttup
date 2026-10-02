@@ -90,7 +90,7 @@ export class UI {
       <div id="pause" class="screen"><div class="panel center">
         <h2>Paused</h2>
         <button data-a="resume" class="primary">Resume</button><button data-a="restart">Restart</button>
-        <button data-a="settings">Settings</button>${RELEASE ? '' : '<button data-a="dev">Dev mode: fly camera</button><button data-a="ghost" id="ghostBtn">Dev mode: ghost traffic OFF</button>'}<button data-a="menu">Quit to menu</button></div></div>
+        <button data-a="settings">Settings</button>${RELEASE ? '' : '<button data-a="dev">Dev mode: fly camera</button><button data-a="ghost" id="ghostBtn">Dev mode: driving OFF</button>'}<button data-a="menu">Quit to menu</button></div></div>
       <div id="results" class="screen"><div class="over"></div></div>
       <div id="flash"></div>`);
 
@@ -441,8 +441,8 @@ export class UI {
       : (status === 'filling' ? 'FILLING' : status === 'filled' ? 'FILLED' : level <= 0 ? 'EMPTY' : `GAS ${dist}`);
   }
   /** dev mode: hide the game HUD and show the controls hint */
-  /** pause menu toggle: drive through other cars (testing) */
-  ghostMode(on: boolean) { const b = document.getElementById('ghostBtn'); if (b) b.textContent = `Dev mode: ghost traffic ${on ? 'ON' : 'OFF'}`; }
+  /** pause menu toggle: dev driving: through other cars, infinite fuel (testing) */
+  ghostMode(on: boolean) { const b = document.getElementById('ghostBtn'); if (b) b.textContent = `Dev mode: driving ${on ? 'ON' : 'OFF'}`; }
   devMode(on: boolean) { $('#hud').classList.toggle('dev', on); /* the on screen key list is gone: the hint stays hidden */ }
   highBeam(on: boolean) { const e = $('#hud .hbind'); if (e.hidden === on) e.hidden = !on; }
   private lastVig = -1;

@@ -362,7 +362,7 @@ export class Game {
 
   /** DEV MODE: a free flying camera over a frozen world (the map still builds around the camera) */
   dev = false;
-  /** dev: the player passes through other cars (traffic, cops, wrecks) to test features */
+  /** dev driving mode: the player passes through other cars (traffic, cops, wrecks) and never runs out of fuel or charge */
   ghost = false;
   private fly = new FlyCam();
   setDev(on: boolean) {
@@ -463,6 +463,7 @@ export class Game {
   private fuelStep(dt: number, ds: number) {
     const ph = this.player.phys;
     if (this.state !== 'driving') return;
+    if (this.ghost) { this.fuel = 1; this.evDead = false; this.fuelStatus = null; return; } // dev driving mode: never runs dry
     if (this.electric) { this.batteryStep(dt, ds); return; }
     const range = this.player.bike ? 14500 : 15600; // metres on a tank at the base burn rate: about 7 to 8 miles driven hard
     // the pump lane fills the tank quickly at anything under about 50 mph (no need to stop)
