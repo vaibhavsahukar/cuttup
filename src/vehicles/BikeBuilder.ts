@@ -26,6 +26,8 @@ interface BikeDesign {
   forkTag?: Tag; // fork leg material (default chrome)
   bars: P; barW: number; barT?: number; // handlebar width and tube thickness (default 0.03)
   heads: { z: number; y: number; x: number; w: number; h: number }[];
+  /** a shaped headlamp laid on the nose face: outline as (x, y) in front view (one side, +x outward) and the face profile (z, y) top to bottom it follows */
+  headShape?: { outline: [number, number][]; face: [number, number][] };
   tailLamp: P;
   exhaust?: { from: P; to: P; r: number; x: number };
   mirrors?: P;
@@ -55,6 +57,8 @@ const DESIGNS: Record<string, BikeDesign> = {
     ],
     fork: [[0.725, 0.29], [0.5, 0.97]], bars: [0.47, 0.98], barW: 0.6,
     heads: [{ z: 0.83, y: 0.77, x: 0.06, w: 0.08, h: 0.04 }],
+    // tall teardrop lamps on the nose face: round at the inner bottom, pointing up and outwards
+    headShape: { face: [[0.82, 0.78], [0.8, 0.7], [0.7, 0.62]], outline: [[0.038, 0.690], [0.040, 0.677], [0.045, 0.665], [0.053, 0.655], [0.063, 0.647], [0.075, 0.642], [0.088, 0.640], [0.101, 0.642], [0.113, 0.647], [0.123, 0.655], [0.131, 0.665], [0.136, 0.677], [0.154, 0.765], [0.152, 0.772], [0.146, 0.776], [0.138, 0.776], [0.063, 0.733], [0.053, 0.725], [0.045, 0.715], [0.040, 0.703]] },
     sigF: [0.76, 0.8],
     tailLamp: [-0.86, 0.9],
     mirrors: [0.62, 1.1],
@@ -262,12 +266,29 @@ export function buildBike(id: string, color: number, shadows = true, livery?: 'p
     const dz = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dz, dy);
     box(tag, x, (a[1] + b[1]) / 2, (a[0] + b[0]) / 2, t, t, len, -Math.atan2(dy, dz));
   };
+  /** a flat lamp patch on the nose face: the front view outline mapped onto the face profile so it lies on the surface */
+  const headPatch = (sx: number, outline: [number, number][], face: [number, number][]) => {
+    const zAt = (y: number) => { for (let i = 1; i < face.length; i++) { const [z0, y0] = face[i - 1], [z1, y1] = face[i]; if (y <= y0 && y >= y1) return z0 + (z1 - z0) * ((y0 - y) / (y0 - y1)); } return y > face[0][1] ? face[0][0] : face[face.length - 1][0]; };
+    const pts: [number, number][] = [];
+    for (let i = 0; i < outline.length; i++) { const a = outline[i], b = outline[(i + 1) % outline.length]; for (let k = 0; k < 8; k++) pts.push([a[0] + (b[0] - a[0]) * k / 8, a[1] + (b[1] - a[1]) * k / 8]); }
+    let cx = 0, cy = 0; for (const o of outline) { cx += o[0]; cy += o[1]; } cx /= outline.length; cy /= outline.length;
+    const P = (x: number, y: number): number[] => [sx * x, y, zAt(y) + 0.012];
+    const rs = [1, 0.66, 0.33].map((f) => pts.map(([x, y]) => P(cx + (x - cx) * f, cy + (y - cy) * f)));
+    const c = P(cx, cy), tri: number[] = [], n = pts.length;
+    for (let r = 0; r < 2; r++) for (let i = 0; i < n; i++) { const a = rs[r][i], b = rs[r][(i + 1) % n], q = rs[r + 1][i], e = rs[r + 1][(i + 1) % n]; tri.push(...a, ...q, ...b, ...b, ...q, ...e); }
+    for (let i = 0; i < n; i++) tri.push(...c, ...rs[2][i], ...rs[2][(i + 1) % n]);
+    const back: number[] = [];
+    for (let i = 0; i < tri.length; i += 9) back.push(...tri.slice(i, i + 3), ...tri.slice(i + 6, i + 9), ...tri.slice(i + 3, i + 6)); // both windings so it shows from either side
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([...tri, ...back], 3));
+    add('head', g);
+  };
   for (const p of d.parts) side(p);
   for (const t of d.tubes ?? []) for (const sx of t.mirror ? [1, -1] : [1]) bar(t.tag, t.a, t.b, sx * t.x, t.t);
   for (const sx of [1, -1]) {
     bar(d.forkTag ?? 'chrome', d.fork[0], d.fork[1], sx * 0.09, 0.05);
     bar('dark', [d.bars[0], d.bars[1]], [d.bars[0] - 0.06, d.bars[1] + 0.01], sx * d.barW * 0.4, (d.barT ?? 0.03) + 0.005);
-    for (const h of d.heads) box('head', sx * h.x, h.y, h.z, h.w, h.h, 0.03);
+    if (d.headShape) headPatch(sx, d.headShape.outline, d.headShape.face);
+    else for (const h of d.heads) box('head', sx * h.x, h.y, h.z, h.w, h.h, 0.03);
     if (d.mirrors) box('dark', sx * 0.24, d.mirrors[1], d.mirrors[0], 0.1, 0.05, 0.03);
   }
   box('dark', 0, d.bars[1] + 0.005, d.bars[0], d.barW, d.barT ?? 0.03, d.barT ?? 0.03); // top clamp / bars
