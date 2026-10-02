@@ -10,8 +10,8 @@ import { clamp } from '../core/math';
 import { MAT } from '../vehicles/Materials';
 import { difficultyOf, type Difficulty } from '../data/difficulty';
 
-/** Score thresholds -> number of pursuing police cars. */
-export const POLICE_TIERS: [number, number][] = [[5000, 1], [10000, 2], [15000, 3], [20000, 4], [25000, 5]];
+/** Score thresholds -> wanted level on highways (the fifth star, at 40k, comes with the interceptor). */
+export const POLICE_TIERS: [number, number][] = [[5000, 1], [10000, 2], [15000, 3], [20000, 4], [40000, 5]];
 /** backroads: four units, one per level, from 10k / 15k / 20k / 30k points */
 export const BACKROAD_POLICE_TIERS: [number, number][] = [[10000, 1], [15000, 2], [20000, 3], [30000, 4]];
 export function copsForScore(score: number, tiers = POLICE_TIERS) {
