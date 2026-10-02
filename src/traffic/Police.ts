@@ -172,7 +172,9 @@ export class Police {
     }
     this.cops = this.cops.filter((c) => c.car.alive);
     const cap = this.map.road === 'backroad' ? 1 : Math.min(this.wanted, Police.MAX_COPS, this.diff.copMax);
-    if (active && this.active().length < cap) {
+    // the interceptor is always sent once its time comes, even when the pack is already full (Easy only allows three units)
+    const needInterceptor = this.map.road !== 'backroad' && this.wanted >= 5 && score / this.diff.copTier >= Police.CHARGER_FROM && !this.cops.some((c) => c.kind === 'interceptor' && c.retiring <= 0);
+    if (active && (this.active().length < cap || needInterceptor)) {
       this.respawnT -= dt;
       if (this.respawnT <= 0) { this.spawn(player, this.nextKind(score)); this.respawnT = this.map.road === 'backroad' ? 2.5 : 1.2; }
     }
