@@ -289,7 +289,7 @@ export function buildPanelCar(sh: Shape, color: number, lite: boolean, shadows =
     const bar = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.05, 0.3), MAT.trim);
     bar.position.set(0, ym + 0.02, zm);
     chassis.add(bar);
-    const lens = (x: number) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.12, 0.26), MAT.policeOff); m.position.set(x, ym + 0.1, zm); chassis.add(m); return m; };
+    const lens = (x: number) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.16, 0.26), MAT.policeOff); m.position.set(x, ym + 0.1, zm); chassis.add(m); return m; };
     lightBar = { red: [lens(0.26)], blue: [lens(-0.26)] };
   }
   // Traffic and police cars are seen mostly from behind or ahead, where a tyre tucked inside the body line vanishes

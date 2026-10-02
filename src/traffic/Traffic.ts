@@ -482,6 +482,9 @@ export class Traffic {
       const dd = (newD - c.d);
       c.yaw = Math.atan2(-dd / Math.max(dt, 1e-3), Math.max(3, c.v)) * c.dir * 0.8;
       c.d = newD;
+      // a car that is not taking a ramp never leaves the carriageway (swerves, cop yielding and the open ramp mouth must not carry it
+      // over the edge, onto the grass or off the end of an off ramp)
+      if (hw && c.dir > 0 && !c.exitFork && !c.cop && !c.rage) c.d = clamp(c.d, this.layout.playerMin + c.W / 2, this.layout.playerMax - c.W / 2);
     }
     // resolve any residual overlaps between traffic cars (never phase through each other)
     this.separate();

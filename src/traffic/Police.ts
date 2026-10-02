@@ -29,7 +29,9 @@ const pl_rel = (cop: { car: TrafficCar }, player: PlayerProxy) => player.s - cop
 /** backroad: one unit per star level, each tier sends a stronger one */
 const BACKROAD_TIERS: UnitKind[] = ['patrol', 'moto', 'samurai', 'interceptor'];
 const RANK: Record<UnitKind, number> = { patrol: 0, moto: 1, samurai: 2, interceptor: 3 };
-const VTOP: Record<UnitKind, number> = { patrol: 55, moto: 58, samurai: 72, interceptor: 95 };
+/** the interceptor never goes faster than 180 mph (80.4 m/s), whatever the catch-up or difficulty */
+const INTERCEPTOR_MAX = 80.4;
+const VTOP: Record<UnitKind, number> = { patrol: 55, moto: 58, samurai: 72, interceptor: INTERCEPTOR_MAX };
 interface Wreck { car: TrafficCar; body: RigidBody; age: number }
 
 /**
@@ -127,7 +129,7 @@ export class Police {
       panicT: 0, freezeT: 0, honkCd: 0, braking: false, wrecked: false, yaw: 0, passedSign: 0, nearMissed: true, alive: true, cop: true,
     };
     this.traffic.cars.push(car);
-    this.cops.push({ kind, smart: charger, retiring: 0, car, red, blue, skill: charger || kind === 'samurai' ? 0.96 + Math.random() * 0.04 : 0.85 + Math.random() * 0.15, vMax: vTop * this.diff.copSpeed, charger, moto, dSm: car.d, laneT: 0, stuckT: 0, slot: this.cops.length });
+    this.cops.push({ kind, smart: charger, retiring: 0, car, red, blue, skill: charger || kind === 'samurai' ? 0.96 + Math.random() * 0.04 : 0.85 + Math.random() * 0.15, vMax: charger ? Math.min(INTERCEPTOR_MAX, vTop * this.diff.copSpeed) : vTop * this.diff.copSpeed, charger, moto, dSm: car.d, laneT: 0, stuckT: 0, slot: this.cops.length });
     // backroads send one unit at a time, so a replacement for a lost or wrecked cop must not announce the pursuit again:
     // only a new, higher wanted level (a stronger unit) does
     if (this.map.road !== 'backroad' || this.wanted > this.announced) this.onDispatch?.(this.active().length, kind);
@@ -179,7 +181,7 @@ export class Police {
     for (const cop of this.cops) {
       const back = pl_rel(cop, player);
       if (cop.retiring > 0) continue;
-      if (cop.charger && back > 220) { cop.car.s = player.s - 120; cop.car.v = Math.max(cop.car.v, player.v + 20); }
+      if (cop.charger && back > 220) { cop.car.s = player.s - 120; cop.car.v = Math.min(INTERCEPTOR_MAX, Math.max(cop.car.v, player.v + 20)); }
       else if (!cop.charger && back > 400) { this.traffic.release(cop.car); cop.car.alive = false; this.respawnT = 12; }
     }
     this.cops.forEach((cop, i) => { cop.slot = i; });
@@ -221,7 +223,7 @@ export class Police {
     const smart = cop.smart;
     const rel = pl.s - c.s; // + = player ahead
     // never outrun: a cop can always exceed the player's speed by a margin, so a fast car can't just lose them
-    const vMax = cop.charger ? Math.max(cop.vMax, pl.v + 35) : cop.vMax;
+    const vMax = cop.charger ? Math.min(INTERCEPTOR_MAX, Math.max(cop.vMax, pl.v + 35)) : cop.vMax;
     // longitudinal: catch up fast, then close in to ram
     // a cop that has overshot drops back hard to tuck in behind again
     // a smart unit closes fast but arrives at matched speed (no overshooting), then sits on the rear quarter for a PIT
