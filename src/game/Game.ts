@@ -757,7 +757,7 @@ export class Game {
         // and pin it there, so the wall takes the lean (and any yaw) pointing into it
         if (ph.lean * -side > 0) ph.lean *= 0.3;
         if (ph.r * -side > 0) ph.r = 0;
-        if (ph.psi * -side > 0) ph.psi = 0;
+        if (ph.psi * side < 0.06) ph.psi = side * 0.06; // the wall deflects it a few degrees away, so it can never sit pinned
         // and the rider rolls a touch away from the wall, so a bike held against it peels off instead of riding it
         if (ph.lean * side < 0.08) ph.lean += side * 0.0015;
       }
