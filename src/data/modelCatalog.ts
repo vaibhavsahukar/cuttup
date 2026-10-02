@@ -23,6 +23,6 @@ export function modelCatalog(): ModelEntry[] {
   list.push({ key: 'c:cop_basic', label: 'Police cruiser', group: 'Police', note: 'Standard patrol car, highways from 5,000 points, backroads from 10,000' });
   list.push({ key: 'c:cop_moto', label: 'Police motorcycle', group: 'Police', note: 'Fast, agile CCR650 unit, highways from 10,000 points (riders only), backroads from 15,000' });
   list.push({ key: 'c:cop_samurai', label: 'Police Samurai', group: 'Police', note: 'High tier ZR6X Samurai unit: highways from 20,000 points (riders only), backroads from 20,000' });
-  list.push({ key: 'c:cop_charger', label: 'Police interceptor', group: 'Police', note: 'Conquette pursuit unit: one at a time, highways from 50,000 points, backroads from 30,000 points' });
+  list.push({ key: 'c:cop_charger', label: 'Police interceptor', group: 'Police', note: 'Conquette pursuit unit: one at a time, highways from 40,000 points, backroads from 30,000 points' });
   return list;
 }

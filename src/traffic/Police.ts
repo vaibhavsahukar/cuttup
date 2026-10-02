@@ -64,8 +64,8 @@ export class Police {
     return this.cops.length;
   }
 
-  /** The Conquette interceptor joins a highway chase from 50,000 points (five stars alone brings patrol cars), and is faster and sharper */
-  static CHARGER_FROM = 50000;
+  /** The Conquette interceptor joins a highway chase from 40,000 points (five stars alone brings patrol cars), and is faster and sharper */
+  static CHARGER_FROM = 40000;
   static MOTO_FROM = 10000;
   /** at most this many police units are on the road at once */
   static MAX_COPS = 5;
