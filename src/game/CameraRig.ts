@@ -23,9 +23,14 @@ export class CameraRig {
   /** `look`: free look angle in radians, + = right (side keys, right stick); `lookback` swings the view to the rear */
   update(dt: number, p: Player, lookback: boolean, look = 0) {
     this.t += dt;
-    this.lookYaw = damp(this.lookYaw, look, 9, dt);
+    // the free look angle goes round the shortest way (it can be anywhere in a full circle)
+    let dl = look - this.lookYaw;
+    while (dl > Math.PI) dl -= Math.PI * 2;
+    while (dl < -Math.PI) dl += Math.PI * 2;
+    this.lookYaw += dl * (1 - Math.exp(-9 * dt));
+    if (this.lookYaw > Math.PI) this.lookYaw -= Math.PI * 2; else if (this.lookYaw < -Math.PI) this.lookYaw += Math.PI * 2;
     const lk = this.lookYaw;
-    if (p.model.bike?.rider) p.model.bike.rider.head.visible = this.mode !== 'hood' || lookback;
+    if (p.model.bike?.rider) p.model.bike.rider.head.visible = this.mode !== 'hood';
     const root = p.model.root;
     const q = root.quaternion;
     const phys = p.phys;
@@ -46,10 +51,21 @@ export class CameraRig {
     this.cam.fov = damp(this.cam.fov, targetFov, 3, dt);
 
     let desiredPos: THREE.Vector3, desiredLook: THREE.Vector3;
-    if (lookback) {
-      // out ahead of the nose and above it, looking back: the front of your car / bike fills the bottom of the view and the road behind it is beyond
-      desiredPos = root.position.clone().addScaledVector(fwd, p.spec.dims.length * 0.5 + (bike ? 3.4 : 4.2)).addScaledVector(up, h + 1.1);
-      desiredLook = root.position.clone().addScaledVector(fwd, -10).addScaledVector(up, 0.6);
+    // in the hood / cockpit view, turning the camera round past the shoulder goes to the tail so nothing of the vehicle shows
+    if (lookback || (this.mode === 'hood' && Math.abs(lk) > 2.0)) {
+      const len = p.spec.dims.length;
+      if (this.mode === 'hood') {
+        // hood / cockpit view: from just behind the tail, so none of the vehicle shows, only the road behind
+        desiredPos = root.position.clone().addScaledVector(fwd, -(len * 0.5 + 0.35)).addScaledVector(up, h * 0.85);
+        const dir = (lookback ? fwd.clone().negate() : fwd.clone()).applyAxisAngle(up, -lk);
+        desiredLook = desiredPos.clone().addScaledVector(dir, 40).addScaledVector(up, 1.0 - h * 0.85);
+      } else {
+        // out ahead of the nose and above it, looking back: the front of your car / bike fills the bottom of the view and the road behind it is beyond
+        // (the high chase view sits well out; the regular chase view is closer in)
+        const far = this.mode === 'far';
+        desiredPos = root.position.clone().addScaledVector(fwd, len * 0.5 + (far ? (bike ? 3.4 : 4.2) : (bike ? 1.9 : 2.3))).addScaledVector(up, h + (far ? 1.1 : 0.65));
+        desiredLook = root.position.clone().addScaledVector(fwd, -10).addScaledVector(up, 0.6);
+      }
       this.pos.copy(desiredPos); this.look.copy(desiredLook);
     } else if (this.mode === 'hood') {
       const off = bike ? new THREE.Vector3(0, 1.42, 0.45) : new THREE.Vector3(0, h * 0.82, p.spec.dims.length * 0.12);

@@ -135,9 +135,12 @@ export class Input {
         const ph = v('leanLeft') - v('leanRight');
         if (Math.abs(ph) > Math.abs(hang)) hang = ph;
         hb = hb || v('handbrake') > 0.5;
-        lb = lb || v('lookback') > 0.5 || p.axes[3] > 0.6; // right stick pulled down looks behind
+        lb = lb || v('lookback') > 0.5;
         const pLook = (v('lookRight') - v('lookLeft')) * Math.PI * 0.75;
         if (Math.abs(pLook) > Math.abs(look)) look = pLook;
+        // the right stick turns the camera all the way round: up is straight ahead, right 90 degrees, down is behind
+        const rx = p.axes[2] ?? 0, ry = p.axes[3] ?? 0;
+        if (Math.hypot(rx, ry) > 0.45) look = Math.atan2(rx, -ry);
         horn = horn || v('horn') > 0.5;
         for (const a of ['camera', 'pause', 'handbrake', 'highbeam'] as Action[]) {
           const on = v(a) > 0.5;
